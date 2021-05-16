@@ -1,0 +1,4 @@
+[system]
+domain = "http://localhost:7000"
+
+[authorization_server]
