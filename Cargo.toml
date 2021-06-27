@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "oidc-types",
     "oidc-core",
-    "oidc-configuration"
+    "oidc-configuration",
 ]

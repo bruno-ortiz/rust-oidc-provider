@@ -2,3 +2,4 @@
 domain = "http://localhost:7000"
 
 [authorization_server]
+scopes_supported = ["openid", "profile", "email"]
