@@ -10,6 +10,7 @@ mod auth_method;
 mod subject_type;
 mod claim_type;
 mod authentication_request;
+mod prompt;
 
 #[cfg(test)]
 mod tests {

@@ -6,6 +6,11 @@ use std::prelude::v1::Result::Err;
 use josekit::jws::*;
 use std::fmt::{Formatter, Display};
 use std::fmt;
+use josekit::jwt::JwtPayload;
+
+
+pub struct JWS(JwsHeader, JwtPayload);
+
 
 #[derive(Debug)]
 pub struct Algorithm(Box<dyn JwsAlgorithm>);
