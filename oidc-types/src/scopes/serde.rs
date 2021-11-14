@@ -104,4 +104,20 @@ mod tests {
 
         assert_eq!(scopes, Scopes::new_boxed(result.scopes))
     }
+
+    #[test]
+    fn test_can_deserialize_scopes_from_vec_str() {
+        let scopes = Scopes::new(vec!["xpto", "rnd:42"]);
+
+        #[derive(Deserialize)]
+        struct MyStruct {
+            scopes: Scopes,
+        }
+
+        let result = serde_json::from_str::<MyStruct>(r#"{
+              "scopes": "xpto rnd:42"
+            }"#).unwrap();
+
+        assert_eq!(scopes, result.scopes)
+    }
 }

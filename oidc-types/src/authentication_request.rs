@@ -1,10 +1,8 @@
 use crate::response_type::ResponseType;
 use url::Url;
-use crate::scopes::types::{Scope, Scopes};
+use crate::scopes::{Scopes};
 use crate::response_mode::ResponseMode;
 use crate::pkce::CodeChallengeMethod;
-use josekit::jws::{JwsSigner, JwsHeader};
-use josekit::jwt::JwtPayload;
 use crate::jws::JWS;
 use crate::prompt::Prompt;
 

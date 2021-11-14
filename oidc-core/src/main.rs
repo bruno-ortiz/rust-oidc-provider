@@ -1,14 +1,16 @@
-use rocket::{get, routes};
+use actix_web::{App, get, HttpServer, Responder, web};
 
-#[get("/?<name>")]
-fn index(name: String) -> String {
-    format!("Hello, {}!", name)
+use oidc_types::scopes;
+
+#[get("/scopes")]
+async fn index() -> impl Responder {
+    format!("Scope:{}", scopes!("test", "user", "xpto"))
 }
 
-#[rocket::main]
-async fn main() {
-    rocket::build()
-        .mount("/hello", routes![index])
-        .launch()
-        .await;
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
 }

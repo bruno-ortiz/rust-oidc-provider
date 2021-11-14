@@ -8,7 +8,7 @@ lazy_static! {
         .expect("Could no create Parameterized Scopes");
 }
 
-pub trait Scope: Debug {
+pub trait Scope: Debug + Display {
     fn value(&self) -> String;
 }
 
@@ -74,7 +74,8 @@ impl Display for ParameterizedScope {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Scopes(Vec<Box<dyn Scope>>);
+pub struct
+Scopes(Vec<Box<dyn Scope>>);
 
 impl Scopes {
     pub fn new<I: Into<Scopes>>(values: I) -> Self {
@@ -91,6 +92,15 @@ impl Scopes {
 
     fn get(&self, idx: usize) -> Option<&Box<dyn Scope>> {
         self.0.get(idx)
+    }
+}
+
+impl Display for Scopes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let scope_vec = self.0.iter()
+            .map(|scope| format!("{}", scope))
+            .collect::<Vec<String>>();
+        write!(f, "{}", scope_vec.join(" "))
     }
 }
 

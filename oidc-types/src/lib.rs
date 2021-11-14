@@ -1,7 +1,7 @@
 mod response_type;
 mod issuer;
 mod discovery;
-mod scopes;
+pub mod scopes;
 mod pkce;
 mod grant_type;
 mod response_mode;
@@ -11,6 +11,7 @@ mod subject_type;
 mod claim_type;
 mod authentication_request;
 mod prompt;
+mod client;
 
 #[cfg(test)]
 mod tests {

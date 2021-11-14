@@ -1,6 +1,6 @@
 use crate::issuer::Issuer;
 use url::Url;
-use crate::scopes::types::Scope;
+use crate::scopes::Scope;
 use crate::response_type::ResponseTypeValue;
 use crate::pkce::CodeChallengeMethod;
 use crate::grant_type::GrantType;
