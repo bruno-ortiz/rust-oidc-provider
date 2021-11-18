@@ -1,10 +1,10 @@
-use crate::response_type::ResponseType;
-use url::Url;
-use crate::scopes::{Scopes};
-use crate::response_mode::ResponseMode;
+use crate::jose::jws::JWS;
 use crate::pkce::CodeChallengeMethod;
-use crate::jws::JWS;
 use crate::prompt::Prompt;
+use crate::response_mode::ResponseMode;
+use crate::response_type::ResponseType;
+use crate::scopes::Scopes;
+use url::Url;
 
 struct AuthenticationRequest {
     response_type: Option<ResponseType>,

@@ -1,103 +1,58 @@
-use regex::Regex;
 use lazy_static::lazy_static;
-use std::fmt::{Display, Formatter, Debug};
+use regex::Regex;
 use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
 
 lazy_static! {
-    static ref PARAMETERIZED_SCOPE_PATTERN: Regex = Regex::new("^\\w+:\\w+$")
-        .expect("Could no create Parameterized Scopes");
-}
-
-pub trait Scope: Debug + Display {
-    fn value(&self) -> String;
-}
-
-impl PartialEq for dyn Scope {
-    fn eq(&self, other: &Self) -> bool {
-        self.value() == other.value()
-    }
+    static ref PARAMETERIZED_SCOPE_PATTERN: Regex =
+        Regex::new("^\\w+:\\w+$").expect("Could no create Parameterized Scopes");
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct SimpleScope(String);
+pub enum Scope {
+    SimpleScope(String),
+    ParameterizedScope(String, String),
+}
 
-impl SimpleScope {
-    pub fn new<T: Into<String>>(value: T) -> Self {
-        Self(value.into())
+impl Scope {
+    pub fn value(&self) -> String {
+        match self {
+            Scope::SimpleScope(scope) => scope.to_lowercase(),
+            Scope::ParameterizedScope(scope, param) => {
+                format!("{}:{}", scope.to_lowercase(), param)
+            }
+        }
     }
 }
 
-impl Scope for SimpleScope {
-    fn value(&self) -> String {
-        self.0.to_lowercase()
-    }
-}
-
-impl From<&str> for SimpleScope {
-    fn from(value: &str) -> Self {
-        SimpleScope(value.to_owned())
-    }
-}
-
-impl Display for SimpleScope {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.value())
-    }
-}
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct ParameterizedScope(String, String);
-
-impl ParameterizedScope {
-    pub fn new<T: Into<String>>(value: T, param: T) -> Self {
-        Self(value.into(), param.into())
-    }
-}
-
-impl Scope for ParameterizedScope {
-    fn value(&self) -> String {
-        format!("{}:{}", self.0.to_lowercase(), self.1.to_owned())
-    }
-}
-
-impl From<&str> for ParameterizedScope {
-    fn from(value: &str) -> Self {
-        let parts: Vec<&str> = value.split(':').collect();
-        ParameterizedScope(parts[0].to_owned(), parts[1].to_owned())
-    }
-}
-
-impl Display for ParameterizedScope {
+impl Display for Scope {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.value())
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct
-Scopes(Vec<Box<dyn Scope>>);
+pub struct Scopes(Vec<Scope>);
 
 impl Scopes {
     pub fn new<I: Into<Scopes>>(values: I) -> Self {
         values.into()
     }
 
-    pub fn new_boxed(values: Vec<Box<dyn Scope>>) -> Self {
-        let mut vec: Vec<Box<dyn Scope>> = Vec::with_capacity(values.capacity());
-        for v in values {
-            vec.push(v);
-        }
-        Scopes(vec)
+    pub fn from_vec(values: Vec<Scope>) -> Self {
+        Scopes(values)
     }
 
-    fn get(&self, idx: usize) -> Option<&Box<dyn Scope>> {
+    pub fn get(&self, idx: usize) -> Option<&Scope> {
         self.0.get(idx)
     }
 }
 
 impl Display for Scopes {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let scope_vec = self.0.iter()
+        let scope_vec = self
+            .0
+            .iter()
             .map(|scope| format!("{}", scope))
             .collect::<Vec<String>>();
         write!(f, "{}", scope_vec.join(" "))
@@ -106,7 +61,7 @@ impl Display for Scopes {
 
 impl From<Vec<&str>> for Scopes {
     fn from(values: Vec<&str>) -> Self {
-        let mut vec: Vec<Box<dyn Scope>> = Vec::with_capacity(values.capacity());
+        let mut vec: Vec<Scope> = Vec::with_capacity(values.capacity());
         for v in values {
             vec.push(v.into());
         }
@@ -114,11 +69,49 @@ impl From<Vec<&str>> for Scopes {
     }
 }
 
-impl From<&str> for Box<dyn Scope> {
+impl From<&str> for Scope {
     fn from(scope: &str) -> Self {
         match PARAMETERIZED_SCOPE_PATTERN.is_match(scope) {
-            true => { Box::new(ParameterizedScope::from(scope)) }
-            false => { Box::new(SimpleScope::from(scope)) }
+            true => {
+                let parts: Vec<&str> = scope.split(':').collect();
+                Scope::ParameterizedScope(parts[0].to_owned(), parts[1].to_owned())
+            }
+            false => Scope::SimpleScope(scope.to_owned()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::scopes;
+    use crate::scopes::{Scope, Scopes};
+
+    #[test]
+    fn test_can_create_scopes() {
+        let scopes: Scopes = scopes!("xpto", "rng:42");
+
+        let first = scopes.get(0);
+        let second = scopes.get(1);
+        assert!(first.is_some());
+        assert!(second.is_some());
+
+        match first.unwrap() {
+            Scope::SimpleScope(scope) => {
+                assert_eq!("xpto", scope)
+            }
+            Scope::ParameterizedScope(_, _) => {
+                panic!("should be a simple scope")
+            }
+        };
+
+        match second.unwrap() {
+            Scope::SimpleScope(_) => {
+                panic!("should be a parameterized scope")
+            }
+            Scope::ParameterizedScope(scope, param) => {
+                assert_eq!("rng", scope);
+                assert_eq!("42", param);
+            }
+        };
     }
 }

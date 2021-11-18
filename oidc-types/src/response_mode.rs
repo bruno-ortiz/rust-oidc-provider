@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -42,7 +42,9 @@ mod tests {
     }
 
     fn serialize(response_mode: &ResponseMode) -> String {
-        serde_json::to_string(response_mode).unwrap().replace("\"", "")
+        serde_json::to_string(response_mode)
+            .unwrap()
+            .replace("\"", "")
     }
 
     fn deserialize(response_mode: &str) -> ResponseMode {

@@ -1,14 +1,14 @@
-use crate::issuer::Issuer;
-use url::Url;
-use crate::scopes::Scope;
-use crate::response_type::ResponseTypeValue;
-use crate::pkce::CodeChallengeMethod;
-use crate::grant_type::GrantType;
-use crate::response_mode::ResponseMode;
-use crate::jws::Algorithm;
 use crate::auth_method::AuthMethod;
-use crate::subject_type::SubjectType;
 use crate::claim_type::ClaimType;
+use crate::grant_type::GrantType;
+use crate::issuer::Issuer;
+use crate::jose::algorithm::Algorithm;
+use crate::pkce::CodeChallengeMethod;
+use crate::response_mode::ResponseMode;
+use crate::response_type::ResponseTypeValue;
+use crate::scopes::Scope;
+use crate::subject_type::SubjectType;
+use url::Url;
 
 pub struct OIDCProviderMetadata {
     pub issuer: Issuer,
@@ -21,7 +21,7 @@ pub struct OIDCProviderMetadata {
     pub userinfo_endpoint: Url,
     pub jwks_uri: Url,
     pub response_types_supported: Vec<ResponseTypeValue>,
-    pub scopes_supported: Vec<Box<dyn Scope>>,
+    pub scopes_supported: Vec<Scope>,
     pub claims_supported: Vec<String>,
     pub code_challenge_methods_supported: Vec<CodeChallengeMethod>,
     pub grant_types_supported: Vec<GrantType>,

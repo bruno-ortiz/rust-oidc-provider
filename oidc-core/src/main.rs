@@ -1,4 +1,4 @@
-use actix_web::{App, get, HttpServer, Responder, web};
+use actix_web::{get, web, App, HttpServer, Responder};
 
 use oidc_types::scopes;
 

@@ -1,22 +1,15 @@
-mod response_type;
-mod issuer;
-mod discovery;
-pub mod scopes;
-mod pkce;
-mod grant_type;
-mod response_mode;
-mod jws;
 mod auth_method;
-mod subject_type;
-mod claim_type;
 mod authentication_request;
-mod prompt;
+mod claim_type;
 mod client;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+mod discovery;
+mod grant_type;
+mod issuer;
+mod jose;
+mod pkce;
+mod prompt;
+mod response_mode;
+mod response_type;
+pub mod scopes;
+mod subject_type;
+mod utils;

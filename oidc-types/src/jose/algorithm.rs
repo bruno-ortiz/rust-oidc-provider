@@ -1,16 +1,11 @@
-use josekit::jws::JwsAlgorithm;
-
-use serde::{Serialize, Deserialize, Serializer, Deserializer, de};
-use serde::de::{Visitor, Error, StdError};
-use std::prelude::v1::Result::Err;
-use josekit::jws::*;
-use std::fmt::{Formatter, Display};
 use std::fmt;
-use josekit::jwt::JwtPayload;
+use std::fmt::{Display, Formatter};
+use std::prelude::v1::Result::Err;
 
-
-pub struct JWS(JwsHeader, JwtPayload);
-
+use josekit::jws::JwsAlgorithm;
+use josekit::jws::*;
+use serde::de::{Error, StdError, Visitor};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug)]
 pub struct Algorithm(Box<dyn JwsAlgorithm>);
@@ -30,13 +25,19 @@ impl PartialEq for Algorithm {
 impl Eq for Algorithm {}
 
 impl Serialize for Algorithm {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         serializer.serialize_str(self.0.name())
     }
 }
 
 impl<'de> Deserialize<'de> for Algorithm {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         struct AlgVisitor;
 
         impl<'de> Visitor<'de> for AlgVisitor {
@@ -46,7 +47,10 @@ impl<'de> Deserialize<'de> for Algorithm {
                 formatter.write_str("a valid jws algorithm.")
             }
 
-            fn visit_str<E>(self, alg: &str) -> Result<Self::Value, E> where E: Error, {
+            fn visit_str<E>(self, alg: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
                 match alg {
                     "HS256" => Ok(Algorithm::new(Box::new(HS256))),
                     "HS384" => Ok(Algorithm::new(Box::new(HS384))),
@@ -62,7 +66,7 @@ impl<'de> Deserialize<'de> for Algorithm {
                     "ES384" => Ok(Algorithm::new(Box::new(ES384))),
                     "ES512" => Ok(Algorithm::new(Box::new(ES512))),
                     "EdDSA" => Ok(Algorithm::new(Box::new(EdDSA))),
-                    _ => Err(de::Error::custom(format!("Unsupported algorithm {}", alg)))
+                    _ => Err(de::Error::custom(format!("Unsupported algorithm {}", alg))),
                 }
             }
         }
@@ -83,8 +87,9 @@ impl StdError for DeserializeError {}
 
 #[cfg(test)]
 mod tests {
-    use crate::jws::Algorithm;
     use josekit::jws::ES256;
+
+    use crate::jose::algorithm::Algorithm;
 
     #[test]
     fn test_can_serialize_algorithm() {

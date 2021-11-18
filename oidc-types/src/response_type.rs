@@ -1,7 +1,8 @@
-use serde::{Deserialize, Serializer};
+use crate::serialize_to_str;
 use serde::Serialize;
-use std::fmt::{Display, Formatter};
+use serde::{Deserialize, Serializer};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -17,7 +18,9 @@ pub struct ResponseType(Vec<ResponseTypeValue>);
 
 impl Display for ResponseType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let x = self.0.iter()
+        let x = self
+            .0
+            .iter()
             .map(|rt| rt.to_string())
             .collect::<Vec<String>>()
             .join(" ");
@@ -31,18 +34,13 @@ impl Display for ResponseTypeValue {
             ResponseTypeValue::Code => "code",
             ResponseTypeValue::IdToken => "id_token",
             ResponseTypeValue::Token => "token",
-            ResponseTypeValue::None => "none"
+            ResponseTypeValue::None => "none",
         };
         write!(f, "{}", value)
     }
 }
 
-impl Serialize for ResponseType {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error> where
-        S: Serializer {
-        serializer.serialize_str(&self.to_string())
-    }
-}
+serialize_to_str!(ResponseType);
 
 #[cfg(test)]
 mod tests {
@@ -65,6 +63,9 @@ mod tests {
 
         let rt = ResponseType(vec![ResponseTypeValue::Code, ResponseTypeValue::IdToken]);
 
-        assert_eq!(r#"{"rt":"code id_token"}"#, serde_json::to_string(&Test { rt }).unwrap())
+        assert_eq!(
+            r#"{"rt":"code id_token"}"#,
+            serde_json::to_string(&Test { rt }).unwrap()
+        )
     }
 }

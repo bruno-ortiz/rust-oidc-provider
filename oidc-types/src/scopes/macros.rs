@@ -6,7 +6,7 @@ macro_rules! scopes {
             $(
                 temp_vec.push($scope);
             )*
-            oidc_types::scopes::Scopes::new(temp_vec)
+            $crate::scopes::Scopes::new(temp_vec)
         }
     }
 }

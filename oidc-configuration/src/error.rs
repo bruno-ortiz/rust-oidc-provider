@@ -1,7 +1,7 @@
-use std::{error, fmt};
-use std::io::Error;
 use std::env::VarError;
 use std::fmt::Formatter;
+use std::io::Error;
+use std::{error, fmt};
 use toml::de;
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl error::Error for ConfigError {
         match self {
             ConfigError::Env(e) => Some(e),
             ConfigError::IO(e) => Some(e),
-            ConfigError::Parse(e) => Some(e)
+            ConfigError::Parse(e) => Some(e),
         }
     }
 }

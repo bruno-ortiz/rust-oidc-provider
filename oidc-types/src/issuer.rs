@@ -1,23 +1,25 @@
-use url::Url;
 use serde::{Serialize, Serializer};
-use std::fmt::{Display, Formatter, Debug};
-use std::fmt;
 use std::convert::TryInto;
+use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
+use url::Url;
 
 pub struct Issuer(Url);
 
 impl Issuer {
-    fn new<I: TryInto<Url, Error=E>, E: Debug>(identifier: I) -> Self {
-        let identifier = identifier
-            .try_into()
-            .expect("Configured issuer should be a valid URL");
-        Issuer(identifier)
+    fn new<I: TryInto<Url, Error = E>, E: Debug>(identifier: I) -> Self {
+        match identifier.try_into() {
+            Ok(i) => Issuer(i),
+            Err(error) => panic!("Configured issuer should be a valid URL. Err: {:?}", error),
+        }
     }
 }
 
 impl Serialize for Issuer {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error> where
-        S: Serializer {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
         serializer.serialize_newtype_struct("Issuer", &self.0)
     }
 }
@@ -49,6 +51,9 @@ mod tests {
     fn test_can_serialize_issuer() {
         let iss = Issuer::new("http://localhost:7000");
 
-        assert_eq!(r#""http://localhost:7000/""#, serde_json::to_string(&iss).unwrap())
+        assert_eq!(
+            r#""http://localhost:7000/""#,
+            serde_json::to_string(&iss).unwrap()
+        )
     }
 }
