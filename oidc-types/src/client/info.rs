@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::auth_method::AuthMethod;
 use crate::grant_type::GrantType;
-use crate::jose::jws::JWS;
+use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
 
@@ -31,7 +31,7 @@ pub struct ClientMetadata {
     // jwks: Option<JwkSet>,
     software_id: Option<Uuid>,
     software_version: Option<String>,
-    software_statement: Option<JWS>,
+    software_statement: Option<JWT>,
 }
 
 #[derive(Serialize, Deserialize)]

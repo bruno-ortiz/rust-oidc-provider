@@ -1,2 +1,3 @@
 pub mod algorithm;
-pub mod jws;
+mod error;
+pub mod jwt;

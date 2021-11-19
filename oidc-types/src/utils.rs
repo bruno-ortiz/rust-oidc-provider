@@ -2,10 +2,7 @@
 macro_rules! serialize_to_str {
     ($t:ty) => {
         impl serde::Serialize for $t {
-            fn serialize<S>(
-                &self,
-                serializer: S,
-            ) -> Result<S::Ok, S::Error>
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: Serializer,
             {

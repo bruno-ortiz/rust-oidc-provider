@@ -1,4 +1,4 @@
-use crate::jose::jws::JWS;
+use crate::jose::jwt::JWT;
 use crate::pkce::CodeChallengeMethod;
 use crate::prompt::Prompt;
 use crate::response_mode::ResponseMode;
@@ -19,6 +19,6 @@ struct AuthenticationRequest {
     resource: Option<Url>,
     include_granted_scopes: Option<bool>,
     request_uri: Option<Url>,
-    request: JWS,
+    request: JWT,
     prompt: Option<Prompt>,
 }
