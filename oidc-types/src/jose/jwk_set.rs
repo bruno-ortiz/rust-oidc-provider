@@ -4,7 +4,7 @@ use std::fmt::Formatter;
 use josekit::JoseError;
 use josekit::jwk::Jwk;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use serde::de::{EnumAccess, MapAccess, SeqAccess, Visitor};
+use serde::de::{MapAccess, SeqAccess, Visitor};
 use serde::ser::{Error, SerializeMap};
 use serde_json::{Map, Value};
 
@@ -32,6 +32,15 @@ impl JwkSet {
         JwkSet {
             keys,
             key_map,
+        }
+    }
+
+    pub fn get(&self, key_id: &str) -> Option<&Jwk> {
+        if let Some(key_idx) = self.key_map.get(key_id) {
+            let jwk_holder: &JwkHolder = &self.keys[*key_idx];
+            Some(&jwk_holder.0)
+        } else {
+            None
         }
     }
 }
@@ -125,5 +134,18 @@ mod tests {
         assert!(new_jwk_set.is_ok());
 
         assert_eq!(jwk_set, new_jwk_set.unwrap())
+    }
+
+    #[test]
+    fn test_can_get_key_from_jwk_set() {
+        let mut ec_key = Jwk::generate_ec_key(EcCurve::P256).unwrap();
+        ec_key.set_key_id("ec_key_id");
+        let rsa_key = Jwk::generate_rsa_key(512).unwrap();
+        let jwk_set = JwkSet::new(vec![JwkHolder(ec_key), JwkHolder(rsa_key)]);
+
+        let key_from_set = jwk_set.get("ec_key_id");
+        assert!(key_from_set.is_some());
+        let invalid_key = jwk_set.get("nonexistent_key_id");
+        assert!(invalid_key.is_none());
     }
 }
