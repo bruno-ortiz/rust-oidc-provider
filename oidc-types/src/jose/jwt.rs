@@ -2,8 +2,8 @@ use std::fmt::{Debug, Formatter};
 
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::jose::error::JWTError;
@@ -41,8 +41,8 @@ impl JWT {
 
 impl Serialize for JWT {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&self.signed_repr)
     }
@@ -50,8 +50,8 @@ impl Serialize for JWT {
 
 impl<'de> Deserialize<'de> for JWT {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         struct JWSVisitor;
         impl<'de> Visitor<'de> for JWSVisitor {
@@ -62,8 +62,8 @@ impl<'de> Deserialize<'de> for JWT {
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: Error,
+            where
+                E: Error,
             {
                 let jwt = JWT::decode_no_verify(v).map_err(de::Error::custom)?;
                 Ok(jwt)
@@ -102,7 +102,10 @@ mod tests {
 
         assert_eq!(expected_issuer, jwt.payload.issuer().unwrap());
         assert_eq!(expected_token_type, jwt.header.token_type().unwrap());
-        assert_eq!(expected_token_id, Uuid::parse_str(jwt.payload.jwt_id().unwrap()).unwrap());
+        assert_eq!(
+            expected_token_id,
+            Uuid::parse_str(jwt.payload.jwt_id().unwrap()).unwrap()
+        );
     }
 
     #[test]
@@ -120,7 +123,11 @@ mod tests {
 
         let encoded_jwt = jwt::encode_unsecured(&jwt_payload, &jwt_header).unwrap();
 
-        let jwt: JWT = JWT { header: jwt_header, payload: jwt_payload, signed_repr: encoded_jwt.clone() };
+        let jwt: JWT = JWT {
+            header: jwt_header,
+            payload: jwt_payload,
+            signed_repr: encoded_jwt.clone(),
+        };
 
         let serialized = serde_json::to_string(&jwt).unwrap();
         assert_eq!(f!("\"{}\"", &encoded_jwt), serialized);

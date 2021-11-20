@@ -2,7 +2,7 @@ use std::error;
 use std::fmt::{Debug, Display, Formatter};
 
 use base64::DecodeError;
-use josekit::{JoseError};
+use josekit::JoseError;
 
 #[derive(Debug)]
 pub enum JWTError {

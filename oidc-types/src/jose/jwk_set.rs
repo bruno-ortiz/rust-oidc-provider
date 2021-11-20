@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
-use josekit::JoseError;
 use josekit::jwk::Jwk;
+use josekit::JoseError;
+use serde::de::{MapAccess, Visitor};
+use serde::ser::SerializeMap;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use serde::de::{MapAccess, SeqAccess, Visitor};
-use serde::ser::{Error, SerializeMap};
 use serde_json::{Map, Value};
-
-use crate::jose::jwt::JWT;
 
 #[derive(PartialEq, Debug)]
 pub struct JwkHolder(Jwk);
@@ -29,10 +27,7 @@ impl JwkSet {
                 key_map.insert(id.to_owned(), idx);
             }
         }
-        JwkSet {
-            keys,
-            key_map,
-        }
+        JwkSet { keys, key_map }
     }
 
     pub fn get(&self, key_id: &str) -> Option<&Jwk> {
@@ -46,7 +41,10 @@ impl JwkSet {
 }
 
 impl Serialize for JwkHolder {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         let key_map: &Map<String, Value> = self.0.as_ref();
         let mut map = serializer.serialize_map(Some(key_map.len()))?;
         for (k, v) in key_map {
@@ -57,7 +55,10 @@ impl Serialize for JwkHolder {
 }
 
 impl<'de> Deserialize<'de> for JwkHolder {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         let map_err_fn = |err: JoseError| de::Error::custom(format!("{:?}", err));
         Map::deserialize(deserializer)
             .and_then(|map| Jwk::from_map(map).map_err(map_err_fn))
@@ -66,10 +67,15 @@ impl<'de> Deserialize<'de> for JwkHolder {
 }
 
 impl<'de> Deserialize<'de> for JwkSet {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "snake_case")]
-        enum Field { Keys }
+        enum Field {
+            Keys,
+        }
 
         struct JwkSetVisitor;
 
@@ -80,7 +86,10 @@ impl<'de> Deserialize<'de> for JwkSet {
                 formatter.write_str("an jwkSet object")
             }
 
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error> where A: MapAccess<'de> {
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
                 let mut keys: Option<Vec<JwkHolder>> = None;
                 while let Some(key) = map.next_key()? {
                     match key {
