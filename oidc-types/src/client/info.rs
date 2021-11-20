@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
-use josekit::jwk::JwkSet;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
 
 use crate::auth_method::AuthMethod;
 use crate::grant_type::GrantType;
+use crate::jose::jwk_set::JwkSet;
 use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
@@ -28,7 +28,7 @@ pub struct ClientMetadata {
     policy_uri: Option<Url>,
     contacts: Vec<String>,
     jwks_uri: Option<Url>,
-    // jwks: Option<JwkSet>,
+    jwks: Option<JwkSet>,
     software_id: Option<Uuid>,
     software_version: Option<String>,
     software_statement: Option<JWT>,

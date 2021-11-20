@@ -1,8 +1,8 @@
 use std::error;
-use std::fmt::{write, Debug, Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 use base64::DecodeError;
-use josekit::{jwt, JoseError};
+use josekit::{JoseError};
 
 #[derive(Debug)]
 pub enum JWTError {

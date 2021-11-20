@@ -1,14 +1,10 @@
-use std::error;
-use std::fmt::{Debug, Display, Formatter, write};
+use std::fmt::{Debug, Formatter};
 
-use base64::DecodeError;
-use josekit::{JoseError, jwt};
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use serde::de::{EnumAccess, Error, MapAccess, SeqAccess, Visitor};
+use serde::de::{Error, Visitor};
 use serde_json::{Map, Value};
-use url::Url;
 
 use crate::jose::error::JWTError;
 
@@ -44,7 +40,7 @@ impl JWT {
 }
 
 impl Serialize for JWT {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
     {
@@ -81,12 +77,9 @@ impl<'de> Deserialize<'de> for JWT {
 mod tests {
     use std::format as f;
 
-    use josekit::jws::{JwsAlgorithm, JwsHeader};
-    use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
+    use josekit::jws::JwsHeader;
     use josekit::jwt;
     use josekit::jwt::JwtPayload;
-    use serde::Deserialize;
-    use serde_json::Value;
     use uuid::Uuid;
 
     use crate::jose::jwt::JWT;

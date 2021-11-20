@@ -1,3 +1,4 @@
 pub mod algorithm;
-mod error;
 pub mod jwt;
+pub mod jwk_set;
+mod error;
