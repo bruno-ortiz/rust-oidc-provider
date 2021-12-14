@@ -2,8 +2,8 @@ use actix_web::{get, web, App, HttpServer, Responder};
 use josekit::jwk::alg::ec::EcCurve;
 use josekit::jwk::Jwk;
 
-use oidc_types::jose::jwk_set::{JwkHolder, JwkSet};
-use oidc_types::scopes;
+use oidc_types::jose::jwk_set::{JwkSet};
+
 
 #[get("/key")]
 async fn index() -> impl Responder {

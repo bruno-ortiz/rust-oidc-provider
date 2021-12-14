@@ -120,7 +120,7 @@ mod tests {
     use josekit::jwk::alg::ec::EcCurve;
     use josekit::jwk::Jwk;
 
-    use crate::jose::jwk_set::{JwkHolder, JwkSet};
+    use crate::jose::jwk_set::{JwkSet};
 
     #[test]
     fn test_can_serialize_jwk_set() {
