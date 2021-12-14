@@ -19,7 +19,12 @@ pub struct JwkSet {
 }
 
 impl JwkSet {
-    pub fn new(keys: Vec<JwkHolder>) -> Self {
+    pub fn new(keys: Vec<Jwk>) -> Self {
+        let vec = keys.into_iter().map(JwkHolder).collect();
+        JwkSet::new_jwk_holder(vec)
+    }
+
+    fn new_jwk_holder(keys: Vec<JwkHolder>) -> Self {
         let mut key_map = HashMap::with_capacity(keys.len());
         for (idx, key) in keys.iter().enumerate() {
             let key_id = key.0.key_id();
@@ -102,7 +107,7 @@ impl<'de> Deserialize<'de> for JwkSet {
                     }
                 }
                 let keys = keys.ok_or_else(|| de::Error::missing_field("keys"))?;
-                Ok(JwkSet::new(keys))
+                Ok(JwkSet::new_jwk_holder(keys))
             }
         }
         const FIELDS: &'static [&'static str] = &["keys"];
@@ -121,7 +126,7 @@ mod tests {
     fn test_can_serialize_jwk_set() {
         let ec_key = Jwk::generate_ec_key(EcCurve::P256).unwrap();
         let rsa_key = Jwk::generate_rsa_key(512).unwrap();
-        let jwk_set = JwkSet::new(vec![JwkHolder(ec_key), JwkHolder(rsa_key)]);
+        let jwk_set = JwkSet::new(vec![ec_key, rsa_key]);
 
         let serialized_jwk_set = serde_json::to_string(&jwk_set);
 
@@ -132,7 +137,7 @@ mod tests {
     fn test_can_deserialize_jwk_set() {
         let ec_key = Jwk::generate_ec_key(EcCurve::P256).unwrap();
         let rsa_key = Jwk::generate_rsa_key(512).unwrap();
-        let jwk_set = JwkSet::new(vec![JwkHolder(ec_key), JwkHolder(rsa_key)]);
+        let jwk_set = JwkSet::new(vec![ec_key, rsa_key]);
 
         let serialized_jwk_set = serde_json::to_string(&jwk_set);
         assert!(serialized_jwk_set.is_ok());
@@ -150,7 +155,7 @@ mod tests {
         let mut ec_key = Jwk::generate_ec_key(EcCurve::P256).unwrap();
         ec_key.set_key_id("ec_key_id");
         let rsa_key = Jwk::generate_rsa_key(512).unwrap();
-        let jwk_set = JwkSet::new(vec![JwkHolder(ec_key), JwkHolder(rsa_key)]);
+        let jwk_set = JwkSet::new(vec![ec_key, rsa_key]);
 
         let key_from_set = jwk_set.get("ec_key_id");
         assert!(key_from_set.is_some());

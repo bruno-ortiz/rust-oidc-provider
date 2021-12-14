@@ -5,7 +5,7 @@ mod client;
 mod discovery;
 mod grant_type;
 mod issuer;
-mod jose;
+pub mod jose;
 mod pkce;
 mod prompt;
 mod response_mode;
