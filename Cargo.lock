@@ -1077,6 +1077,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "oidc-actix"
+version = "0.1.0"
+
+[[package]]
 name = "oidc-configuration"
 version = "0.1.0"
 dependencies = [
@@ -1090,6 +1094,8 @@ dependencies = [
 name = "oidc-core"
 version = "0.1.0"
 dependencies = [
+ "actix-http",
+ "actix-service",
  "actix-web",
  "josekit",
  "log",
