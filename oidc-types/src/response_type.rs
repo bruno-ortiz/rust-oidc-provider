@@ -1,10 +1,14 @@
-use crate::serialize_to_str;
-use serde::Serialize;
-use serde::{Deserialize, Serializer};
+use std::collections::HashSet;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-#[derive(Serialize, Deserialize, Debug)]
+use serde::Serialize;
+use serde::{Deserialize, Serializer};
+
+use crate::response_type::ResponseTypeValue::{Code, IdToken, Token};
+use crate::serialize_to_str;
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseTypeValue {
     Code,
@@ -13,8 +17,15 @@ pub enum ResponseTypeValue {
     None,
 }
 
-#[derive(Debug)]
-pub struct ResponseType(Vec<ResponseTypeValue>);
+#[derive(Debug, PartialEq, Eq)]
+pub struct ResponseType(HashSet<ResponseTypeValue>);
+
+impl ResponseType {
+    pub fn new(values: Vec<ResponseTypeValue>) -> Self {
+        let values_set: HashSet<_> = values.into_iter().collect();
+        ResponseType(values_set)
+    }
+}
 
 impl Display for ResponseType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -31,7 +42,7 @@ impl Display for ResponseType {
 impl Display for ResponseTypeValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let value = match self {
-            ResponseTypeValue::Code => "code",
+            Code => "code",
             ResponseTypeValue::IdToken => "id_token",
             ResponseTypeValue::Token => "token",
             ResponseTypeValue::None => "none",
@@ -42,14 +53,28 @@ impl Display for ResponseTypeValue {
 
 serialize_to_str!(ResponseType);
 
+#[macro_export]
+macro_rules! response_type {
+    ($($rt:expr),*) =>{
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($rt);
+            )*
+            $crate::response_type::ResponseType::new(temp_vec)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::response_type::{ResponseType, ResponseTypeValue};
     use serde::Serialize;
+
+    use crate::response_type::{ResponseType, ResponseTypeValue};
 
     #[test]
     fn test_can_join_response_type() {
-        let rt = ResponseType(vec![ResponseTypeValue::Code, ResponseTypeValue::IdToken]);
+        let rt = ResponseType::new(vec![ResponseTypeValue::Code, ResponseTypeValue::IdToken]);
 
         assert_eq!("code id_token", rt.to_string())
     }
@@ -61,7 +86,7 @@ mod tests {
             rt: ResponseType,
         }
 
-        let rt = ResponseType(vec![ResponseTypeValue::Code, ResponseTypeValue::IdToken]);
+        let rt = ResponseType::new(vec![ResponseTypeValue::Code, ResponseTypeValue::IdToken]);
 
         assert_eq!(
             r#"{"rt":"code id_token"}"#,

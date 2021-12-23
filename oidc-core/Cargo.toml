@@ -7,11 +7,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "3.3.2"
-actix-service = "1.0.6"
-actix-http = "2.2.1"
-josekit = "0.7.4"
-log = "0.4.14"
-pretty_env_logger = "0.4.0"
-serde = { version = "1.0.126", features = ["derive"] }
 oidc-types = { path = "../oidc-types" }
+serde = { version = "1.0.126", features = ["derive"] }
+url = { version = "2.2.2", features = ["serde"] }

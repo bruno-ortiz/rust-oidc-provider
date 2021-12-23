@@ -3,5 +3,4 @@ members = [
     "oidc-actix",
     "oidc-types",
     "oidc-core",
-    "oidc-configuration",
 ]

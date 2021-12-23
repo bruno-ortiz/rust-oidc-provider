@@ -18,6 +18,12 @@ pub struct JwkSet {
     key_map: HashMap<String, usize>,
 }
 
+impl Default for JwkSet {
+    fn default() -> Self {
+        JwkSet::new(Vec::new())
+    }
+}
+
 impl JwkSet {
     pub fn new(keys: Vec<Jwk>) -> Self {
         let vec = keys.into_iter().map(JwkHolder).collect();
@@ -120,7 +126,7 @@ mod tests {
     use josekit::jwk::alg::ec::EcCurve;
     use josekit::jwk::Jwk;
 
-    use crate::jose::jwk_set::{JwkSet};
+    use crate::jose::jwk_set::JwkSet;
 
     #[test]
     fn test_can_serialize_jwk_set() {
