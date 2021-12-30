@@ -1,7 +1,7 @@
 use std::hash::Hasher;
 
 use josekit::jwk::Jwk;
-use sha2::digest::Output;
+
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
 

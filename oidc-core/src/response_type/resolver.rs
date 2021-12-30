@@ -1,28 +1,28 @@
 use std::collections::HashMap;
 
-use chrono::Utc;
-use josekit::jws::JwsHeader;
-use josekit::jwt::JwtPayload;
 
-use oidc_types::jose::jwt::JWT;
+
+
+
+
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
 use AuthorisationError::ResponseTypeResolveNotConfigured;
 
-use crate::access_token::AccessToken;
-use crate::authentication_request::AuthenticationRequest;
-use crate::authorisation_code::AuthorisationCode;
+
+
+
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-use crate::hash::TokenHasher;
-use crate::id_token::IdToken;
+
+
 use crate::response_type::authorisation_response::AuthorisationResponse;
 use crate::response_type::errors::AuthorisationError;
 use crate::response_type::errors::AuthorisationError::ResponseTypeNotAllowed;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::code_id_token::CodeIdTokenResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
-use crate::response_type::UrlEncodable;
+
 
 mod code;
 mod code_id_token;
@@ -96,8 +96,8 @@ impl From<OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
 
 #[cfg(test)]
 mod tests {
-    use oidc_types::response_type;
-    use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
+    
+    
 
     use crate::configuration::OpenIDProviderConfiguration;
     use crate::response_type::resolver::DynamicResponseTypeResolver;
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn can_create_resolver_from_config() {
         let cfg = OpenIDProviderConfiguration::default();
-        let resolver = DynamicResponseTypeResolver::from(cfg);
+        let _resolver = DynamicResponseTypeResolver::from(cfg);
         println!("xpto")
     }
 }

@@ -1,5 +1,5 @@
 use crate::hash::Hashable;
-use crate::response_type::UrlEncodable;
+
 
 #[derive(Debug)]
 pub struct AuthorisationCode(pub(crate) String);

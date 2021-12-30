@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::{fmt, vec};
+use std::{fmt};
 
-use lazy_static::lazy_static;
+
 use serde::Serialize;
 use serde::{Deserialize, Serializer};
 

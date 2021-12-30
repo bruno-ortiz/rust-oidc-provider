@@ -3,7 +3,7 @@ use josekit::jwk::Jwk;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
-use oidc_types::response_type::{ResponseType, ResponseTypeValue};
+use oidc_types::response_type::{ResponseType};
 
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn can_modify_default_configuration() {
-        let mut config = OpenIDProviderConfiguration::new()
+        let _config = OpenIDProviderConfiguration::new()
             .with_jwks(JwkSet::new(vec![]))
             .with_pkce(PKCE::default());
     }
