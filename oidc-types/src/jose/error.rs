@@ -10,6 +10,8 @@ pub enum JWTError {
     InvalidJwtFormat(String),
     SerDeParseError(serde_json::Error),
     JoseCreationError(JoseError),
+    JWKAlgorithmNotFound,
+    SignerCreationError(JoseError),
 }
 
 impl Display for JWTError {
@@ -27,6 +29,12 @@ impl Display for JWTError {
             JWTError::JoseCreationError(err) => {
                 write!(f, "Error creating JWT. {:?}", err)
             }
+            JWTError::JWKAlgorithmNotFound => {
+                write!(f, "Invalid algorithm when trying to create JWT")
+            }
+            JWTError::SignerCreationError(err) => {
+                write!(f, "Error parsing JWK to signer. Err: {:?}", err)
+            }
         }
     }
 }
@@ -37,6 +45,8 @@ impl error::Error for JWTError {
             JWTError::B64DecodeError(ref err) => Some(err),
             JWTError::SerDeParseError(ref err) => Some(err),
             JWTError::JoseCreationError(ref err) => Some(err),
+            JWTError::SignerCreationError(ref err) => Some(err),
+            JWTError::JWKAlgorithmNotFound => None,
             JWTError::InvalidJwtFormat(_) => None,
         }
     }

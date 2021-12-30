@@ -1,18 +1,20 @@
 use url::Url;
 
-use crate::jose::jwt::JWT;
-use crate::pkce::CodeChallengeMethod;
-use crate::prompt::Prompt;
-use crate::response_mode::ResponseMode;
-use crate::response_type::ResponseType;
-use crate::scopes::Scopes;
+use oidc_types::jose::jwt::JWT;
+use oidc_types::pkce::CodeChallengeMethod;
+use oidc_types::prompt::Prompt;
+use oidc_types::response_mode::ResponseMode;
+use oidc_types::response_type::ResponseType;
+use oidc_types::scopes::Scopes;
+
+use crate::state::State;
 
 pub struct AuthenticationRequest {
     pub response_type: Option<ResponseType>,
     pub client_id: Option<String>,
     pub redirect_uri: Option<Url>,
     pub scope: Option<Scopes>,
-    pub state: Option<String>,
+    pub state: Option<State>,
     pub response_mode: Option<ResponseMode>,
     pub code_challenge: Option<String>,
     pub code_challenge_method: Option<CodeChallengeMethod>,

@@ -1,8 +1,6 @@
-use serde::Deserialize;
+use josekit::jwk::Jwk;
 
 use oidc_types::jose::jwk_set::JwkSet;
-use oidc_types::pkce::CodeChallengeMethod;
-use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
@@ -49,12 +47,12 @@ impl OpenIDProviderConfiguration {
         OpenIDProviderConfiguration::default()
     }
 
-    pub fn pkce(mut self, pkce: PKCE) -> Self {
+    pub fn with_pkce(mut self, pkce: PKCE) -> Self {
         self.pkce = pkce;
         self
     }
 
-    pub fn jwks<T>(mut self, jwks: T) -> Self
+    pub fn with_jwks<T>(mut self, jwks: T) -> Self
         where
             T: Into<JwkSet>,
     {
@@ -62,9 +60,18 @@ impl OpenIDProviderConfiguration {
         self
     }
 
-    pub fn response_types(mut self, response_types: Vec<ResponseType>) -> Self {
+    pub fn with_response_types(mut self, response_types: Vec<ResponseType>) -> Self {
         self.response_types_supported = response_types;
         self
+    }
+
+    pub fn response_types(&self) -> &Vec<ResponseType> {
+        &self.response_types_supported
+    }
+
+    pub fn signing_key(&self) -> Option<&Jwk> {
+        //todo: permit multiple signing keys, and let the resolver decide???
+        self.jwks.iter().find(|key| key.algorithm().is_some() && key.key_type() == "sig")
     }
 }
 
@@ -78,7 +85,6 @@ impl Default for OpenIDProviderConfiguration {
                 response_type![Code, IdToken],
                 response_type![Code],
                 response_type![IdToken],
-                response_type![ResponseTypeValue::None],
             ],
             scopes_supported: None,
             grant_types_supported: None,
@@ -120,7 +126,7 @@ mod tests {
     #[test]
     fn can_modify_default_configuration() {
         let mut config = OpenIDProviderConfiguration::new()
-            .jwks(JwkSet::new(vec![]))
-            .pkce(PKCE::default());
+            .with_jwks(JwkSet::new(vec![]))
+            .with_pkce(PKCE::default());
     }
 }

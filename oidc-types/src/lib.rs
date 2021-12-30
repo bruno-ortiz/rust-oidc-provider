@@ -1,13 +1,12 @@
 mod auth_method;
-pub mod authentication_request;
 mod claim_type;
-mod client;
+pub mod client;
 mod discovery;
 mod grant_type;
-mod issuer;
+pub mod issuer;
 pub mod jose;
 pub mod pkce;
-mod prompt;
+pub mod prompt;
 pub mod response_mode;
 pub mod response_type;
 pub mod scopes;

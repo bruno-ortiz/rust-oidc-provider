@@ -1,10 +1,10 @@
-use actix_web::{App, get, HttpServer, Responder, web};
-use josekit::jwk::alg::ec::EcCurve;
-use josekit::jwk::Jwk;
+use actix_web::{App, HttpServer};
+
+
 
 use oidc_actix::oidc_configuration;
 use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_types::jose::jwk_set::JwkSet;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

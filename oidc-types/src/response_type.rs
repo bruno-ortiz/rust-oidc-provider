@@ -1,14 +1,16 @@
+use std::{fmt, vec};
 use std::collections::HashSet;
-use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 
-use serde::Serialize;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serializer};
+use serde::Serialize;
 
-use crate::response_type::ResponseTypeValue::{Code, IdToken, Token};
+use crate::response_type::ResponseTypeValue::Code;
 use crate::serialize_to_str;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseTypeValue {
     Code,
@@ -17,13 +19,37 @@ pub enum ResponseTypeValue {
     None,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+impl Display for ResponseTypeValue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            Code => "code",
+            ResponseTypeValue::IdToken => "id_token",
+            ResponseTypeValue::Token => "token",
+            ResponseTypeValue::None => "none",
+        };
+        write!(f, "{}", value)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ResponseType(HashSet<ResponseTypeValue>);
 
 impl ResponseType {
     pub fn new(values: Vec<ResponseTypeValue>) -> Self {
         let values_set: HashSet<_> = values.into_iter().collect();
         ResponseType(values_set)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=&ResponseTypeValue> {
+        self.0.iter()
+    }
+}
+
+impl Hash for ResponseType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for v in &self.0 {
+            v.hash(state)
+        }
     }
 }
 
@@ -36,18 +62,6 @@ impl Display for ResponseType {
             .collect::<Vec<String>>()
             .join(" ");
         write!(f, "{}", x)
-    }
-}
-
-impl Display for ResponseTypeValue {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let value = match self {
-            Code => "code",
-            ResponseTypeValue::IdToken => "id_token",
-            ResponseTypeValue::Token => "token",
-            ResponseTypeValue::None => "none",
-        };
-        write!(f, "{}", value)
     }
 }
 
@@ -68,6 +82,9 @@ macro_rules! response_type {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
     use serde::Serialize;
 
     use crate::response_type::{ResponseType, ResponseTypeValue};
@@ -92,5 +109,19 @@ mod tests {
             r#"{"rt":"code id_token"}"#,
             serde_json::to_string(&Test { rt }).unwrap()
         )
+    }
+
+    #[test]
+    fn test_response_type_hash_are_sort_independent() {
+        let mut hasher = DefaultHasher::new();
+        let rt1 = response_type!(ResponseTypeValue::Code, ResponseTypeValue::IdToken);
+        rt1.hash(&mut hasher);
+        let rt1_hash = hasher.finish();
+
+        hasher = DefaultHasher::new();
+        let rt2 = response_type!(ResponseTypeValue::IdToken, ResponseTypeValue::Code);
+        rt2.hash(&mut hasher);
+        let rt2_hash = hasher.finish();
+        assert_eq!(rt1_hash, rt2_hash)
     }
 }
