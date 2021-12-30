@@ -21,7 +21,7 @@ pub enum AuthorisationError {
     #[error("Error creating id_token")]
     IdTokenCreationError {
         #[from]
-        source: IdTokenError
+        source: IdTokenError,
     },
     #[error("Error hashing {}", .prop)]
     HashingErr {

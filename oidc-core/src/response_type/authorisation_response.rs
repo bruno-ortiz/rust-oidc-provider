@@ -23,9 +23,15 @@ impl AuthorisationResponse {
             AuthorisationResponse::CodeIdToken(code, _) => code,
             AuthorisationResponse::CodeToken(code, _) => code,
             AuthorisationResponse::CodeIdTokenToken(code, _, _) => code,
-            AuthorisationResponse::IdToken(_) => panic!("IdToken response does not have an AuthorizationCode"),
-            AuthorisationResponse::Token(_) => panic!("Token response does not have an AuthorizationCode"),
-            AuthorisationResponse::IdTokenToken(_, _) => panic!("IdTokenToken response does not have an AuthorizationCode"),
+            AuthorisationResponse::IdToken(_) => {
+                panic!("IdToken response does not have an AuthorizationCode")
+            }
+            AuthorisationResponse::Token(_) => {
+                panic!("Token response does not have an AuthorizationCode")
+            }
+            AuthorisationResponse::IdTokenToken(_, _) => {
+                panic!("IdTokenToken response does not have an AuthorizationCode")
+            }
         }
     }
 
@@ -36,7 +42,9 @@ impl AuthorisationResponse {
             AuthorisationResponse::CodeIdTokenToken(_, id_token, _) => id_token,
             AuthorisationResponse::IdTokenToken(id_token, _) => id_token,
             AuthorisationResponse::Code(_) => panic!("Code response does not have an IdToken"),
-            AuthorisationResponse::CodeToken(_, _) => panic!("CodeToken response does not have an IdToken"),
+            AuthorisationResponse::CodeToken(_, _) => {
+                panic!("CodeToken response does not have an IdToken")
+            }
             AuthorisationResponse::Token(_) => panic!("Token response does not have an IdToken"),
         }
     }

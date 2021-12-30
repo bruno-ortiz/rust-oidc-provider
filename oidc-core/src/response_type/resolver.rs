@@ -4,10 +4,10 @@ use chrono::Utc;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 
-use AuthorisationError::ResponseTypeResolveNotConfigured;
 use oidc_types::jose::jwt::JWT;
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
+use AuthorisationError::ResponseTypeResolveNotConfigured;
 
 use crate::access_token::AccessToken;
 use crate::authentication_request::AuthenticationRequest;
@@ -25,11 +25,12 @@ use crate::response_type::resolver::id_token::IDTokenResolver;
 use crate::response_type::UrlEncodable;
 
 mod code;
-mod id_token;
 mod code_id_token;
+mod id_token;
 
 pub trait ResponseTypeResolver {
-    fn resolve(&self, context: &OpenIDContext) -> Result<AuthorisationResponse, AuthorisationError>;
+    fn resolve(&self, context: &OpenIDContext)
+        -> Result<AuthorisationResponse, AuthorisationError>;
 }
 
 pub struct DynamicResponseTypeResolver {
@@ -39,29 +40,39 @@ pub struct DynamicResponseTypeResolver {
 impl DynamicResponseTypeResolver {
     fn new() -> Self {
         DynamicResponseTypeResolver {
-            resolver_map: HashMap::new()
+            resolver_map: HashMap::new(),
         }
     }
 
-    pub fn push<T>(&mut self, response_type: ResponseType, resolver: T) where T: ResponseTypeResolver + 'static {
+    pub fn push<T>(&mut self, response_type: ResponseType, resolver: T)
+    where
+        T: ResponseTypeResolver + 'static,
+    {
         self.resolver_map.insert(response_type, Box::new(resolver));
     }
 }
 
 impl ResponseTypeResolver for DynamicResponseTypeResolver {
-    fn resolve(&self, context: &OpenIDContext) -> Result<AuthorisationResponse, AuthorisationError> {
+    fn resolve(
+        &self,
+        context: &OpenIDContext,
+    ) -> Result<AuthorisationResponse, AuthorisationError> {
         if let Some(rt) = &context.request.response_type {
             if !context.allows_response_type(rt) {
                 return Err(ResponseTypeNotAllowed(
-                    rt.clone()
-                    , context.client.id.to_string(),
+                    rt.clone(),
+                    context.client.id.to_string(),
                 ));
             }
-            let resolver = self.resolver_map.get(rt)
+            let resolver = self
+                .resolver_map
+                .get(rt)
                 .ok_or(ResponseTypeResolveNotConfigured(rt.clone()))?;
             let response = resolver.resolve(context)?;
             Ok(response)
-        } else { Err(AuthorisationError::MissingResponseType) }
+        } else {
+            Err(AuthorisationError::MissingResponseType)
+        }
     }
 }
 

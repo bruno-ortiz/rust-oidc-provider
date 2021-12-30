@@ -2,8 +2,8 @@ use josekit::jwk::Jwk;
 
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type;
-use oidc_types::response_type::{ResponseType, ResponseTypeValue};
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
+use oidc_types::response_type::{ResponseType, ResponseTypeValue};
 
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
@@ -53,8 +53,8 @@ impl OpenIDProviderConfiguration {
     }
 
     pub fn with_jwks<T>(mut self, jwks: T) -> Self
-        where
-            T: Into<JwkSet>,
+    where
+        T: Into<JwkSet>,
     {
         self.jwks = jwks.into();
         self
@@ -71,7 +71,9 @@ impl OpenIDProviderConfiguration {
 
     pub fn signing_key(&self) -> Option<&Jwk> {
         //todo: permit multiple signing keys, and let the resolver decide???
-        self.jwks.iter().find(|key| key.algorithm().is_some() && key.key_type() == "sig")
+        self.jwks
+            .iter()
+            .find(|key| key.algorithm().is_some() && key.key_type() == "sig")
     }
 }
 
@@ -114,7 +116,6 @@ impl Default for OpenIDProviderConfiguration {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

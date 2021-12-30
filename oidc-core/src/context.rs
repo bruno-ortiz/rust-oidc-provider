@@ -13,8 +13,8 @@ pub struct OpenIDContext {
 impl OpenIDContext {
     pub fn allows_response_type(&self, response_type: &ResponseType) -> bool {
         self.configuration.response_types().contains(response_type)
-            && response_type.iter().all(|value| {
-            self.client.metadata.response_types.contains(value)
-        })
+            && response_type
+                .iter()
+                .all(|value| self.client.metadata.response_types.contains(value))
     }
 }

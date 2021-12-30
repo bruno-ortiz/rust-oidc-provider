@@ -14,7 +14,10 @@ use crate::response_type::resolver::ResponseTypeResolver;
 pub struct CodeIdTokenResolver;
 
 impl ResponseTypeResolver for CodeIdTokenResolver {
-    fn resolve(&self, context: &OpenIDContext) -> Result<AuthorisationResponse, AuthorisationError> {
+    fn resolve(
+        &self,
+        context: &OpenIDContext,
+    ) -> Result<AuthorisationResponse, AuthorisationError> {
         let code_response = CodeResolver.resolve(context)?;
         let code = code_response.get_code_or_panic();
         let id_token_resolver = IDTokenResolver::new(Some(&code), None);

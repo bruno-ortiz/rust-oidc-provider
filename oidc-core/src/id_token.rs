@@ -1,10 +1,10 @@
 use std::time::SystemTime;
 
 use chrono::{DateTime, TimeZone, Utc};
-use josekit::{Number, Value};
 use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
+use josekit::{Number, Value};
 use thiserror::Error;
 use url::Url;
 
@@ -34,7 +34,6 @@ pub enum IdTokenError {
 pub struct IdToken(JWT);
 
 impl IdToken {
-
     pub fn builder<Tz: TimeZone>() -> IdTokenBuilder<Tz> {
         IdTokenBuilder::new()
     }
@@ -141,7 +140,10 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
     pub fn build(mut self, key: &Jwk) -> Result<IdToken, IdTokenError> {
         let mut header = JwsHeader::new();
         header.set_token_type("JWT");
-        header.set_algorithm(key.algorithm().expect("Expected alg parameter in signing key"));
+        header.set_algorithm(
+            key.algorithm()
+                .expect("Expected alg parameter in signing key"),
+        );
         let mut payload = JwtPayload::new();
         if self.audience.is_empty() {
             return Err(IdTokenError::MissingRequiredClaim("audience".to_owned()));
@@ -206,6 +208,8 @@ impl<T> OptionRequiredExt<T> for Option<T> {
     fn required(&mut self, param: &str) -> Result<T, IdTokenError> {
         if let Some(value) = self.take() {
             Ok(value)
-        } else { Err(IdTokenError::MissingRequiredClaim(param.to_owned())) }
+        } else {
+            Err(IdTokenError::MissingRequiredClaim(param.to_owned()))
+        }
     }
 }

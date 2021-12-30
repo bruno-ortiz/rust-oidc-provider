@@ -1,11 +1,11 @@
-use std::{fmt, vec};
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::{fmt, vec};
 
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serializer};
 use serde::Serialize;
+use serde::{Deserialize, Serializer};
 
 use crate::response_type::ResponseTypeValue::Code;
 use crate::serialize_to_str;
@@ -40,7 +40,7 @@ impl ResponseType {
         ResponseType(values_set)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&ResponseTypeValue> {
+    pub fn iter(&self) -> impl Iterator<Item = &ResponseTypeValue> {
         self.0.iter()
     }
 }

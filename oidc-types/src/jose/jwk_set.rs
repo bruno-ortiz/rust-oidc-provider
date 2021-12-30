@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
-use josekit::JoseError;
 use josekit::jwk::Jwk;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use josekit::JoseError;
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 #[derive(PartialEq, Debug)]
@@ -50,15 +50,15 @@ impl JwkSet {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item=&Jwk> {
+    pub fn iter(&self) -> impl Iterator<Item = &Jwk> {
         self.keys.iter().map(|h| &h.0)
     }
 }
 
 impl Serialize for JwkHolder {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         let key_map: &Map<String, Value> = self.0.as_ref();
         let mut map = serializer.serialize_map(Some(key_map.len()))?;
@@ -71,8 +71,8 @@ impl Serialize for JwkHolder {
 
 impl<'de> Deserialize<'de> for JwkHolder {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         let map_err_fn = |err: JoseError| de::Error::custom(format!("{:?}", err));
         Map::deserialize(deserializer)
@@ -83,8 +83,8 @@ impl<'de> Deserialize<'de> for JwkHolder {
 
 impl<'de> Deserialize<'de> for JwkSet {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "snake_case")]
@@ -102,8 +102,8 @@ impl<'de> Deserialize<'de> for JwkSet {
             }
 
             fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-                where
-                    A: MapAccess<'de>,
+            where
+                A: MapAccess<'de>,
             {
                 let mut keys: Option<Vec<JwkHolder>> = None;
                 while let Some(key) = map.next_key()? {

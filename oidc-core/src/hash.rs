@@ -1,8 +1,8 @@
 use std::hash::Hasher;
 
 use josekit::jwk::Jwk;
-use sha2::{Digest, Sha256, Sha384, Sha512};
 use sha2::digest::Output;
+use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -13,7 +13,6 @@ pub enum HashingError {
     InvalidHashAlgorithm(String),
 }
 
-
 pub trait Hashable {
     fn identifier(&self) -> &str;
 }
@@ -22,10 +21,16 @@ pub trait TokenHasher {
     fn hash(&self, key: &Jwk) -> Result<String, HashingError>;
 }
 
-impl<T> TokenHasher for T where T: Hashable {
+impl<T> TokenHasher for T
+where
+    T: Hashable,
+{
     fn hash(&self, key: &Jwk) -> Result<String, HashingError> {
         let id = self.identifier();
-        let algorithm = key.algorithm().ok_or(HashingError::InvalidKey)?.to_uppercase();
+        let algorithm = key
+            .algorithm()
+            .ok_or(HashingError::InvalidKey)?
+            .to_uppercase();
         let hash = match &algorithm[..] {
             "ES256" | "RS256" | "HS256" | "PS256" => Sha256::digest(id.as_bytes()).to_vec(),
             "ES384" | "RS384" | "HS384" | "PS384" => Sha384::digest(id.as_bytes()).to_vec(),
@@ -65,6 +70,9 @@ mod tests {
             "n": "jqiAgSrXcqFxYCYXIK9tqxjipf00nLuCpTFKqsrnu5mp8LKZskyZ_fOHntpk_Fkc1twnrRwluptKin8U_d7Cz4S5VqAJkx0CKDDTPImjvpB4VxmiegLT2OCuZK9ZPXOzljZ1yiftvR_JoZDHXf2WawP-W-BvlWOwtsXf6lJOFW39i29PMKwCIMaPfq9FC-8zMtI3o8u0TRKjKgHR1PwKUXyRPo-ImfdorVd-J0mmuJQWeNa-0bECTzuPnaL4x1Lf8QG1IOeZjin7UzgDSsahJyrilV7gSkO9kocZuqvbMRl37OZjg_fHowK19Khq22UBUcTdh9kFwkvi83J_M2EakQ"
         }
         "#).expect("parsed jwk");
-        assert_eq!(String::from("cA88WX2aDbX8LcxByNm2UA=="), code.hash(&rsa_key).unwrap());
+        assert_eq!(
+            String::from("cA88WX2aDbX8LcxByNm2UA=="),
+            code.hash(&rsa_key).unwrap()
+        );
     }
 }

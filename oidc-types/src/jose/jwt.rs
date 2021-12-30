@@ -1,12 +1,15 @@
 use std::fmt::{Debug, Formatter};
 
 use josekit::jwk::Jwk;
-use josekit::jws::{EdDSA, ES256, ES256K, ES384, ES512, HS256, HS384, HS512, JwsAlgorithm, JwsHeader, JwsSigner, PS256, PS384, PS512, RS256, RS384, RS512};
 use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
+use josekit::jws::{
+    EdDSA, JwsAlgorithm, JwsHeader, JwsSigner, ES256, ES256K, ES384, ES512, HS256, HS384, HS512,
+    PS256, PS384, PS512, RS256, RS384, RS512,
+};
 use josekit::jwt;
 use josekit::jwt::JwtPayload;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::jose::error::JWTError;
@@ -21,14 +24,13 @@ pub struct JWT {
 impl JWT {
     pub fn new(header: JwsHeader, payload: JwtPayload, key: &Jwk) -> Result<Self, JWTError> {
         let signer = Self::get_signer(key)?;
-        let result = jwt::encode_with_signer(&payload, &header, &*signer).map_err(|err| JWTError::JoseCreationError(err))?;
-        Ok(
-            JWT {
-                header,
-                payload,
-                signed_repr: result,
-            }
-        )
+        let result = jwt::encode_with_signer(&payload, &header, &*signer)
+            .map_err(|err| JWTError::JoseCreationError(err))?;
+        Ok(JWT {
+            header,
+            payload,
+            signed_repr: result,
+        })
     }
 
     pub fn decode_no_verify(str_jwt: &str) -> Result<Self, JWTError> {
@@ -54,24 +56,83 @@ impl JWT {
     }
 
     fn get_signer(key: &Jwk) -> Result<Box<dyn JwsSigner>, JWTError> {
-        let alg = &key.algorithm().ok_or(JWTError::JWKAlgorithmNotFound)?.to_uppercase()[..];
+        let alg = &key
+            .algorithm()
+            .ok_or(JWTError::JWKAlgorithmNotFound)?
+            .to_uppercase()[..];
 
         let signer: Box<dyn JwsSigner> = match alg {
-            "ES256" => Box::new(ES256.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "ES384" => Box::new(ES384.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "ES512" => Box::new(ES512.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "ES256K" => Box::new(ES256K.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "EDDSA" => Box::new(EdDSA.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "RS256" => Box::new(RS256.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "RS384" => Box::new(RS384.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "RS512" => Box::new(RS512.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "PS256" => Box::new(PS256.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "PS384" => Box::new(PS384.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "PS512" => Box::new(PS512.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "HS256" => Box::new(HS256.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "HS384" => Box::new(HS384.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            "HS512" => Box::new(HS512.signer_from_jwk(key).map_err(JWTError::SignerCreationError)?),
-            _ => unreachable!("should be unreachable")
+            "ES256" => Box::new(
+                ES256
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "ES384" => Box::new(
+                ES384
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "ES512" => Box::new(
+                ES512
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "ES256K" => Box::new(
+                ES256K
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "EDDSA" => Box::new(
+                EdDSA
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "RS256" => Box::new(
+                RS256
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "RS384" => Box::new(
+                RS384
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "RS512" => Box::new(
+                RS512
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "PS256" => Box::new(
+                PS256
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "PS384" => Box::new(
+                PS384
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "PS512" => Box::new(
+                PS512
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "HS256" => Box::new(
+                HS256
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "HS384" => Box::new(
+                HS384
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            "HS512" => Box::new(
+                HS512
+                    .signer_from_jwk(key)
+                    .map_err(JWTError::SignerCreationError)?,
+            ),
+            _ => unreachable!("should be unreachable"),
         };
         Ok(signer)
     }
@@ -83,8 +144,8 @@ impl JWT {
 
 impl Serialize for JWT {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&self.signed_repr)
     }
@@ -92,8 +153,8 @@ impl Serialize for JWT {
 
 impl<'de> Deserialize<'de> for JWT {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         struct JWSVisitor;
         impl<'de> Visitor<'de> for JWSVisitor {
@@ -104,8 +165,8 @@ impl<'de> Deserialize<'de> for JWT {
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: Error,
+            where
+                E: Error,
             {
                 let jwt = JWT::decode_no_verify(v).map_err(de::Error::custom)?;
                 Ok(jwt)
@@ -188,7 +249,6 @@ mod tests {
         let mut jwt_payload = JwtPayload::new();
         jwt_payload.set_jwt_id(f!("{}", expected_token_id));
         jwt_payload.set_issuer(expected_issuer);
-
 
         let rsa_key = Jwk::from_bytes(r#"
         {

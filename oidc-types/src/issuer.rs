@@ -9,7 +9,7 @@ use url::Url;
 pub struct Issuer(Url);
 
 impl Issuer {
-    fn new<I: TryInto<Url, Error=E>, E: Debug>(identifier: I) -> Self {
+    fn new<I: TryInto<Url, Error = E>, E: Debug>(identifier: I) -> Self {
         match identifier.try_into() {
             Ok(i) => Issuer(i),
             Err(error) => panic!("Configured issuer should be a valid URL. Err: {:?}", error),
@@ -19,8 +19,8 @@ impl Issuer {
 
 impl Serialize for Issuer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         serializer.serialize_newtype_struct("Issuer", &self.0)
     }
