@@ -1,9 +1,6 @@
-
-
 use crate::access_token::AccessToken;
 use crate::authorisation_code::AuthorisationCode;
 use crate::id_token::IdToken;
-
 
 #[derive(Debug)]
 pub enum AuthorisationResponse {
@@ -17,7 +14,7 @@ pub enum AuthorisationResponse {
 }
 
 impl AuthorisationResponse {
-    pub fn get_code_or_panic(self) -> AuthorisationCode {
+    pub(crate) fn get_code_or_panic(self) -> AuthorisationCode {
         match self {
             AuthorisationResponse::Code(code) => code,
             AuthorisationResponse::CodeIdToken(code, _) => code,
@@ -35,7 +32,7 @@ impl AuthorisationResponse {
         }
     }
 
-    pub fn get_id_token_or_panic(self) -> IdToken {
+    pub(crate) fn get_id_token_or_panic(self) -> IdToken {
         match self {
             AuthorisationResponse::IdToken(id_token) => id_token,
             AuthorisationResponse::CodeIdToken(_, id_token) => id_token,

@@ -1,28 +1,17 @@
 use std::collections::HashMap;
 
-
-
-
-
-
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
 use AuthorisationError::ResponseTypeResolveNotConfigured;
 
-
-
-
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-
-
 use crate::response_type::authorisation_response::AuthorisationResponse;
 use crate::response_type::errors::AuthorisationError;
 use crate::response_type::errors::AuthorisationError::ResponseTypeNotAllowed;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::code_id_token::CodeIdTokenResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
-
 
 mod code;
 mod code_id_token;
@@ -96,9 +85,6 @@ impl From<OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
 
 #[cfg(test)]
 mod tests {
-    
-    
-
     use crate::configuration::OpenIDProviderConfiguration;
     use crate::response_type::resolver::DynamicResponseTypeResolver;
 
