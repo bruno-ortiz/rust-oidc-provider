@@ -1,5 +1,3 @@
-
-
 use chrono::Utc;
 
 use crate::access_token::AccessToken;
@@ -23,10 +21,9 @@ impl<'a> IDTokenResolver<'a> {
 }
 
 impl ResponseTypeResolver for IDTokenResolver<'_> {
-    fn resolve(
-        &self,
-        context: &OpenIDContext,
-    ) -> Result<AuthorisationResponse, AuthorisationError> {
+    type Output = IdToken;
+
+    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError> {
         let state = context
             .request
             .state
@@ -46,6 +43,6 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             .with_s_hash(s_hash)
             .build(signing_key)
             .map_err(|err| AuthorisationError::IdTokenCreationError { source: err })?;
-        Ok(AuthorisationResponse::IdToken(id_token))
+        Ok(id_token)
     }
 }

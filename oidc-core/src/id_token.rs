@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::SystemTime;
 
 use chrono::{DateTime, TimeZone};
@@ -7,17 +8,11 @@ use josekit::jwt::JwtPayload;
 use josekit::{Number, Value};
 use thiserror::Error;
 
-
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt::JWT;
 
-
-
-
-
-
-
+use crate::response_type::UrlEncodable;
 
 #[derive(Error, Debug)]
 pub enum IdTokenError {
@@ -211,5 +206,13 @@ impl<T> OptionRequiredExt<T> for Option<T> {
         } else {
             Err(IdTokenError::MissingRequiredClaim(param.to_owned()))
         }
+    }
+}
+
+impl UrlEncodable for IdToken {
+    fn params(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        map.insert("id_token".to_owned(), self.0.serialize().to_owned());
+        map
     }
 }

@@ -12,18 +12,19 @@ use crate::response_type::errors::AuthorisationError::ResponseTypeNotAllowed;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::code_id_token::CodeIdTokenResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
+use crate::response_type::UrlEncodable;
 
 mod code;
 mod code_id_token;
 mod id_token;
 
 pub trait ResponseTypeResolver {
-    fn resolve(&self, context: &OpenIDContext)
-        -> Result<AuthorisationResponse, AuthorisationError>;
+    type Output: UrlEncodable;
+    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError>;
 }
 
 pub struct DynamicResponseTypeResolver {
-    resolver_map: HashMap<ResponseType, Box<dyn ResponseTypeResolver>>,
+    resolver_map: HashMap<ResponseType, Box<dyn ResolverWrapper>>,
 }
 
 impl DynamicResponseTypeResolver {
@@ -33,19 +34,15 @@ impl DynamicResponseTypeResolver {
         }
     }
 
-    pub fn push<T>(&mut self, response_type: ResponseType, resolver: T)
-    where
-        T: ResponseTypeResolver + 'static,
-    {
-        self.resolver_map.insert(response_type, Box::new(resolver));
+    pub fn push(&mut self, response_type: ResponseType, resolver: Box<dyn ResolverWrapper>) {
+        self.resolver_map.insert(response_type, resolver);
     }
 }
 
 impl ResponseTypeResolver for DynamicResponseTypeResolver {
-    fn resolve(
-        &self,
-        context: &OpenIDContext,
-    ) -> Result<AuthorisationResponse, AuthorisationError> {
+    type Output = HashMap<String, String>;
+
+    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError> {
         if let Some(rt) = &context.request.response_type {
             if !context.allows_response_type(rt) {
                 return Err(ResponseTypeNotAllowed(
@@ -65,21 +62,57 @@ impl ResponseTypeResolver for DynamicResponseTypeResolver {
     }
 }
 
+pub trait ResolverWrapper {
+    fn resolve(
+        &self,
+        context: &OpenIDContext,
+    ) -> Result<HashMap<String, String>, AuthorisationError>;
+}
+
+impl<RT: ResponseTypeResolver> ResolverWrapper for RT {
+    fn resolve(
+        &self,
+        context: &OpenIDContext,
+    ) -> Result<HashMap<String, String>, AuthorisationError> {
+        let result = self.resolve(context)?;
+        Ok(result.params())
+    }
+}
+
 impl From<OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
     fn from(configuration: OpenIDProviderConfiguration) -> Self {
         let mut resolver = DynamicResponseTypeResolver::new();
         for rt in configuration.response_types() {
             if *rt == response_type![ResponseTypeValue::Code] {
-                resolver.push(rt.clone(), CodeResolver)
+                resolver.push(rt.clone(), Box::new(CodeResolver))
             } else if *rt == response_type![ResponseTypeValue::IdToken] {
-                resolver.push(rt.clone(), IDTokenResolver::new(None, None))
+                resolver.push(rt.clone(), Box::new(IDTokenResolver::new(None, None)))
             } else if *rt == response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken] {
-                resolver.push(rt.clone(), CodeIdTokenResolver)
+                resolver.push(rt.clone(), Box::new(CodeIdTokenResolver))
             } else {
                 panic!("unsupported response type {}", rt)
             }
         }
         resolver
+    }
+}
+
+impl UrlEncodable for HashMap<String, String> {
+    fn params(&self) -> HashMap<String, String> {
+        self.clone()
+    }
+}
+
+impl<T1, T2> UrlEncodable for (T1, T2)
+where
+    T1: UrlEncodable,
+    T2: UrlEncodable,
+{
+    fn params(&self) -> HashMap<String, String> {
+        let mut first = self.0.params();
+        let second = self.1.params();
+        first.extend(second);
+        first
     }
 }
 

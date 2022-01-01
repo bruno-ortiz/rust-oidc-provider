@@ -1,6 +1,5 @@
-
+use std::collections::HashMap;
 
 pub trait UrlEncodable {
-    fn key(&self) -> String;
-    fn value(&self) -> String;
+    fn params(&self) -> HashMap<String, String>;
 }

@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-
 use oidc_types::response_type::ResponseType;
 
 use crate::hash::HashingError;

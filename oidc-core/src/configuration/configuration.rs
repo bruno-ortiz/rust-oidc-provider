@@ -2,8 +2,8 @@ use josekit::jwk::Jwk;
 
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type;
+use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
-use oidc_types::response_type::{ResponseType};
 
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;

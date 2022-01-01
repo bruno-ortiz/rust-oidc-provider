@@ -7,12 +7,9 @@ use crate::response_type::resolver::ResponseTypeResolver;
 pub(crate) struct CodeResolver;
 
 impl ResponseTypeResolver for CodeResolver {
-    fn resolve(
-        &self,
-        context: &OpenIDContext,
-    ) -> Result<AuthorisationResponse, AuthorisationError> {
-        Ok(AuthorisationResponse::Code(AuthorisationCode(
-            "xpto".into(),
-        )))
+    type Output = AuthorisationCode;
+
+    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError> {
+        Ok(AuthorisationCode("xpto".into()))
     }
 }

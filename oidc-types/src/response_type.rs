@@ -1,8 +1,7 @@
 use std::collections::HashSet;
+use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::{fmt};
-
 
 use serde::Serialize;
 use serde::{Deserialize, Serializer};
