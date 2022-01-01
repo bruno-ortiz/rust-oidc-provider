@@ -6,7 +6,7 @@ use AuthorisationError::ResponseTypeResolveNotConfigured;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-use crate::response_type::authorisation_response::AuthorisationResponse;
+
 use crate::response_type::errors::AuthorisationError;
 use crate::response_type::errors::AuthorisationError::ResponseTypeNotAllowed;
 use crate::response_type::resolver::code::CodeResolver;

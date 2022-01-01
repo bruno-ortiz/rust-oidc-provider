@@ -1,7 +1,7 @@
 use crate::authorisation_code::AuthorisationCode;
 use crate::context::OpenIDContext;
 use crate::id_token::IdToken;
-use crate::response_type::authorisation_response::AuthorisationResponse;
+
 use crate::response_type::errors::AuthorisationError;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
