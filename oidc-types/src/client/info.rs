@@ -12,7 +12,7 @@ use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ClientID(String);
 
 impl Display for ClientID {

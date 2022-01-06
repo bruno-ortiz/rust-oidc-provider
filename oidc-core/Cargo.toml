@@ -10,6 +10,7 @@ edition = "2021"
 oidc-types = { path = "../oidc-types" }
 serde = { version = "1.0.126", features = ["derive"] }
 url = { version = "2.2.2", features = ["serde"] }
+form_urlencoded = "1.0.1"
 josekit = "0.7.4"
 anyhow = "1.0.47"
 thiserror = "1.0.30"

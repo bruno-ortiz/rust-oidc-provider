@@ -1,6 +1,6 @@
+use oidc_types::hash::Hashable;
 use std::collections::HashMap;
 
-use crate::hash::Hashable;
 use crate::response_type::UrlEncodable;
 
 #[derive(Debug)]

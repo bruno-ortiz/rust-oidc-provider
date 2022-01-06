@@ -3,10 +3,11 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 
+use lazy_static::lazy_static;
 use serde::Serialize;
 use serde::{Deserialize, Serializer};
 
-use crate::response_type::ResponseTypeValue::Code;
+use crate::response_mode::ResponseMode;
 use crate::serialize_to_str;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -21,13 +22,18 @@ pub enum ResponseTypeValue {
 impl Display for ResponseTypeValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let value = match self {
-            Code => "code",
+            ResponseTypeValue::Code => "code",
             ResponseTypeValue::IdToken => "id_token",
             ResponseTypeValue::Token => "token",
             ResponseTypeValue::None => "none",
         };
         write!(f, "{}", value)
     }
+}
+
+lazy_static! {
+    static ref FRAGMENT_VALUES: Vec<ResponseTypeValue> =
+        vec![ResponseTypeValue::IdToken, ResponseTypeValue::Token];
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -41,6 +47,15 @@ impl ResponseType {
 
     pub fn iter(&self) -> impl Iterator<Item = &ResponseTypeValue> {
         self.0.iter()
+    }
+
+    pub fn default_response_mode(&self) -> ResponseMode {
+        let is_fragment = self.0.iter().any(|rt| FRAGMENT_VALUES.contains(rt));
+        if is_fragment {
+            ResponseMode::Fragment
+        } else {
+            ResponseMode::Query
+        }
     }
 }
 

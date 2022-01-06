@@ -2,6 +2,7 @@ use std::hash::Hasher;
 
 use josekit::jwk::Jwk;
 
+use oidc_types::hash::Hashable;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
 
@@ -11,10 +12,6 @@ pub enum HashingError {
     InvalidKey,
     #[error("Invalid hashing algorithm in JWK. {:?}", .0)]
     InvalidHashAlgorithm(String),
-}
-
-pub trait Hashable {
-    fn identifier(&self) -> &str;
 }
 
 pub trait TokenHasher {

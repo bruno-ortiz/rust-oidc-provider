@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+use crate::response_type::ResponseType;
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseMode {
     FormPost,
@@ -13,6 +15,22 @@ pub enum ResponseMode {
     FragmentJwt,
     #[serde(rename = "form_post.jwt")]
     FormPostJwt,
+}
+
+impl ResponseMode {
+    pub fn upgrade(self, response_type: &ResponseType) -> ResponseMode {
+        match self {
+            ResponseMode::FormPost => ResponseMode::FormPostJwt,
+            ResponseMode::Fragment => ResponseMode::FragmentJwt,
+            ResponseMode::Query => ResponseMode::QueryJwt,
+            ResponseMode::Jwt => match response_type.default_response_mode() {
+                ResponseMode::Fragment => ResponseMode::FragmentJwt,
+                ResponseMode::Query => ResponseMode::QueryJwt,
+                _ => unreachable!("Invalid default response mode"),
+            },
+            _ => self,
+        }
+    }
 }
 
 #[cfg(test)]

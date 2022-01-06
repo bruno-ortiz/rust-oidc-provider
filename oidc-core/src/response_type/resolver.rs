@@ -6,7 +6,6 @@ use AuthorisationError::ResponseTypeResolveNotConfigured;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-
 use crate::response_type::errors::AuthorisationError;
 use crate::response_type::errors::AuthorisationError::ResponseTypeNotAllowed;
 use crate::response_type::resolver::code::CodeResolver;
@@ -43,22 +42,19 @@ impl ResponseTypeResolver for DynamicResponseTypeResolver {
     type Output = HashMap<String, String>;
 
     fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError> {
-        if let Some(rt) = &context.request.response_type {
-            if !context.allows_response_type(rt) {
-                return Err(ResponseTypeNotAllowed(
-                    rt.clone(),
-                    context.client.id.to_string(),
-                ));
-            }
-            let resolver = self
-                .resolver_map
-                .get(rt)
-                .ok_or(ResponseTypeResolveNotConfigured(rt.clone()))?;
-            let response = resolver.resolve(context)?;
-            Ok(response)
-        } else {
-            Err(AuthorisationError::MissingResponseType)
+        let rt = &context.request.response_type;
+        if !context.allows_response_type(rt) {
+            return Err(ResponseTypeNotAllowed(
+                rt.clone(),
+                context.client.id.to_string(),
+            ));
         }
+        let resolver = self
+            .resolver_map
+            .get(rt)
+            .ok_or(ResponseTypeResolveNotConfigured(rt.clone()))?;
+        let response = resolver.resolve(context)?;
+        Ok(response)
     }
 }
 
@@ -94,25 +90,6 @@ impl From<OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
             }
         }
         resolver
-    }
-}
-
-impl UrlEncodable for HashMap<String, String> {
-    fn params(&self) -> HashMap<String, String> {
-        self.clone()
-    }
-}
-
-impl<T1, T2> UrlEncodable for (T1, T2)
-where
-    T1: UrlEncodable,
-    T2: UrlEncodable,
-{
-    fn params(&self) -> HashMap<String, String> {
-        let mut first = self.0.params();
-        let second = self.1.params();
-        first.extend(second);
-        first
     }
 }
 

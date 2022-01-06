@@ -15,6 +15,7 @@ pub struct OpenIDProviderConfiguration {
     //TODO: impl routes
     routes: Routes,
     response_types_supported: Vec<ResponseType>,
+    jwt_secure_response_mode: bool,
     scopes_supported: Option<Vec<String>>,
     grant_types_supported: Option<Vec<String>>,
     acr_values_supported: Option<Vec<String>>,
@@ -69,6 +70,10 @@ impl OpenIDProviderConfiguration {
         &self.response_types_supported
     }
 
+    pub fn is_jarm_enabled(&self) -> bool {
+        self.jwt_secure_response_mode
+    }
+
     pub fn signing_key(&self) -> Option<&Jwk> {
         //todo: permit multiple signing keys, and let the resolver decide???
         self.jwks
@@ -88,6 +93,7 @@ impl Default for OpenIDProviderConfiguration {
                 response_type![Code],
                 response_type![IdToken],
             ],
+            jwt_secure_response_mode: false,
             scopes_supported: None,
             grant_types_supported: None,
             acr_values_supported: None,
