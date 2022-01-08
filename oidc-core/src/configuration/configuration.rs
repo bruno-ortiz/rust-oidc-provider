@@ -1,5 +1,9 @@
-use josekit::jwk::Jwk;
+use std::fmt::Debug;
 
+use josekit::jwk::Jwk;
+use url::Url;
+
+use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type;
 use oidc_types::response_type::ResponseType;
@@ -16,6 +20,7 @@ pub struct OpenIDProviderConfiguration {
     routes: Routes,
     response_types_supported: Vec<ResponseType>,
     jwt_secure_response_mode: bool,
+    issuer: Issuer,
     scopes_supported: Option<Vec<String>>,
     grant_types_supported: Option<Vec<String>>,
     acr_values_supported: Option<Vec<String>>,
@@ -44,8 +49,14 @@ pub struct OpenIDProviderConfiguration {
 }
 
 impl OpenIDProviderConfiguration {
-    fn new() -> Self {
-        OpenIDProviderConfiguration::default()
+    fn new<T>(issuer: T) -> Self
+    where
+        T: TryInto<Url, Error = anyhow::Error>,
+    {
+        OpenIDProviderConfiguration {
+            issuer: Issuer::new(issuer),
+            ..OpenIDProviderConfiguration::default()
+        }
     }
 
     pub fn with_pkce(mut self, pkce: PKCE) -> Self {
@@ -59,6 +70,10 @@ impl OpenIDProviderConfiguration {
     {
         self.jwks = jwks.into();
         self
+    }
+
+    pub fn issuer(&self) -> &Issuer {
+        &self.issuer
     }
 
     pub fn with_response_types(mut self, response_types: Vec<ResponseType>) -> Self {
@@ -94,6 +109,7 @@ impl Default for OpenIDProviderConfiguration {
                 response_type![IdToken],
             ],
             jwt_secure_response_mode: false,
+            issuer: Issuer::new("http://localhost:3000"),
             scopes_supported: None,
             grant_types_supported: None,
             acr_values_supported: None,
@@ -132,7 +148,7 @@ mod tests {
 
     #[test]
     fn can_modify_default_configuration() {
-        let _config = OpenIDProviderConfiguration::new()
+        let _config = OpenIDProviderConfiguration::new("http://localhost:3000")
             .with_jwks(JwkSet::new(vec![]))
             .with_pkce(PKCE::default());
     }

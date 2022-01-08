@@ -14,9 +14,9 @@ pub enum AuthorisationError {
     #[error("response_type {} not configured for this provider or not allowed for client {}", .0, .1)]
     ResponseTypeNotAllowed(ResponseType, String),
     #[error("response_type {} not configured for this provider", .0)]
-    ResponseTypeResolveNotConfigured(ResponseType),
+    ResponseTypeResolverNotConfigured(ResponseType),
     #[error("Missing signing key configuration in jwks")]
-    SigningKeyNotConfigured,
+    MissingSigningKey,
     #[error("Error creating id_token")]
     IdTokenCreationError {
         #[from]

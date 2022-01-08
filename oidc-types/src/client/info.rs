@@ -15,6 +15,12 @@ use crate::scopes::Scopes;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ClientID(String);
 
+impl From<ClientID> for String {
+    fn from(id: ClientID) -> Self {
+        id.0
+    }
+}
+
 impl Display for ClientID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", 0)

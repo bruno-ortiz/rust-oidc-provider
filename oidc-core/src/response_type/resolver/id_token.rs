@@ -32,7 +32,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let signing_key = context
             .configuration
             .signing_key()
-            .ok_or(AuthorisationError::SigningKeyNotConfigured)?;
+            .ok_or(AuthorisationError::MissingSigningKey)?;
         let s_hash = state
             .hash(signing_key)
             .map_err(|source| AuthorisationError::HashingErr {

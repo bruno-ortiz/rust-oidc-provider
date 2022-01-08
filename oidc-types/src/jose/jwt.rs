@@ -1,7 +1,6 @@
 use std::fmt::{Debug, Formatter};
 
 use josekit::jwk::Jwk;
-
 use josekit::jws::{
     EdDSA, JwsHeader, JwsSigner, ES256, ES256K, ES384, ES512, HS256, HS384, HS512, PS256, PS384,
     PS512, RS256, RS384, RS512,
@@ -31,6 +30,17 @@ impl JWT {
             payload,
             signed_repr: result,
         })
+    }
+
+    pub fn encode_string(
+        header: JwsHeader,
+        payload: JwtPayload,
+        key: &Jwk,
+    ) -> Result<String, JWTError> {
+        let signer = Self::get_signer(key)?;
+        let result = jwt::encode_with_signer(&payload, &header, &*signer)
+            .map_err(|err| JWTError::JoseCreationError(err))?;
+        Ok(result)
     }
 
     pub fn decode_no_verify(str_jwt: &str) -> Result<Self, JWTError> {
@@ -139,6 +149,10 @@ impl JWT {
 
     pub fn serialize(&self) -> &str {
         &self.signed_repr
+    }
+
+    pub fn serialize_owned(self) -> String {
+        self.signed_repr
     }
 }
 

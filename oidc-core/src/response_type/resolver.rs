@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
-use AuthorisationError::ResponseTypeResolveNotConfigured;
+use AuthorisationError::ResponseTypeResolverNotConfigured;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
@@ -52,7 +52,7 @@ impl ResponseTypeResolver for DynamicResponseTypeResolver {
         let resolver = self
             .resolver_map
             .get(rt)
-            .ok_or(ResponseTypeResolveNotConfigured(rt.clone()))?;
+            .ok_or(ResponseTypeResolverNotConfigured(rt.clone()))?;
         let response = resolver.resolve(context)?;
         Ok(response)
     }

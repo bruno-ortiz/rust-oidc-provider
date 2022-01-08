@@ -13,9 +13,9 @@ impl Hashable for AuthorisationCode {
 }
 
 impl UrlEncodable for AuthorisationCode {
-    fn params(&self) -> HashMap<String, String> {
+    fn params(self) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        map.insert("code".to_owned(), self.0.clone());
+        map.insert("code".to_owned(), self.0);
         map
     }
 }

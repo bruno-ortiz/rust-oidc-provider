@@ -9,7 +9,7 @@ use url::Url;
 pub struct Issuer(Url);
 
 impl Issuer {
-    fn new<I: TryInto<Url, Error = E>, E: Debug>(identifier: I) -> Self {
+    pub fn new<I: TryInto<Url, Error = E>, E: Debug>(identifier: I) -> Self {
         match identifier.try_into() {
             Ok(i) => Issuer(i),
             Err(error) => panic!("Configured issuer should be a valid URL. Err: {:?}", error),
@@ -35,6 +35,12 @@ impl Display for Issuer {
 impl From<Issuer> for String {
     fn from(iss: Issuer) -> Self {
         iss.0.into()
+    }
+}
+
+impl From<&Issuer> for String {
+    fn from(iss: &Issuer) -> Self {
+        iss.0.to_string()
     }
 }
 

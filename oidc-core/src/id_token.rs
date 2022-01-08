@@ -11,6 +11,7 @@ use thiserror::Error;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt::JWT;
+use oidc_types::jose::JwsHeaderExt;
 
 use crate::response_type::UrlEncodable;
 
@@ -133,12 +134,7 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
     }
 
     pub fn build(mut self, key: &Jwk) -> Result<IdToken, IdTokenError> {
-        let mut header = JwsHeader::new();
-        header.set_token_type("JWT");
-        header.set_algorithm(
-            key.algorithm()
-                .expect("Expected alg parameter in signing key"),
-        );
+        let mut header = JwsHeader::from_key(key);
         let mut payload = JwtPayload::new();
         if self.audience.is_empty() {
             return Err(IdTokenError::MissingRequiredClaim("audience".to_owned()));
@@ -210,9 +206,9 @@ impl<T> OptionRequiredExt<T> for Option<T> {
 }
 
 impl UrlEncodable for IdToken {
-    fn params(&self) -> HashMap<String, String> {
+    fn params(self) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        map.insert("id_token".to_owned(), self.0.serialize().to_owned());
+        map.insert("id_token".to_owned(), self.0.serialize_owned());
         map
     }
 }

@@ -13,9 +13,9 @@ impl Hashable for AccessToken {
 }
 
 impl UrlEncodable for AccessToken {
-    fn params(&self) -> HashMap<String, String> {
+    fn params(self) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        map.insert("access_token".to_owned(), self.0.clone());
+        map.insert("access_token".to_owned(), self.0);
         map
     }
 }

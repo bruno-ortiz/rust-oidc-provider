@@ -1,5 +1,3 @@
-use url::Url;
-
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::context::OpenIDContext;

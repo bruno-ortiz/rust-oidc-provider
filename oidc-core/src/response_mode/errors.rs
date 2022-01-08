@@ -8,7 +8,7 @@ use oidc_types::jose::error::JWTError;
 pub enum EncodingError {
     #[error("Missing redirect uri for client: {}", .0)]
     MissingRedirectUri(ClientID),
-    #[error("Missing signing key")]
+    #[error("Missing signing key configuration in jwks")]
     MissingSigningKey,
     #[error("Error creating JWT: {}", .0)]
     JwtCreationError(JWTError),
