@@ -5,6 +5,7 @@ use url::Url;
 
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwk_set::JwkSet;
+use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type;
 use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
@@ -19,6 +20,7 @@ pub struct OpenIDProviderConfiguration {
     //TODO: impl routes
     routes: Routes,
     response_types_supported: Vec<ResponseType>,
+    response_modes_supported: Vec<ResponseMode>,
     jwt_secure_response_mode: bool,
     issuer: Issuer,
     scopes_supported: Option<Vec<String>>,
@@ -49,9 +51,9 @@ pub struct OpenIDProviderConfiguration {
 }
 
 impl OpenIDProviderConfiguration {
-    fn new<T>(issuer: T) -> Self
+    fn new<T, E: Debug>(issuer: T) -> Self
     where
-        T: TryInto<Url, Error = anyhow::Error>,
+        T: TryInto<Url, Error = E>,
     {
         OpenIDProviderConfiguration {
             issuer: Issuer::new(issuer),
@@ -85,6 +87,20 @@ impl OpenIDProviderConfiguration {
         &self.response_types_supported
     }
 
+    pub fn response_modes(&self) -> &Vec<ResponseMode> {
+        &self.response_modes_supported
+    }
+
+    pub fn enable_jarm(mut self) -> Self {
+        self.jwt_secure_response_mode = true;
+        self.response_modes_supported.extend([
+            ResponseMode::Jwt,
+            ResponseMode::QueryJwt,
+            ResponseMode::FragmentJwt,
+        ]);
+        self
+    }
+
     pub fn is_jarm_enabled(&self) -> bool {
         self.jwt_secure_response_mode
     }
@@ -108,6 +124,7 @@ impl Default for OpenIDProviderConfiguration {
                 response_type![Code],
                 response_type![IdToken],
             ],
+            response_modes_supported: vec![ResponseMode::Query, ResponseMode::Fragment],
             jwt_secure_response_mode: false,
             issuer: Issuer::new("http://localhost:3000"),
             scopes_supported: None,
@@ -151,5 +168,7 @@ mod tests {
         let _config = OpenIDProviderConfiguration::new("http://localhost:3000")
             .with_jwks(JwkSet::new(vec![]))
             .with_pkce(PKCE::default());
+
+        println!("{:?}", _config)
     }
 }

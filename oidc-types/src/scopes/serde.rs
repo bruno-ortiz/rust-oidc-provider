@@ -78,8 +78,8 @@ mod tests {
     #[test]
     fn test_can_deserialize_scopes() {
         let scopes = Scopes::from_vec(vec![
-            Scope::SimpleScope("xpto".to_owned()),
-            Scope::ParameterizedScope("rnd".to_owned(), "42".to_owned()),
+            Scope::Simple("xpto".to_owned()),
+            Scope::Parameterized("rnd".to_owned(), "42".to_owned()),
         ]);
 
         #[derive(Deserialize)]
@@ -100,8 +100,8 @@ mod tests {
     #[test]
     fn test_can_deserialize_vec_of_scope() {
         let scopes = Scopes::from_vec(vec![
-            Scope::SimpleScope("xpto".to_owned()),
-            Scope::ParameterizedScope("rnd".to_owned(), "42".to_owned()),
+            Scope::Simple("xpto".to_owned()),
+            Scope::Parameterized("rnd".to_owned(), "42".to_owned()),
         ]);
 
         #[derive(Deserialize)]

@@ -1,5 +1,4 @@
 mod auth_method;
-pub mod authentication_request;
 mod claim_type;
 pub mod client;
 mod discovery;
@@ -13,6 +12,7 @@ pub mod response_mode;
 pub mod response_type;
 pub mod scopes;
 pub mod state;
+pub mod subject;
 mod subject_type;
 pub mod url_encodable;
 mod utils;

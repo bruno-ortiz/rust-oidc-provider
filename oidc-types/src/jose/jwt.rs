@@ -13,7 +13,7 @@ use serde_json::{Map, Value};
 
 use crate::jose::error::JWTError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JWT {
     header: JwsHeader,
     payload: JwtPayload,
@@ -24,7 +24,7 @@ impl JWT {
     pub fn new(header: JwsHeader, payload: JwtPayload, key: &Jwk) -> Result<Self, JWTError> {
         let signer = Self::get_signer(key)?;
         let result = jwt::encode_with_signer(&payload, &header, &*signer)
-            .map_err(|err| JWTError::JoseCreationError(err))?;
+            .map_err(JWTError::JoseCreationError)?;
         Ok(JWT {
             header,
             payload,
@@ -39,12 +39,12 @@ impl JWT {
     ) -> Result<String, JWTError> {
         let signer = Self::get_signer(key)?;
         let result = jwt::encode_with_signer(&payload, &header, &*signer)
-            .map_err(|err| JWTError::JoseCreationError(err))?;
+            .map_err(JWTError::JoseCreationError)?;
         Ok(result)
     }
 
     pub fn decode_no_verify(str_jwt: &str) -> Result<Self, JWTError> {
-        let parts: Vec<&str> = str_jwt.split(".").collect();
+        let parts: Vec<&str> = str_jwt.split('.').collect();
 
         if parts.len() != 3 {
             return Err(JWTError::InvalidJwtFormat(str_jwt.to_owned()));

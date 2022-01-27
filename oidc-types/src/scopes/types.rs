@@ -1,26 +1,37 @@
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
+
+use lazy_static::lazy_static;
+use regex::Regex;
 
 lazy_static! {
     static ref PARAMETERIZED_SCOPE_PATTERN: Regex =
         Regex::new("^\\w+:\\w+$").expect("Could no create Parameterized Scopes");
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, Debug, Clone)]
 pub enum Scope {
-    SimpleScope(String),
-    ParameterizedScope(String, String),
+    Simple(String),
+    Parameterized(String, String),
 }
 
 impl Scope {
     pub fn value(&self) -> String {
         match self {
-            Scope::SimpleScope(scope) => scope.to_lowercase(),
-            Scope::ParameterizedScope(scope, param) => {
+            Scope::Simple(scope) => scope.to_lowercase(),
+            Scope::Parameterized(scope, param) => {
                 format!("{}:{}", scope.to_lowercase(), param)
             }
+        }
+    }
+}
+
+impl PartialEq for Scope {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Scope::Simple(first), Scope::Simple(second)) => first == second,
+            (Scope::Parameterized(first, _), Scope::Parameterized(second, _)) => first == second,
+            _ => false,
         }
     }
 }
@@ -31,7 +42,7 @@ impl Display for Scope {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Scopes(Vec<Scope>);
 
 impl Scopes {
@@ -45,6 +56,14 @@ impl Scopes {
 
     pub fn get(&self, idx: usize) -> Option<&Scope> {
         self.0.get(idx)
+    }
+
+    pub fn contains(&self, scope: &Scope) -> bool {
+        self.0.contains(scope)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Scope> {
+        self.0.iter()
     }
 }
 
@@ -74,9 +93,9 @@ impl From<&str> for Scope {
         match PARAMETERIZED_SCOPE_PATTERN.is_match(scope) {
             true => {
                 let parts: Vec<&str> = scope.split(':').collect();
-                Scope::ParameterizedScope(parts[0].to_owned(), parts[1].to_owned())
+                Scope::Parameterized(parts[0].to_owned(), parts[1].to_owned())
             }
-            false => Scope::SimpleScope(scope.to_owned()),
+            false => Scope::Simple(scope.to_owned()),
         }
     }
 }
@@ -96,19 +115,19 @@ mod tests {
         assert!(second.is_some());
 
         match first.unwrap() {
-            Scope::SimpleScope(scope) => {
+            Scope::Simple(scope) => {
                 assert_eq!("xpto", scope)
             }
-            Scope::ParameterizedScope(_, _) => {
+            Scope::Parameterized(_, _) => {
                 panic!("should be a simple scope")
             }
         };
 
         match second.unwrap() {
-            Scope::SimpleScope(_) => {
+            Scope::Simple(_) => {
                 panic!("should be a parameterized scope")
             }
-            Scope::ParameterizedScope(scope, param) => {
+            Scope::Parameterized(scope, param) => {
                 assert_eq!("rng", scope);
                 assert_eq!("42", param);
             }

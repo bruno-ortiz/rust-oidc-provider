@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+use async_trait::async_trait;
 use chrono::Utc;
 
 use crate::access_token::AccessToken;
@@ -5,8 +7,7 @@ use crate::authorisation_code::AuthorisationCode;
 use crate::context::OpenIDContext;
 use crate::hash::TokenHasher;
 use crate::id_token::IdToken;
-
-use crate::response_type::errors::AuthorisationError;
+use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub struct IDTokenResolver<'a> {
@@ -19,30 +20,29 @@ impl<'a> IDTokenResolver<'a> {
         IDTokenResolver { code, token }
     }
 }
-
+#[async_trait]
 impl ResponseTypeResolver for IDTokenResolver<'_> {
     type Output = IdToken;
 
-    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError> {
-        let state = context
-            .request
-            .state
-            .as_ref()
-            .ok_or(AuthorisationError::MissingState)?;
+    async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let signing_key = context
             .configuration
             .signing_key()
-            .ok_or(AuthorisationError::MissingSigningKey)?;
-        let s_hash = state
-            .hash(signing_key)
-            .map_err(|source| AuthorisationError::HashingErr {
-                prop: "state".to_owned(),
-                source,
+            .ok_or(OpenIdError::ServerError {
+                source: anyhow!("Missing signing key"),
             })?;
-        let id_token = IdToken::builder::<Utc>()
-            .with_s_hash(s_hash)
+        let mut builder = IdToken::builder::<Utc>();
+        if let Some(state) = context.request.state.as_ref() {
+            let s_hash = state
+                .hash(signing_key)
+                .map_err(|source| OpenIdError::ServerError {
+                    source: source.into(),
+                })?;
+            builder = builder.with_s_hash(s_hash);
+        }
+        let id_token = builder
             .build(signing_key)
-            .map_err(|err| AuthorisationError::IdTokenCreationError { source: err })?;
+            .map_err(|err| OpenIdError::ServerError { source: err.into() })?;
         Ok(id_token)
     }
 }

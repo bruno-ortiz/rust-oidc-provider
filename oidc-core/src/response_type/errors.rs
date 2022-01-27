@@ -1,31 +1,47 @@
+use std::collections::HashMap;
+
 use thiserror::Error;
 
 use oidc_types::response_type::ResponseType;
-
-use crate::hash::HashingError;
-use crate::id_token::IdTokenError;
+use oidc_types::scopes::Scope;
+use oidc_types::url_encodable::UrlEncodable;
 
 #[derive(Error, Debug)]
-pub enum AuthorisationError {
-    #[error("Missing required response_type in authorisation request")]
-    MissingResponseType,
-    #[error("Missing required state parameter in authorisation request")]
-    MissingState,
-    #[error("response_type {} not configured for this provider or not allowed for client {}", .0, .1)]
-    ResponseTypeNotAllowed(ResponseType, String),
-    #[error("response_type {} not configured for this provider", .0)]
-    ResponseTypeResolverNotConfigured(ResponseType),
-    #[error("Missing signing key configuration in jwks")]
-    MissingSigningKey,
-    #[error("Error creating id_token")]
-    IdTokenCreationError {
-        #[from]
-        source: IdTokenError,
-    },
-    #[error("Error hashing {}", .prop)]
-    HashingErr {
-        prop: String,
+pub enum OpenIdError {
+    #[error("Invalid request: {}", .description)]
+    InvalidRequest { description: &'static str },
+    #[error("Unauthorized client")]
+    UnauthorizedClient {
         #[source]
-        source: HashingError,
+        source: anyhow::Error,
     },
+    #[error("Unsupported ResponseType: {}", .0)]
+    UnsupportedResponseType(ResponseType),
+    #[error("Invalid Scope: {}", .0)]
+    InvalidScope(Scope),
+    #[error("Internal error")]
+    ServerError {
+        #[source]
+        source: anyhow::Error,
+    },
+    #[error("Temporary unavailable")]
+    TemporarilyUnavailable,
+}
+
+impl UrlEncodable for OpenIdError {
+    fn params(self) -> HashMap<String, String> {
+        let mut parameters = HashMap::new();
+        match self {
+            OpenIdError::InvalidRequest { description } => {
+                parameters.insert("error".to_owned(), "invalid_request".to_owned());
+                parameters.insert("error_description".to_owned(), description.to_owned());
+            }
+            OpenIdError::UnauthorizedClient { .. } => todo!(),
+            OpenIdError::UnsupportedResponseType(_) => todo!(),
+            OpenIdError::InvalidScope(_) => todo!(),
+            OpenIdError::ServerError { .. } => todo!(),
+            OpenIdError::TemporarilyUnavailable => todo!(),
+        }
+        parameters
+    }
 }

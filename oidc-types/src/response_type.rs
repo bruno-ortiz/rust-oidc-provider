@@ -36,7 +36,7 @@ lazy_static! {
         vec![ResponseTypeValue::IdToken, ResponseTypeValue::Token];
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Eq, Clone)]
 pub struct ResponseType(HashSet<ResponseTypeValue>);
 
 impl ResponseType {
@@ -64,6 +64,12 @@ impl Hash for ResponseType {
         for v in &self.0 {
             v.hash(state)
         }
+    }
+}
+
+impl PartialEq for ResponseType {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
     }
 }
 

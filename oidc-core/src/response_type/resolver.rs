@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
+use anyhow::anyhow;
+use async_trait::async_trait;
+
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
-use AuthorisationError::ResponseTypeResolverNotConfigured;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-use crate::response_type::errors::AuthorisationError;
-use crate::response_type::errors::AuthorisationError::ResponseTypeNotAllowed;
+use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::code_id_token::CodeIdTokenResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
@@ -17,13 +18,14 @@ mod code;
 mod code_id_token;
 mod id_token;
 
+#[async_trait]
 pub trait ResponseTypeResolver {
     type Output: UrlEncodable;
-    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError>;
+    async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError>;
 }
 
 pub struct DynamicResponseTypeResolver {
-    resolver_map: HashMap<ResponseType, Box<dyn ResolverWrapper>>,
+    resolver_map: HashMap<ResponseType, Box<dyn ResolverWrapper + Send + Sync>>,
 }
 
 impl DynamicResponseTypeResolver {
@@ -33,44 +35,42 @@ impl DynamicResponseTypeResolver {
         }
     }
 
-    pub fn push(&mut self, response_type: ResponseType, resolver: Box<dyn ResolverWrapper>) {
+    pub fn push(
+        &mut self,
+        response_type: ResponseType,
+        resolver: Box<dyn ResolverWrapper + Send + Sync>,
+    ) {
         self.resolver_map.insert(response_type, resolver);
     }
 }
 
+#[async_trait]
 impl ResponseTypeResolver for DynamicResponseTypeResolver {
     type Output = HashMap<String, String>;
 
-    fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, AuthorisationError> {
+    async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let rt = &context.request.response_type;
-        if !context.allows_response_type(rt) {
-            return Err(ResponseTypeNotAllowed(
-                rt.clone(),
-                context.client.id.to_string(),
-            ));
-        }
-        let resolver = self
-            .resolver_map
-            .get(rt)
-            .ok_or(ResponseTypeResolverNotConfigured(rt.clone()))?;
-        let response = resolver.resolve(context)?;
+        let resolver = self.resolver_map.get(rt).ok_or(OpenIdError::ServerError {
+            source: anyhow!("OpenId Server error, no resolver found for response type"),
+        })?;
+        let response = resolver.resolve(context).await?;
         Ok(response)
     }
 }
-
+#[async_trait]
 pub trait ResolverWrapper {
-    fn resolve(
+    async fn resolve(
         &self,
         context: &OpenIDContext,
-    ) -> Result<HashMap<String, String>, AuthorisationError>;
+    ) -> Result<HashMap<String, String>, OpenIdError>;
 }
-
-impl<RT: ResponseTypeResolver> ResolverWrapper for RT {
-    fn resolve(
+#[async_trait]
+impl<RT: ResponseTypeResolver + Sync> ResolverWrapper for RT {
+    async fn resolve(
         &self,
         context: &OpenIDContext,
-    ) -> Result<HashMap<String, String>, AuthorisationError> {
-        let result = self.resolve(context)?;
+    ) -> Result<HashMap<String, String>, OpenIdError> {
+        let result = self.resolve(context).await?;
         Ok(result.params())
     }
 }

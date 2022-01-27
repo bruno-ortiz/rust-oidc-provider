@@ -8,10 +8,10 @@ use serde::ser::SerializeMap;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct JwkHolder(Jwk);
 
-#[derive(Serialize, PartialEq, Debug)]
+#[derive(Serialize, PartialEq, Debug, Clone)]
 pub struct JwkSet {
     keys: Vec<JwkHolder>,
     #[serde(skip_serializing)]
@@ -63,7 +63,7 @@ impl Serialize for JwkHolder {
         let key_map: &Map<String, Value> = self.0.as_ref();
         let mut map = serializer.serialize_map(Some(key_map.len()))?;
         for (k, v) in key_map {
-            map.serialize_entry::<String, Value>(&k, &v)?;
+            map.serialize_entry::<String, Value>(k, v)?;
         }
         map.end()
     }
@@ -120,7 +120,7 @@ impl<'de> Deserialize<'de> for JwkSet {
                 Ok(JwkSet::new_jwk_holder(keys))
             }
         }
-        const FIELDS: &'static [&'static str] = &["keys"];
+        const FIELDS: &[&str] = &["keys"];
         deserializer.deserialize_struct("JwkSet", FIELDS, JwkSetVisitor)
     }
 }

@@ -12,8 +12,14 @@ use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct ClientID(String);
+
+impl ClientID {
+    pub fn new(id: String) -> Self {
+        Self(id)
+    }
+}
 
 impl From<ClientID> for String {
     fn from(id: ClientID) -> Self {
@@ -27,13 +33,13 @@ impl Display for ClientID {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClientMetadata {
     pub redirect_uris: Vec<Url>,
     pub token_endpoint_auth_method: Option<AuthMethod>,
     pub grant_types: Vec<GrantType>,
     pub response_types: Vec<ResponseTypeValue>,
-    pub scope: Option<Scopes>,
+    pub scope: Scopes,
     // TODO: implement RFC5646 for client_name, client_uri, logo_uri, tos_uri, policy_uri
     pub client_name: Option<String>,
     pub client_uri: Option<Url>,
@@ -48,7 +54,7 @@ pub struct ClientMetadata {
     pub software_statement: Option<JWT>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClientInformation {
     pub id: ClientID,
     pub issue_date: DateTime<Utc>,

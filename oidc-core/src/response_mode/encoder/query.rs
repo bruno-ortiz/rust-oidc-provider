@@ -1,29 +1,28 @@
-use oidc_types::url_encodable::UrlEncodable;
+use oidc_types::response_mode::ResponseMode;
+use std::collections::HashMap;
 
-use crate::context::OpenIDContext;
-use crate::response_mode::encoder::Result;
-use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
-use crate::response_mode::errors::EncodingError;
+use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
+use crate::response_mode::encoder::{EncodingContext, Result};
 
 pub(crate) struct QueryEncoder;
 
 impl ResponseModeEncoder for QueryEncoder {
-    fn encode<T: UrlEncodable>(
+    fn encode(
         &self,
-        context: &OpenIDContext,
-        parameters: T,
+        context: &EncodingContext,
+        parameters: HashMap<String, String>,
     ) -> Result<AuthorisationResponse> {
-        let client = &context.client;
-        let callback_uri_template = client
-            .metadata
-            .redirect_uris
-            .first()
-            .ok_or(EncodingError::MissingRedirectUri(client.id.clone()))?;
-        let mut callback_uri = callback_uri_template.clone();
+        let mut callback_uri = context.redirect_uri.clone();
         callback_uri
             .query_pairs_mut()
-            .extend_pairs(parameters.params())
+            .extend_pairs(parameters)
             .finish();
         Ok(AuthorisationResponse::Redirect(callback_uri))
+    }
+}
+
+impl EncoderDecider for QueryEncoder {
+    fn can_encode(&self, response_mode: &ResponseMode) -> bool {
+        *response_mode == ResponseMode::Query
     }
 }

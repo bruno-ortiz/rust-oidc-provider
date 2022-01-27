@@ -20,9 +20,6 @@ pub enum ResponseMode {
 impl ResponseMode {
     pub fn upgrade(self, response_type: &ResponseType) -> ResponseMode {
         match self {
-            ResponseMode::FormPost => ResponseMode::FormPostJwt,
-            ResponseMode::Fragment => ResponseMode::FragmentJwt,
-            ResponseMode::Query => ResponseMode::QueryJwt,
             ResponseMode::Jwt => match response_type.default_response_mode() {
                 ResponseMode::Fragment => ResponseMode::FragmentJwt,
                 ResponseMode::Query => ResponseMode::QueryJwt,
