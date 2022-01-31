@@ -1,5 +1,3 @@
-use std::hash::Hasher;
-
 use josekit::jwk::Jwk;
 
 use oidc_types::hash::Hashable;

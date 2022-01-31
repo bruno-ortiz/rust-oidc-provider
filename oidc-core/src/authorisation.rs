@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use thiserror::Error;
 
-use oidc_types::client::{ClientID, ClientInformation};
+use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::subject::Subject;
 use oidc_types::url_encodable::UrlEncodable;
@@ -31,7 +31,11 @@ pub enum AuthorisationError {
     InternalError(#[from] anyhow::Error),
 }
 
-struct AuthorisationService<R: ResponseTypeResolver, E: ResponseModeEncoder> {
+pub struct AuthorisationService<R, E>
+where
+    R: ResponseTypeResolver,
+    E: ResponseModeEncoder,
+{
     resolver: R,
     encoder: E,
     client_service: Arc<ClientService>,
@@ -43,8 +47,22 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
+    pub fn new(
+        resolver: R,
+        encoder: E,
+        client_service: Arc<ClientService>,
+        configuration: Arc<OpenIDProviderConfiguration>,
+    ) -> Self {
+        Self {
+            resolver,
+            encoder,
+            client_service,
+            configuration,
+        }
+    }
+
     pub async fn authorise(
-        self,
+        &self,
         subject: Subject,
         request: AuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
@@ -54,7 +72,7 @@ where
             .ok_or(AuthorisationError::MissingClient)?;
         let client = self
             .client_service
-            .retrieve_client_info(client_id, &self.configuration)
+            .retrieve_client_info(client_id)
             .await
             .ok_or(AuthorisationError::InvalidClient)
             .map(Arc::new)?;
@@ -132,7 +150,7 @@ where
                 source: anyhow!("Invalid response type for client"),
             });
         }
-        let parameters = self.resolver.resolve(&context).await?;
+        let parameters = self.resolver.resolve(context).await?;
         Ok(parameters.params())
     }
 

@@ -1,17 +1,25 @@
+use std::fmt::{write, Debug, Formatter};
+
 use async_trait::async_trait;
 use thiserror::Error;
 
-mod client_adapter;
-mod code_adapter;
+pub mod client_adapter;
+pub mod code_adapter;
 
 #[derive(Error, Debug)]
-enum PersistenceError {}
+pub enum PersistenceError {}
 
 #[async_trait]
-trait Adapter {
+pub trait Adapter {
     type Item;
 
-    async fn find<I: Into<String> + Send>(&self, id: I) -> Option<Self::Item>;
+    async fn find(&self, id: &str) -> Option<Self::Item>;
 
     async fn save(&self, item: Self::Item) -> Result<(), PersistenceError>;
+}
+
+impl<T: Debug> Debug for dyn Adapter<Item = T> + Send + Sync {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Generic Adapter")
+    }
 }

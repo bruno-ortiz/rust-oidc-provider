@@ -1,4 +1,6 @@
 mod configure;
+mod routes;
+mod extractor;
 
 pub use configure::oidc_configuration;
 

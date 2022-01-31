@@ -1,12 +1,10 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use url::Url;
 
 use format as f;
 use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
-use oidc_types::response_mode::ResponseMode::{Fragment, Jwt};
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
@@ -68,8 +66,8 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
     }
 }
 
-impl From<OpenIDProviderConfiguration> for DynamicResponseModeEncoder {
-    fn from(cfg: OpenIDProviderConfiguration) -> Self {
+impl From<&OpenIDProviderConfiguration> for DynamicResponseModeEncoder {
+    fn from(cfg: &OpenIDProviderConfiguration) -> Self {
         let mut encoder = DynamicResponseModeEncoder::new();
         encoder.push(Box::new(QueryEncoder));
         encoder.push(Box::new(FragmentEncoder));

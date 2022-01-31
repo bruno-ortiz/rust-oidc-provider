@@ -6,18 +6,25 @@ use async_trait::async_trait;
 use crate::adapter::{Adapter, PersistenceError};
 use crate::authorisation_code::AuthorisationCode;
 
-struct InMemoryAuthorisationCodeAdapter {
+pub struct InMemoryAuthorisationCodeAdapter {
     storage: RwLock<HashMap<String, AuthorisationCode>>,
+}
+
+impl InMemoryAuthorisationCodeAdapter {
+    pub fn new() -> Self {
+        Self {
+            storage: RwLock::new(HashMap::new()),
+        }
+    }
 }
 
 #[async_trait]
 impl Adapter for InMemoryAuthorisationCodeAdapter {
     type Item = AuthorisationCode;
 
-    async fn find<I: Into<String> + Send>(&self, id: I) -> Option<Self::Item> {
-        let id = id.into();
+    async fn find(&self, id: &str) -> Option<Self::Item> {
         let storage = self.storage.read().unwrap();
-        let item = storage.get(&id).cloned();
+        let item = storage.get(id).cloned();
         item
     }
 

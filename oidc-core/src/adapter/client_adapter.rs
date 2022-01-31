@@ -7,15 +7,23 @@ use oidc_types::client::{ClientID, ClientInformation};
 
 use crate::adapter::{Adapter, PersistenceError};
 
-struct InMemoryClientAdapter {
+pub struct InMemoryClientAdapter {
     storage: RwLock<HashMap<ClientID, ClientInformation>>,
+}
+
+impl InMemoryClientAdapter {
+    pub fn new() -> Self {
+        Self {
+            storage: RwLock::new(HashMap::new()),
+        }
+    }
 }
 
 #[async_trait]
 impl Adapter for InMemoryClientAdapter {
     type Item = ClientInformation;
 
-    async fn find<I: Into<String> + Send>(&self, id: I) -> Option<Self::Item> {
+    async fn find(&self, id: &str) -> Option<Self::Item> {
         let id = ClientID::new(id.into());
         let storage = self.storage.read().unwrap();
         let item = storage.get(&id).cloned();

@@ -10,6 +10,7 @@ use oidc_types::response_type;
 use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
 
+use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
 
@@ -19,6 +20,7 @@ pub struct OpenIDProviderConfiguration {
     jwks: JwkSet,
     //TODO: impl routes
     routes: Routes,
+    adapters: AdapterContainer,
     response_types_supported: Vec<ResponseType>,
     response_modes_supported: Vec<ResponseMode>,
     jwt_secure_response_mode: bool,
@@ -87,6 +89,24 @@ impl OpenIDProviderConfiguration {
         &self.response_types_supported
     }
 
+    pub fn with_routes(mut self, routes: Routes) -> Self {
+        self.routes = routes;
+        self
+    }
+
+    pub fn routes(&self) -> &Routes {
+        &self.routes
+    }
+
+    pub fn with_adapters(mut self, adapters: AdapterContainer) -> Self {
+        self.adapters = adapters;
+        self
+    }
+
+    pub fn adapters(&self) -> &AdapterContainer {
+        &self.adapters
+    }
+
     pub fn response_modes(&self) -> &Vec<ResponseMode> {
         &self.response_modes_supported
     }
@@ -118,7 +138,8 @@ impl Default for OpenIDProviderConfiguration {
         OpenIDProviderConfiguration {
             pkce: PKCE::default(),
             jwks: JwkSet::default(),
-            routes: Routes,
+            routes: Routes::default(),
+            adapters: AdapterContainer::default(),
             response_types_supported: vec![
                 response_type![Code, IdToken],
                 response_type![Code],
@@ -160,8 +181,8 @@ impl Default for OpenIDProviderConfiguration {
 mod tests {
     use oidc_types::jose::jwk_set::JwkSet;
 
-    use crate::configuration::configuration::OpenIDProviderConfiguration;
     use crate::configuration::pkce::PKCE;
+    use crate::configuration::provider::OpenIDProviderConfiguration;
 
     #[test]
     fn can_modify_default_configuration() {

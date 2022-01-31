@@ -75,8 +75,8 @@ impl<RT: ResponseTypeResolver + Sync> ResolverWrapper for RT {
     }
 }
 
-impl From<OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
-    fn from(configuration: OpenIDProviderConfiguration) -> Self {
+impl From<&OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
+    fn from(configuration: &OpenIDProviderConfiguration) -> Self {
         let mut resolver = DynamicResponseTypeResolver::new();
         for rt in configuration.response_types() {
             if *rt == response_type![ResponseTypeValue::Code] {

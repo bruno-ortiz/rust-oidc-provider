@@ -2,22 +2,18 @@ use std::sync::Arc;
 
 use oidc_types::client::{ClientID, ClientInformation};
 
-use crate::configuration::OpenIDProviderConfiguration;
+use crate::adapter::Adapter;
 
 pub struct ClientService {
-    configuration: Arc<OpenIDProviderConfiguration>,
+    adapter: Arc<dyn Adapter<Item = ClientInformation>>,
 }
 
 impl ClientService {
-    fn new(configuration: Arc<OpenIDProviderConfiguration>) -> Self {
-        ClientService { configuration }
+    pub fn new(adapter: Arc<dyn Adapter<Item = ClientInformation>>) -> Self {
+        ClientService { adapter }
     }
 
-    pub async fn retrieve_client_info(
-        &self,
-        client_id: &ClientID,
-        config: &OpenIDProviderConfiguration,
-    ) -> Option<ClientInformation> {
-        unimplemented!("")
+    pub async fn retrieve_client_info(&self, client_id: &ClientID) -> Option<ClientInformation> {
+        self.adapter.find(client_id).await
     }
 }

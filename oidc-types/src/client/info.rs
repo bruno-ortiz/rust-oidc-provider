@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,14 @@ impl ClientID {
 impl From<ClientID> for String {
     fn from(id: ClientID) -> Self {
         id.0
+    }
+}
+
+impl Deref for ClientID {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
