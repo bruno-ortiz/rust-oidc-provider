@@ -1,6 +1,6 @@
 mod configure;
 mod routes;
-mod extractor;
+mod session;
 
 pub use configure::oidc_configuration;
 
