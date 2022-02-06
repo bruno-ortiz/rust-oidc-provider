@@ -1,4 +1,4 @@
-use std::fmt::{write, Debug, Formatter};
+use std::fmt::{Debug, Formatter};
 
 use async_trait::async_trait;
 use thiserror::Error;

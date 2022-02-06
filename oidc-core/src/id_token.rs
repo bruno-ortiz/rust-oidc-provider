@@ -134,7 +134,7 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
     }
 
     pub fn build(mut self, key: &Jwk) -> Result<IdToken, IdTokenError> {
-        let mut header = JwsHeader::from_key(key);
+        let header = JwsHeader::from_key(key);
         let mut payload = JwtPayload::new();
         if self.audience.is_empty() {
             return Err(IdTokenError::MissingRequiredClaim("audience".to_owned()));

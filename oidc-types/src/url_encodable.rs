@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use indexmap::IndexMap;
+
 
 pub trait UrlEncodable {
     fn params(self) -> HashMap<String, String>;

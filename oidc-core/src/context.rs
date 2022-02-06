@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use oidc_types::client::ClientInformation;
 use oidc_types::response_type::ResponseType;
-use oidc_types::subject::Subject;
+
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
