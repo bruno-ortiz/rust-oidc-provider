@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn can_create_resolver_from_config() {
         let cfg = OpenIDProviderConfiguration::default();
-        let _resolver = DynamicResponseTypeResolver::from(cfg);
+        let _resolver = DynamicResponseTypeResolver::from(&cfg);
         println!("xpto")
     }
 }

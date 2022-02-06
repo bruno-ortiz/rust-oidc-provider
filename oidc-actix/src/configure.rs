@@ -23,7 +23,6 @@ pub fn oidc_configuration(
         let auth_service = AuthorisationService::new(
             DynamicResponseTypeResolver::from(oidc_config.borrow()),
             DynamicResponseModeEncoder::from(oidc_config.borrow()),
-            client_service.clone(),
             oidc_config.clone(),
         );
         cfg.data(client_service);

@@ -6,11 +6,9 @@ use thiserror::Error;
 
 use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
-use oidc_types::subject::Subject;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::authorisation_request::AuthorisationRequest;
-use crate::client::ClientService;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
@@ -18,6 +16,7 @@ use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::{AuthorisationResponse, EncodingContext, ResponseModeEncoder};
 use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
+use crate::session::AuthenticatedUser;
 
 #[derive(Error, Debug)]
 pub enum AuthorisationError {
@@ -38,7 +37,6 @@ where
 {
     resolver: R,
     encoder: E,
-    client_service: Arc<ClientService>,
     configuration: Arc<OpenIDProviderConfiguration>,
 }
 
@@ -47,42 +45,27 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    pub fn new(
-        resolver: R,
-        encoder: E,
-        client_service: Arc<ClientService>,
-        configuration: Arc<OpenIDProviderConfiguration>,
-    ) -> Self {
+    pub fn new(resolver: R, encoder: E, configuration: Arc<OpenIDProviderConfiguration>) -> Self {
         Self {
             resolver,
             encoder,
-            client_service,
             configuration,
         }
     }
 
     pub async fn authorise(
         &self,
-        subject: Subject,
+        user: AuthenticatedUser,
+        client: Arc<ClientInformation>,
         request: AuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let client_id = request
-            .client_id
-            .as_ref()
-            .ok_or(AuthorisationError::MissingClient)?;
-        let client = self
-            .client_service
-            .retrieve_client_info(client_id)
-            .await
-            .ok_or(AuthorisationError::InvalidClient)
-            .map(Arc::new)?;
-
         Self::validate_redirect_uri(&request, &client)?;
+
         match request.validate(&client) {
             Ok(validated_req) => {
                 let context = OpenIDContext::new(
                     client.clone(),
-                    subject,
+                    user,
                     validated_req,
                     self.configuration.clone(),
                 );

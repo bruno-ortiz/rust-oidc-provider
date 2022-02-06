@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use serde::Deserialize;
 use url::Url;
 
 use oidc_types::client::{ClientID, ClientInformation};
@@ -47,7 +48,7 @@ impl ValidatedAuthorisationRequest {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct AuthorisationRequest {
     pub response_type: Option<ResponseType>,
     pub client_id: Option<ClientID>,

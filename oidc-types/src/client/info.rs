@@ -28,6 +28,12 @@ impl From<ClientID> for String {
     }
 }
 
+impl From<&str> for ClientID {
+    fn from(t: &str) -> Self {
+        ClientID::new(t.to_owned())
+    }
+}
+
 impl Deref for ClientID {
     type Target = str;
 

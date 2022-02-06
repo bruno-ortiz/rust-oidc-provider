@@ -6,11 +6,12 @@ use oidc_types::subject::Subject;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::session::AuthenticatedUser;
 
 #[derive(Debug)]
 pub struct OpenIDContext {
     pub client: Arc<ClientInformation>,
-    pub subject: Subject,
+    pub user: AuthenticatedUser,
     pub request: ValidatedAuthorisationRequest,
     pub configuration: Arc<OpenIDProviderConfiguration>,
 }
@@ -18,13 +19,13 @@ pub struct OpenIDContext {
 impl OpenIDContext {
     pub fn new(
         client: Arc<ClientInformation>,
-        subject: Subject,
+        user: AuthenticatedUser,
         request: ValidatedAuthorisationRequest,
         configuration: Arc<OpenIDProviderConfiguration>,
     ) -> Self {
         OpenIDContext {
             client,
-            subject,
+            user,
             request,
             configuration,
         }

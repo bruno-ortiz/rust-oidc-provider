@@ -1,16 +1,21 @@
+use indexmap::IndexSet;
 use std::collections::HashSet;
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::str::FromStr;
 
 use lazy_static::lazy_static;
-use serde::Serialize;
-use serde::{Deserialize, Serializer};
+use serde::de::{Unexpected, Visitor};
+use serde::{de, Deserialize, Serializer};
+use serde::{Deserializer, Serialize};
+use thiserror::Error;
 
 use crate::response_mode::ResponseMode;
 use crate::serialize_to_str;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseTypeValue {
     Code,
@@ -31,17 +36,36 @@ impl Display for ResponseTypeValue {
     }
 }
 
+#[derive(Error, Debug)]
+#[error("Error parsing response type value {}.", .0)]
+pub struct ParseError(String);
+
+impl FromStr for ResponseTypeValue {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "code" => Ok(ResponseTypeValue::Code),
+            "id_token" => Ok(ResponseTypeValue::IdToken),
+            "token" => Ok(ResponseTypeValue::Token),
+            "none" => Ok(ResponseTypeValue::None),
+            _ => Err(ParseError(s.to_owned())),
+        }
+    }
+}
+
 lazy_static! {
     static ref FRAGMENT_VALUES: Vec<ResponseTypeValue> =
         vec![ResponseTypeValue::IdToken, ResponseTypeValue::Token];
 }
 
 #[derive(Debug, Eq, Clone)]
-pub struct ResponseType(HashSet<ResponseTypeValue>);
+pub struct ResponseType(IndexSet<ResponseTypeValue>);
 
 impl ResponseType {
-    pub fn new(values: Vec<ResponseTypeValue>) -> Self {
-        let values_set: HashSet<_> = values.into_iter().collect();
+    pub fn new(mut values: Vec<ResponseTypeValue>) -> Self {
+        values.sort();
+        let values_set: IndexSet<_> = values.into_iter().collect();
         ResponseType(values_set)
     }
 
@@ -87,6 +111,39 @@ impl Display for ResponseType {
 
 serialize_to_str!(ResponseType);
 
+impl<'de> Deserialize<'de> for ResponseType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ResponseTypeVisitor;
+
+        impl<'de> Visitor<'de> for ResponseTypeVisitor {
+            type Value = ResponseType;
+
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+                formatter.write_str("'code id_token'")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let response_type_vec: Result<Vec<ResponseTypeValue>, ParseError> =
+                    v.split(' ').map(ResponseTypeValue::from_str).collect();
+                match response_type_vec {
+                    Ok(response_type_vec) => Ok(ResponseType::new(response_type_vec)),
+                    Err(err) => Err(de::Error::invalid_value(
+                        Unexpected::Str(&err.0),
+                        &ResponseTypeVisitor,
+                    )),
+                }
+            }
+        }
+        deserializer.deserialize_str(ResponseTypeVisitor)
+    }
+}
+
 #[macro_export]
 macro_rules! response_type {
     ($($rt:expr),*) =>{
@@ -105,7 +162,7 @@ mod tests {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
 
     use crate::response_type::{ResponseType, ResponseTypeValue};
 
@@ -129,6 +186,20 @@ mod tests {
             r#"{"rt":"code id_token"}"#,
             serde_json::to_string(&Test { rt }).unwrap()
         )
+    }
+
+    #[test]
+    fn test_can_deserialize_response_types() {
+        #[derive(Deserialize)]
+        struct Test {
+            rt: ResponseType,
+        }
+
+        let rt = ResponseType::new(vec![ResponseTypeValue::Code, ResponseTypeValue::IdToken]);
+        let expected = Test { rt };
+        let actual: Test = serde_json::from_str(r#"{"rt":"code id_token"}"#).unwrap();
+
+        assert_eq!(expected.rt, actual.rt)
     }
 
     #[test]

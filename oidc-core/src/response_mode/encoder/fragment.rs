@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use form_urlencoded::Serializer;
 
 use oidc_types::response_mode::ResponseMode;
+use oidc_types::url_encodable::UrlEncodable;
 
 use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};

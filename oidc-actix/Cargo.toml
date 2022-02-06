@@ -14,3 +14,4 @@ oidc-core = { path = "../oidc-core" }
 oidc-types = { path = "../oidc-types" }
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
 anyhow = "1.0.53"
+thiserror = "1.0.30"

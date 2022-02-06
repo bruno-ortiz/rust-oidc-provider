@@ -1,8 +1,8 @@
 use josekit::jwk::Jwk;
-
-use oidc_types::hash::Hashable;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
+
+use oidc_types::hash::Hashable;
 
 #[derive(Debug, Error)]
 pub enum HashingError {
@@ -42,13 +42,26 @@ where
 #[cfg(test)]
 mod tests {
     use josekit::jwk::Jwk;
+    use url::Url;
 
-    use crate::authorisation_code::AuthorisationCode;
+    use oidc_types::scopes;
+    use oidc_types::subject::Subject;
+
+    use crate::authorisation_code::{AuthorisationCode, CodeStatus};
     use crate::hash::TokenHasher;
 
     #[test]
     fn test_can_hash() {
-        let code = AuthorisationCode(String::from("some-value"));
+        let code = AuthorisationCode {
+            code: String::from("some-value"),
+            client_id: "some-id".into(),
+            subject: Subject::new("sub"),
+            scope: scopes!("openid accounts"),
+            redirect_uri: Url::parse("https://test.com/callback").unwrap(),
+            code_challenge: None,
+            code_challenge_method: None,
+            status: CodeStatus::Awaiting,
+        };
         let rsa_key = Jwk::from_bytes(r#"
         {
             "p": "2Z1co6mhAXOtwSb1szKBcHd1jCyddlXr401qp3v_VnRMCoYKxgVSwSbuxOZjhtfKBb_Mc6kE6Je6rqWK_rv6cP0ks1HgPj0tsoY_9CBfxFVqYJNKPg4pN56E2bJNgNi-QbwPjCryHIdFeg_Z6_aH9faEekrCKEUqz8BkOeQgVOU",

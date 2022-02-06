@@ -22,8 +22,8 @@ pub struct AuthorisationCode {
     pub client_id: ClientID,
     pub subject: Subject,
     pub status: CodeStatus,
-    pub code_challenge: CodeChallenge,
-    pub code_challenge_method: CodeChallengeMethod,
+    pub code_challenge: Option<CodeChallenge>,
+    pub code_challenge_method: Option<CodeChallengeMethod>,
     pub redirect_uri: Url,
     pub scope: Scopes,
 }

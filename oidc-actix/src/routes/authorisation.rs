@@ -1,28 +1,51 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 
-use oidc_core::authorisation::AuthorisationService;
+use actix_web::web::Query;
+use actix_web::{web, HttpResponse, ResponseError};
+use thiserror::Error;
+
+use oidc_core::authorisation::{AuthorisationError, AuthorisationService};
+use oidc_core::authorisation_request::AuthorisationRequest;
+use oidc_core::client::ClientService;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
+use oidc_core::user::find_user_by_session;
 
-use crate::session::UserSession;
+use crate::extractors::SessionHolder;
 
-pub(crate) async fn authorise(
-    req: HttpRequest,
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub struct AuthorisationErrorWrapper(#[from] AuthorisationError);
+
+impl ResponseError for AuthorisationErrorWrapper {}
+
+pub async fn authorise(
+    request: Query<AuthorisationRequest>,
     auth_service: web::Data<
         AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>,
     >,
-    session: UserSession,
-) -> HttpResponse {
-    match session {
-        UserSession::Authenticated(id, sub) => {
-            // prompt=login,consent,none
-            // verifica prompt, e começa interação
-            // executa auth service e pega os códigos/tokens
-            // executa encoder e pega url
+    client_service: web::Data<ClientService>,
+    SessionHolder(session): SessionHolder,
+) -> Result<HttpResponse, AuthorisationErrorWrapper> {
+    let client_id = request
+        .client_id
+        .as_ref()
+        .ok_or(AuthorisationError::MissingClient)?;
+    let client = client_service
+        .retrieve_client_info(client_id)
+        .await
+        .ok_or(AuthorisationError::InvalidClient)
+        .map(Arc::new)?;
+
+    let user = find_user_by_session(&session);
+    match user {
+        Some(user) => {
+            auth_service
+                .authorise(user, client.clone(), request.into_inner())
+                .await?
         }
-        UserSession::NotAuthenticated(id) => {
-            //begin interaction login flow
-        }
-    }
-    HttpResponse::Ok().body("Hello")
+        None => todo!("implement login interaction"),
+    };
+    Ok(HttpResponse::Ok().body("Hello"))
 }
