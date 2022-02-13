@@ -68,7 +68,9 @@ impl JwtEncoder {
         let exp = Utc::now() + Duration::minutes(EXP_IN_MINUTES);
         payload.set_expires_at(&exp.into());
         for (key, value) in parameters {
-            payload.set_claim(&key, Some(Value::String(value)));
+            payload
+                .set_claim(&key, Some(Value::String(value)))
+                .unwrap_or_else(|_| panic!("Cannot set {key} on JWT"));
         }
         payload
     }

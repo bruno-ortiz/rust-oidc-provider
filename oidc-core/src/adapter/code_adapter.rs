@@ -21,8 +21,9 @@ impl InMemoryAuthorisationCodeAdapter {
 #[async_trait]
 impl Adapter for InMemoryAuthorisationCodeAdapter {
     type Item = AuthorisationCode;
+    type Id = String;
 
-    async fn find(&self, id: &str) -> Option<Self::Item> {
+    async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
         let storage = self.storage.read().unwrap();
         let item = storage.get(id).cloned();
         item

@@ -11,9 +11,10 @@ use oidc_types::response_type::ResponseType;
 use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 
+use crate::configuration::OpenIDProviderConfiguration;
 use crate::response_type::errors::OpenIdError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValidatedAuthorisationRequest {
     pub response_type: ResponseType,
     pub client_id: ClientID,
@@ -70,8 +71,9 @@ impl AuthorisationRequest {
     pub fn validate(
         self,
         client: &ClientInformation,
+        configuration: &OpenIDProviderConfiguration,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
-        if let Err(err) = self.validate_response_type(client) {
+        if let Err(err) = self.validate_response_type(client, configuration) {
             return Err((err, self));
         }
         if let Err(err) = self.validate_scopes(client) {
@@ -85,13 +87,8 @@ impl AuthorisationRequest {
                 self,
             ));
         }
-        if self.redirect_uri.is_none() {
-            return Err((
-                OpenIdError::InvalidRequest {
-                    description: "Missing redirect_uri",
-                },
-                self,
-            ));
+        if let Err(err) = self.validate_redirect_uri(client) {
+            return Err((err, self));
         }
 
         //todo: finish validations: i.e: scopes, response_type, response_mode
@@ -111,12 +108,36 @@ impl AuthorisationRequest {
             prompt: self.prompt,
         })
     }
-    fn validate_response_type(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
+
+    pub fn validate_redirect_uri(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
+        let redirect_uri = self
+            .redirect_uri
+            .as_ref()
+            .ok_or(OpenIdError::InvalidRequest {
+                description: "Missing redirect_uri",
+            })?;
+        if client.metadata.redirect_uris.contains(redirect_uri) {
+            Ok(())
+        } else {
+            Err(OpenIdError::InvalidRequest {
+                description: "Redirect uri not registered for client",
+            })
+        }
+    }
+
+    fn validate_response_type(
+        &self,
+        client: &ClientInformation,
+        configuration: &OpenIDProviderConfiguration,
+    ) -> Result<(), OpenIdError> {
         match self.response_type {
             None => Err(OpenIdError::InvalidRequest {
                 description: "Missing response type",
             }),
             Some(ref rt) => {
+                if !AuthorisationRequest::server_allows_response_type(configuration, rt) {
+                    return Err(OpenIdError::UnsupportedResponseType(rt.clone()));
+                }
                 let response_type_allowed = rt
                     .iter()
                     .all(|item| client.metadata.response_types.contains(item));
@@ -146,5 +167,12 @@ impl AuthorisationRequest {
                 }
             }
         }
+    }
+
+    fn server_allows_response_type(
+        configuration: &OpenIDProviderConfiguration,
+        response_type: &ResponseType,
+    ) -> bool {
+        configuration.response_types().contains(response_type)
     }
 }

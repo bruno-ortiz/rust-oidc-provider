@@ -171,23 +171,28 @@ impl JwtPayloadExt for JwtPayload {
                 .unwrap()
                 .as_secs(),
         );
-        self.set_claim("auth_time", Some(Value::Number(val)));
+        self.set_claim("auth_time", Some(Value::Number(val)))
+            .expect("Cannot set auth_time on JWT");
     }
 
     fn set_nonce(&mut self, value: impl Into<String>) {
-        self.set_claim("nonce", Some(Value::String(value.into())));
+        self.set_claim("nonce", Some(Value::String(value.into())))
+            .expect("Cannot set nonce on JWT");
     }
 
     fn set_acr(&mut self, value: impl Into<String>) {
-        self.set_claim("acr", Some(Value::String(value.into())));
+        self.set_claim("acr", Some(Value::String(value.into())))
+            .expect("Cannot set acr on JWT");
     }
 
     fn set_amr(&mut self, value: impl Into<String>) {
-        self.set_claim("amr", Some(Value::String(value.into())));
+        self.set_claim("amr", Some(Value::String(value.into())))
+            .expect("Cannot set amr on JWT");
     }
 
     fn set_azp(&mut self, value: impl Into<String>) {
-        self.set_claim("azp", Some(Value::String(value.into())));
+        self.set_claim("azp", Some(Value::String(value.into())))
+            .expect("Cannot set azp on JWT");
     }
 }
 

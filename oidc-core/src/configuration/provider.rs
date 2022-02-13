@@ -3,18 +3,20 @@ use std::fmt::Debug;
 use josekit::jwk::Jwk;
 use url::Url;
 
+use oidc_types::grant_type::GrantType;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_mode::ResponseMode;
-use oidc_types::response_type;
 use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
+use oidc_types::scopes::Scopes;
+use oidc_types::{response_type, scopes};
 
 use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
+use crate::services::interaction::Interaction;
 
-#[derive(Debug)]
 pub struct OpenIDProviderConfiguration {
     pkce: PKCE,
     jwks: JwkSet,
@@ -25,8 +27,10 @@ pub struct OpenIDProviderConfiguration {
     response_modes_supported: Vec<ResponseMode>,
     jwt_secure_response_mode: bool,
     issuer: Issuer,
-    scopes_supported: Option<Vec<String>>,
-    grant_types_supported: Option<Vec<String>>,
+    grant_types_supported: Vec<GrantType>,
+    scopes_supported: Scopes,
+    interaction_config:
+        Box<dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>,
     acr_values_supported: Option<Vec<String>>,
     subject_types_supported: Option<Vec<String>>,
     id_token_signing_alg_values_supported: Option<Vec<String>>,
@@ -53,7 +57,7 @@ pub struct OpenIDProviderConfiguration {
 }
 
 impl OpenIDProviderConfiguration {
-    fn new<T, E: Debug>(issuer: T) -> Self
+    pub fn new<T, E: Debug>(issuer: T) -> Self
     where
         T: TryInto<Url, Error = E>,
     {
@@ -111,6 +115,12 @@ impl OpenIDProviderConfiguration {
         &self.response_modes_supported
     }
 
+    pub fn interaction(
+        &self,
+    ) -> &(dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync) {
+        &self.interaction_config
+    }
+
     pub fn enable_jarm(mut self) -> Self {
         self.jwt_secure_response_mode = true;
         self.response_modes_supported.extend([
@@ -148,8 +158,27 @@ impl Default for OpenIDProviderConfiguration {
             response_modes_supported: vec![ResponseMode::Query, ResponseMode::Fragment],
             jwt_secure_response_mode: false,
             issuer: Issuer::new("http://localhost:3000"),
-            scopes_supported: None,
-            grant_types_supported: None,
+            scopes_supported: scopes!("openid"),
+            grant_types_supported: vec![
+                GrantType::AuthorizationCode,
+                GrantType::ClientCredentials,
+                GrantType::RefreshToken,
+            ],
+            interaction_config: Box::new(|interaction, config| {
+                let base_url = config.issuer.inner_ref();
+                let mut url = if interaction.user().is_none() {
+                    base_url
+                        .join("/interaction/login/")
+                        .expect("Should return a valid url")
+                } else {
+                    base_url
+                        .join("/interaction/consent/")
+                        .expect("Should return a valid url")
+                };
+                url.query_pairs_mut()
+                    .append_pair("interaction_id", &interaction.id().to_string());
+                url
+            }),
             acr_values_supported: None,
             subject_types_supported: None,
             id_token_signing_alg_values_supported: None,
@@ -189,7 +218,5 @@ mod tests {
         let _config = OpenIDProviderConfiguration::new("http://localhost:3000")
             .with_jwks(JwkSet::new(vec![]))
             .with_pkce(PKCE::default());
-
-        println!("{:?}", _config)
     }
 }

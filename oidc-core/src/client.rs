@@ -5,11 +5,11 @@ use oidc_types::client::{ClientID, ClientInformation};
 use crate::adapter::Adapter;
 
 pub struct ClientService {
-    adapter: Arc<dyn Adapter<Item = ClientInformation>>,
+    adapter: Arc<dyn Adapter<Item = ClientInformation, Id = String>>,
 }
 
 impl ClientService {
-    pub fn new(adapter: Arc<dyn Adapter<Item = ClientInformation>>) -> Self {
+    pub fn new(adapter: Arc<dyn Adapter<Item = ClientInformation, Id = String>>) -> Self {
         ClientService { adapter }
     }
 

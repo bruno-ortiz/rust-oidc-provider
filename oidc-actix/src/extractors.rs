@@ -13,7 +13,6 @@ pub struct SessionHolder(pub SessionID);
 impl FromRequest for SessionHolder {
     type Error = Error;
     type Future = Ready<Result<SessionHolder, Self::Error>>;
-    type Config = ();
 
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
         let session = req

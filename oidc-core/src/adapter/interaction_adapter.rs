@@ -2,16 +2,16 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use async_trait::async_trait;
-
-use oidc_types::client::{ClientID, ClientInformation};
+use uuid::Uuid;
 
 use crate::adapter::{Adapter, PersistenceError};
+use crate::services::interaction::Interaction;
 
-pub struct InMemoryClientAdapter {
-    storage: RwLock<HashMap<ClientID, ClientInformation>>,
+pub struct InMemoryInteractionAdapter {
+    storage: RwLock<HashMap<Uuid, Interaction>>,
 }
 
-impl InMemoryClientAdapter {
+impl InMemoryInteractionAdapter {
     pub fn new() -> Self {
         Self {
             storage: RwLock::new(HashMap::new()),
@@ -20,21 +20,19 @@ impl InMemoryClientAdapter {
 }
 
 #[async_trait]
-impl Adapter for InMemoryClientAdapter {
-    type Item = ClientInformation;
-    type Id = String;
-
+impl Adapter for InMemoryInteractionAdapter {
+    type Item = Interaction;
+    type Id = Uuid;
+    
     async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
-        let id = ClientID::new(id.into());
         let storage = self.storage.read().unwrap();
-        let item = storage.get(&id).cloned();
+        let item = storage.get(id).cloned();
         item
     }
 
     async fn save(&self, item: Self::Item) -> Result<(), PersistenceError> {
         let mut storage = self.storage.write().unwrap();
-        let id = item.id.clone();
-        storage.insert(id, item);
+        storage.insert(item.id().clone(), item);
         Ok(())
     }
 }

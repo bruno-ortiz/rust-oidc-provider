@@ -3,15 +3,14 @@ use std::sync::RwLock;
 
 use async_trait::async_trait;
 
-use oidc_types::client::{ClientID, ClientInformation};
-
 use crate::adapter::{Adapter, PersistenceError};
+use crate::session::AuthenticatedUser;
 
-pub struct InMemoryClientAdapter {
-    storage: RwLock<HashMap<ClientID, ClientInformation>>,
+pub struct InMemoryUserAdapter {
+    storage: RwLock<HashMap<String, AuthenticatedUser>>,
 }
 
-impl InMemoryClientAdapter {
+impl InMemoryUserAdapter {
     pub fn new() -> Self {
         Self {
             storage: RwLock::new(HashMap::new()),
@@ -20,21 +19,20 @@ impl InMemoryClientAdapter {
 }
 
 #[async_trait]
-impl Adapter for InMemoryClientAdapter {
-    type Item = ClientInformation;
+impl Adapter for InMemoryUserAdapter {
+    type Item = AuthenticatedUser;
     type Id = String;
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
-        let id = ClientID::new(id.into());
         let storage = self.storage.read().unwrap();
-        let item = storage.get(&id).cloned();
+        let item = storage.get(id).cloned();
         item
     }
 
     async fn save(&self, item: Self::Item) -> Result<(), PersistenceError> {
         let mut storage = self.storage.write().unwrap();
-        let id = item.id.clone();
-        storage.insert(id, item);
+        let id = item.session();
+        storage.insert(id.to_string(), item);
         Ok(())
     }
 }

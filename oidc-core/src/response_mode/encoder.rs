@@ -5,12 +5,15 @@ use url::Url;
 use format as f;
 use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
+use oidc_types::url_encodable::UrlEncodable;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::jwt::JwtEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::errors::EncodingError;
+use crate::response_type::errors::OpenIdError;
+use crate::services::authorisation::AuthorisationError;
 
 pub(crate) mod fragment;
 pub(crate) mod jwt;
@@ -86,5 +89,34 @@ impl DynamicResponseModeEncoder {
 
     pub fn push(&mut self, encoder: Box<dyn EncoderDecider>) {
         self.encoders.push(encoder);
+    }
+}
+
+pub fn encode_response<E: ResponseModeEncoder, P: UrlEncodable>(
+    context: EncodingContext,
+    encoder: &E,
+    parameters: P,
+) -> std::result::Result<AuthorisationResponse, AuthorisationError> {
+    let result = encoder
+        .encode(&context, parameters.params())
+        .map_err(|err| OpenIdError::ServerError { source: err.into() });
+    match result {
+        Ok(res) => Ok(res),
+        Err(err) => encode_err(&context, err),
+    }
+}
+
+fn encode_err(
+    context: &EncodingContext,
+    err: OpenIdError,
+) -> std::result::Result<AuthorisationResponse, AuthorisationError> {
+    match context.response_mode {
+        ResponseMode::Fragment => FragmentEncoder
+            .encode(context, err.params())
+            .map_err(|err| AuthorisationError::InternalError(err.into())),
+        ResponseMode::Query => QueryEncoder
+            .encode(context, err.params())
+            .map_err(|err| AuthorisationError::InternalError(err.into())),
+        _ => Err(AuthorisationError::InternalError(err.into())),
     }
 }

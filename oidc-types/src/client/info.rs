@@ -35,7 +35,7 @@ impl From<&str> for ClientID {
 }
 
 impl Deref for ClientID {
-    type Target = str;
+    type Target = String;
 
     fn deref(&self) -> &Self::Target {
         &self.0
