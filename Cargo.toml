@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "axum-session",
     "oidc-axum",
     "oidc-types",
     "oidc-core",
