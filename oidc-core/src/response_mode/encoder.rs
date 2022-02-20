@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use url::Url;
 
@@ -46,7 +47,7 @@ pub enum AuthorisationResponse {
 }
 
 pub struct DynamicResponseModeEncoder {
-    encoders: Vec<Box<dyn EncoderDecider>>,
+    encoders: Vec<Box<dyn EncoderDecider + Send + Sync>>,
 }
 
 impl ResponseModeEncoder for DynamicResponseModeEncoder {
@@ -87,8 +88,21 @@ impl DynamicResponseModeEncoder {
         DynamicResponseModeEncoder { encoders: vec![] }
     }
 
-    pub fn push(&mut self, encoder: Box<dyn EncoderDecider>) {
+    pub fn push(&mut self, encoder: Box<dyn EncoderDecider + Send + Sync>) {
         self.encoders.push(encoder);
+    }
+}
+
+impl<T> ResponseModeEncoder for Arc<T>
+where
+    T: ResponseModeEncoder,
+{
+    fn encode(
+        &self,
+        context: &EncodingContext,
+        parameters: HashMap<String, String>,
+    ) -> Result<AuthorisationResponse> {
+        T::encode(self, context, parameters)
     }
 }
 

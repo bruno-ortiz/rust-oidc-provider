@@ -1,6 +1,7 @@
-use axum::extract::Query;
 use std::sync::Arc;
 
+use axum::extract::{Extension, Query};
+use axum::response::Response;
 use thiserror::Error;
 
 use oidc_core::authorisation_request::{AuthorisationRequest, ValidatedAuthorisationRequest};
@@ -8,9 +9,10 @@ use oidc_core::configuration::adapter_container::AdapterContainer;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::response_mode::encoder::{
     encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
+    ResponseModeEncoder,
 };
 use oidc_core::response_type::errors::OpenIdError;
-use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
+use oidc_core::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_types::client::{ClientID, ClientInformation};
 use oidc_types::response_mode::ResponseMode;
@@ -18,44 +20,47 @@ use oidc_types::response_mode::ResponseMode;
 use crate::extractors::SessionHolder;
 use crate::routes::error::AuthorisationErrorWrapper;
 
-// pub async fn authorise(
-//     request: Query<AuthorisationRequest>,
-//     auth_service: web::Data<
-//         AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>,
-//     >,
-//     encoder: web::Data<DynamicResponseModeEncoder>,
-//     oidc_configuration: web::Data<OpenIDProviderConfiguration>,
-//     SessionHolder(session): SessionHolder,
-// ) -> Result<HttpResponse, AuthorisationErrorWrapper> {
-//     let adapters = oidc_configuration.adapters();
-//     let client_id = request
-//         .client_id
-//         .as_ref()
-//         .ok_or(AuthorisationError::MissingClient)?;
-//     let client = get_client(adapters, client_id).await?;
-//
-//     request
-//         .validate_redirect_uri(&client)
-//         .map_err(|_| AuthorisationError::InvalidRedirectUri)?;
-//
-//     match request.0.validate(&client, &oidc_configuration) {
-//         Ok(req) => {
-//             let user = adapters.user().find(&session.to_string()).await;
-//             match user {
-//                 Some(user) => auth_service.authorise(user, client.clone(), req).await?,
-//                 None => todo!("implement login interaction"),
-//             };
-//             Ok(HttpResponse::Ok().body("Hello"))
-//         }
-//         Err((err, request)) => handle_validation_error(
-//             encoder.into_inner().as_ref(),
-//             &oidc_configuration,
-//             &client,
-//             err,
-//             request,
-//         ),
-//     }
-// }
+pub async fn authorise<R, E>(
+    request: Query<AuthorisationRequest>,
+    auth_service: Extension<Arc<AuthorisationService<R, E>>>,
+    encoder: Extension<Arc<DynamicResponseModeEncoder>>, //TODO: maybe make auth_service encode the response
+    oidc_configuration: Extension<Arc<OpenIDProviderConfiguration>>,
+    session: SessionHolder,
+) -> Result<Response, AuthorisationErrorWrapper>
+where
+    R: ResponseTypeResolver,
+    E: ResponseModeEncoder,
+{
+    //     let adapters = oidc_configuration.adapters();
+    //     let client_id = request
+    //         .client_id
+    //         .as_ref()
+    //         .ok_or(AuthorisationError::MissingClient)?;
+    //     let client = get_client(adapters, client_id).await?;
+    //
+    //     request
+    //         .validate_redirect_uri(&client)
+    //         .map_err(|_| AuthorisationError::InvalidRedirectUri)?;
+    //
+    //     match request.0.validate(&client, &oidc_configuration) {
+    //         Ok(req) => {
+    //             let user = adapters.user().find(&session.to_string()).await;
+    //             match user {
+    //                 Some(user) => auth_service.authorise(user, client.clone(), req).await?,
+    //                 None => todo!("implement login interaction"),
+    //             };
+    //             Ok(HttpResponse::Ok().body("Hello"))
+    //         }
+    //         Err((err, request)) => handle_validation_error(
+    //             encoder.into_inner().as_ref(),
+    //             &oidc_configuration,
+    //             &client,
+    //             err,
+    //             request,
+    //         ),
+    //     }
+    todo!()
+}
 
 // fn handle_validation_error(
 //     encoder: &DynamicResponseModeEncoder,

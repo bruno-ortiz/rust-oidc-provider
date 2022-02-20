@@ -6,7 +6,7 @@ use axum::extract::{Extension, FromRequest, RequestParts};
 use axum::http::{Request, StatusCode};
 use axum::response::IntoResponse;
 use time::Duration;
-use tower_cookies::Cookies;
+use tower_cookies::{Cookie, Cookies, Key};
 
 use oidc_core::session::SessionID;
 
@@ -29,7 +29,23 @@ impl SessionInner {
             .extensions()
             .get::<Cookies>()
             .expect("tower-cookies must be configured");
-        match cookies.get(SESSION_KEY) {
+
+        let key = request
+            .extensions()
+            .get::<Arc<Option<Key>>>()
+            .expect("Should have an option of key here");
+        if let Some(key) = &**key {
+            let signed_cookies = cookies.signed(key);
+            let cookie = signed_cookies.get(SESSION_KEY);
+            Self::parse_cookie(cookie.as_ref())
+        } else {
+            let cookie = cookies.get(SESSION_KEY);
+            Self::parse_cookie(cookie.as_ref())
+        }
+    }
+
+    fn parse_cookie(cookie: Option<&Cookie>) -> Result<ShareableSessionInner, impl IntoResponse> {
+        match cookie {
             Some(cookie) => {
                 let parsed_session = SessionID::from_str(cookie.value()).map_err(|err| {
                     (

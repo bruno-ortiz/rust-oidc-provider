@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -13,7 +13,7 @@ pub enum PersistenceError {}
 
 #[async_trait]
 pub trait Adapter {
-    type Item;
+    type Item: Send + Sync;
     type Id: Sized;
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item>;

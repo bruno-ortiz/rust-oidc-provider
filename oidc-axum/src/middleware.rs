@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use axum::http::{header, Request};
+use axum::http::Request;
 use axum::response::{IntoResponse, Response};
 use futures::future::BoxFuture;
 use hyper::Body;
@@ -9,14 +10,15 @@ use tower_cookies::{Cookie, Cookies, Key};
 
 use crate::extractors::{SessionHolder, SessionInner, SESSION_KEY};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SessionManager<S> {
     inner: S,
+    key: Option<Key>,
 }
 
 impl<S> SessionManager<S> {
-    pub fn new(inner: S) -> Self {
-        Self { inner }
+    pub fn new(inner: S, key: Option<Key>) -> Self {
+        Self { inner, key }
     }
 }
 
@@ -34,14 +36,17 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        dbg!(req.headers().get(header::COOKIE).cloned());
         let cookies = req
             .extensions()
             .get::<Cookies>()
             .cloned()
             .expect("tower-cookies must be configured");
+
         let clone = self.inner.clone();
         let mut service = std::mem::replace(&mut self.inner, clone);
+
+        let cloned_key = Arc::new(self.key.as_ref().cloned());
+        req.extensions_mut().insert(cloned_key.clone());
         Box::pin(async move {
             match SessionInner::load(&req).await {
                 Ok(session_inner) => {
@@ -53,7 +58,11 @@ where
                     if let Some(duration) = session.duration() {
                         cookie = cookie.max_age(duration);
                     }
-                    cookies.add(cookie.finish());
+                    if let Some(key) = &*cloned_key {
+                        cookies.signed(key).add(cookie.finish());
+                    } else {
+                        cookies.add(cookie.finish());
+                    }
                     Ok(res)
                 }
                 Err(err) => Ok(err.into_response()),
@@ -61,7 +70,7 @@ where
         })
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SessionManagerLayer {
     key: Option<Key>,
 }
@@ -77,18 +86,10 @@ impl SessionManagerLayer {
     }
 }
 
-impl Default for SessionManagerLayer {
-    fn default() -> Self {
-        SessionManagerLayer {
-            key: Option::<Key>::None,
-        }
-    }
-}
-
 impl<S> Layer<S> for SessionManagerLayer {
     type Service = SessionManager<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        SessionManager::new(inner)
+        SessionManager::new(inner, self.key.clone())
     }
 }

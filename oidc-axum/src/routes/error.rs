@@ -1,3 +1,6 @@
+use axum::body;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 
 use oidc_core::services::authorisation::AuthorisationError;
@@ -6,14 +9,23 @@ use oidc_core::services::authorisation::AuthorisationError;
 #[error(transparent)]
 pub struct AuthorisationErrorWrapper(#[from] AuthorisationError);
 
-// impl ResponseError for AuthorisationErrorWrapper {
-//     fn status_code(&self) -> StatusCode {
-//         match self.0 {
-//             AuthorisationError::InvalidRedirectUri => StatusCode::BAD_REQUEST,
-//             AuthorisationError::InvalidClient => StatusCode::BAD_REQUEST,
-//             AuthorisationError::MissingClient => StatusCode::BAD_REQUEST,
-//             AuthorisationError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-//             AuthorisationError::InteractionErr(_) => StatusCode::INTERNAL_SERVER_ERROR,
-//         }
-//     }
-// }
+impl IntoResponse for AuthorisationErrorWrapper {
+    fn into_response(self) -> Response {
+        let body = body::boxed(body::Full::from(self.0.to_string()));
+
+        match self.0 {
+            AuthorisationError::InvalidRedirectUri
+            | AuthorisationError::InvalidClient
+            | AuthorisationError::MissingClient => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(body)
+                .unwrap(),
+            AuthorisationError::InternalError(_) | AuthorisationError::InteractionErr(_) => {
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(body)
+                    .unwrap()
+            }
+        }
+    }
+}

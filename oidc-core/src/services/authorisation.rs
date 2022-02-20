@@ -3,19 +3,15 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use oidc_types::client::ClientInformation;
-use oidc_types::response_mode::ResponseMode;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;
-use crate::authorisation_request::{AuthorisationRequest, ValidatedAuthorisationRequest};
+use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-use crate::response_mode::encoder::fragment::FragmentEncoder;
-use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
-use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::session::AuthenticatedUser;
 
@@ -33,11 +29,7 @@ pub enum AuthorisationError {
     InternalError(#[from] anyhow::Error),
 }
 
-pub struct AuthorisationService<R, E>
-where
-    R: ResponseTypeResolver,
-    E: ResponseModeEncoder,
-{
+pub struct AuthorisationService<R, E> {
     resolver: R,
     encoder: E,
     configuration: Arc<OpenIDProviderConfiguration>,

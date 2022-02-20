@@ -4,7 +4,6 @@ use form_urlencoded::Serializer;
 
 use oidc_types::response_mode::ResponseMode;
 
-
 use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 

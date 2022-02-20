@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::mem;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use axum::extract::{FromRequest, RequestParts};

@@ -23,7 +23,7 @@ impl InMemoryInteractionAdapter {
 impl Adapter for InMemoryInteractionAdapter {
     type Item = Interaction;
     type Id = Uuid;
-    
+
     async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
         let storage = self.storage.read().unwrap();
         let item = storage.get(id).cloned();
@@ -32,7 +32,7 @@ impl Adapter for InMemoryInteractionAdapter {
 
     async fn save(&self, item: Self::Item) -> Result<(), PersistenceError> {
         let mut storage = self.storage.write().unwrap();
-        storage.insert(item.id().clone(), item);
+        storage.insert(*item.id(), item);
         Ok(())
     }
 }

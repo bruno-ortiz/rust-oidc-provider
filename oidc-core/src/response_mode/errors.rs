@@ -9,5 +9,5 @@ pub enum EncodingError {
     #[error("Error creating JWT: {}", .0)]
     JwtCreationError(JWTError),
     #[error("Internal error: {}", .0)]
-    InternalError(String)
+    InternalError(String),
 }

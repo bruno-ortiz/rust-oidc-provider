@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use crate::hash::Hashable;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct State(String);

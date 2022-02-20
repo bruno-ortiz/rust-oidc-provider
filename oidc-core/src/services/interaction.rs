@@ -7,33 +7,32 @@ use oidc_types::subject::Subject;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::response_mode::encoder::DynamicResponseModeEncoder;
-use crate::response_type::resolver::DynamicResponseTypeResolver;
+use crate::response_mode::encoder::ResponseModeEncoder;
+use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::{AuthorisationError, AuthorisationService};
 pub use crate::services::types::Interaction;
 use crate::session::SessionID;
 
-pub struct InteractionService {
+pub struct InteractionService<R, E> {
     configuration: Arc<OpenIDProviderConfiguration>,
-    auth_service:
-        Arc<AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>>,
+    auth_service: Arc<AuthorisationService<R, E>>,
 }
 
-impl InteractionService {
+impl<R, E> InteractionService<R, E>
+where
+    R: ResponseTypeResolver,
+    E: ResponseModeEncoder,
+{
     pub fn new(
         configuration: Arc<OpenIDProviderConfiguration>,
-        auth_service: Arc<
-            AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>,
-        >,
+        auth_service: Arc<AuthorisationService<R, E>>,
     ) -> Self {
         Self {
             configuration,
             auth_service,
         }
     }
-}
 
-impl InteractionService {
     pub async fn begin_interaction(
         &self,
         session: SessionID,

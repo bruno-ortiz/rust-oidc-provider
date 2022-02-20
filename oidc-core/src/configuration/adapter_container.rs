@@ -25,7 +25,7 @@ impl AdapterContainer {
         self.code.clone()
     }
 
-    pub fn client(&self) -> Arc<dyn Adapter<Item = ClientInformation, Id = String>> {
+    pub fn client(&self) -> Arc<dyn Adapter<Item = ClientInformation, Id = String> + Send + Sync> {
         self.client.clone()
     }
 
