@@ -1,7 +1,6 @@
-pub use configure::oidc_configuration;
-
 pub mod configure;
-mod extractors;
+pub mod extractors;
+pub mod middleware;
 mod routes;
 pub mod server;
 

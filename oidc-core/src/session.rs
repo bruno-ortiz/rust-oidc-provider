@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::{Error as UuidError, Uuid};
 
 use oidc_types::subject::Subject;
@@ -27,20 +27,23 @@ impl AuthenticatedUser {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SessionID(Uuid);
 
 impl SessionID {
     pub fn new() -> Self {
         SessionID::default()
     }
+}
 
-    pub fn from_string(id: String) -> Result<Self, UuidError> {
-        let session_id = Uuid::from_str(&id)?;
+impl FromStr for SessionID {
+    type Err = UuidError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let session_id = Uuid::from_str(s)?;
         Ok(SessionID(session_id))
     }
 }
-
 impl Default for SessionID {
     fn default() -> Self {
         SessionID(Uuid::new_v4())
