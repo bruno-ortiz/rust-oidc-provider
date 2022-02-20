@@ -1,5 +1,4 @@
 use std::io;
-use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use axum::http::{Request, StatusCode};
@@ -8,23 +7,16 @@ use axum::routing::{get, get_service, MethodRouter};
 use axum::Router;
 use hyper::Body;
 use time::Duration;
-use tower::{ServiceBuilder, ServiceExt};
-use tower_cookies::CookieManagerLayer;
+use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
 
 use oidc_axum::extractors::SessionHolder;
-use oidc_axum::middleware::SessionManagerLayer;
 use oidc_axum::server::OidcServer;
 
 #[tokio::main]
 async fn main() {
     let app = Router::new()
         .route("/login", get(login))
-        .layer(
-            ServiceBuilder::new()
-                .layer(CookieManagerLayer::new())
-                .layer(SessionManagerLayer::signed(&[0; 32])),
-        )
         .nest("/assets", serve_dir("./oidc-example/static/assets"));
 
     OidcServer::new().with_router(app).run().await.unwrap()
