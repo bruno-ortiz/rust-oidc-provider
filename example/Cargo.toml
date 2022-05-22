@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-oidc-axum = { path = "../axum" }
+oidc-axum = { path = "../server" }
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 axum = "0.5.4"

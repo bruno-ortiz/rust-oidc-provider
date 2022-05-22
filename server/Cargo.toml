@@ -1,5 +1,5 @@
 [package]
-name = "oidc-axum"
+name = "oidc-server"
 version = "0.1.0"
 authors = ["bruno-ortiz <brunortiz11@gmail.com>"]
 edition = "2021"

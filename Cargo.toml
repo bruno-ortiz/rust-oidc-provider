@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "axum",
+    "server",
     "types",
     "core",
     "example"
