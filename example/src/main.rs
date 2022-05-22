@@ -10,8 +10,8 @@ use time::Duration;
 use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
 
-use oidc_axum::extractors::SessionHolder;
-use oidc_axum::server::OidcServer;
+use oidc_server::extractors::SessionHolder;
+use oidc_server::server::OidcServer;
 
 #[tokio::main]
 async fn main() {
