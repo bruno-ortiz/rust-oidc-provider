@@ -1,4 +1,3 @@
-pub mod configure;
 pub mod extractors;
 pub mod middleware;
 mod routes;
