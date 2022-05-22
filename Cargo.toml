@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "oidc-axum",
-    "oidc-types",
-    "oidc-core",
-    "oidc-example"
+    "axum",
+    "types",
+    "core",
+    "example"
 ]

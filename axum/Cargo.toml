@@ -7,8 +7,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-oidc-core = { path = "../oidc-core" }
-oidc-types = { path = "../oidc-types" }
+oidc-core = { path = "../core" }
+oidc-types = { path = "../types" }
 axum = { version = "0.5.4", features = ["headers"] }
 hyper = { version = "0.14.18", features = ["full"] }
 tokio = { version = "1.18.0", features = ["full"] }

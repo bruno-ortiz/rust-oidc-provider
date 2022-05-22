@@ -35,7 +35,7 @@ async fn login(session: SessionHolder, request: Request<Body>) -> Response {
     println!("session:{:?}", session);
 
     session.set_duration(Duration::seconds(90));
-    let path: PathBuf = "./oidc-example/static/pages/login.html".parse().unwrap();
+    let path: PathBuf = "./example/static/pages/login.html".parse().unwrap();
     ServeFile::new(path)
         .oneshot(request)
         .await
