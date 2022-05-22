@@ -9,12 +9,12 @@ edition = "2021"
 oidc-axum = { path = "../oidc-axum" }
 oidc-core = { path = "../oidc-core" }
 oidc-types = { path = "../oidc-types" }
-axum = "0.4.5"
-hyper = { version = "0.14.17", features = ["full"] }
-tokio = { version = "1.16.1", features = ["full"] }
+axum = "0.5.4"
+hyper = { version = "0.14.18", features = ["full"] }
+tokio = { version = "1.18.0", features = ["full"] }
 tower = "0.4.12"
-tower-http = { version = "0.2.3", features = ["fs"] }
+tower-http = { version = "0.3.2", features = ["fs"] }
 env_logger = "0.9.0"
 tera = "1.15.0"
 rand = "0.8.5"
-time = "0.3.7"
+time = "0.3.9"

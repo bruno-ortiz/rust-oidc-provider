@@ -77,14 +77,21 @@ impl<RT: ResponseTypeResolver + Sync> ResolverWrapper for RT {
 
 impl From<&OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
     fn from(configuration: &OpenIDProviderConfiguration) -> Self {
+        let code_adapter = configuration.adapters().code();
         let mut resolver = DynamicResponseTypeResolver::new();
         for rt in configuration.response_types() {
             if *rt == response_type![ResponseTypeValue::Code] {
-                resolver.push(rt.clone(), Box::new(CodeResolver))
+                resolver.push(
+                    rt.clone(),
+                    Box::new(CodeResolver::new(code_adapter.clone())),
+                )
             } else if *rt == response_type![ResponseTypeValue::IdToken] {
                 resolver.push(rt.clone(), Box::new(IDTokenResolver::new(None, None)))
             } else if *rt == response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken] {
-                resolver.push(rt.clone(), Box::new(CodeIdTokenResolver))
+                resolver.push(
+                    rt.clone(),
+                    Box::new(CodeIdTokenResolver::new(code_adapter.clone())),
+                )
             } else {
                 panic!("unsupported response type {}", rt)
             }

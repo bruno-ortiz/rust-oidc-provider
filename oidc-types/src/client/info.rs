@@ -13,32 +13,18 @@ use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
-pub struct ClientID(String);
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub struct ClientID(Uuid);
 
 impl ClientID {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: Uuid) -> Self {
         Self(id)
     }
 }
 
 impl From<ClientID> for String {
     fn from(id: ClientID) -> Self {
-        id.0
-    }
-}
-
-impl From<&str> for ClientID {
-    fn from(t: &str) -> Self {
-        ClientID::new(t.to_owned())
-    }
-}
-
-impl Deref for ClientID {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+        id.0.to_string()
     }
 }
 

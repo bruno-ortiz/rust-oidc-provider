@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use oidc_types::client::ClientInformation;
+use oidc_types::client::{ClientID, ClientInformation};
 
 use crate::adapter::client_adapter::InMemoryClientAdapter;
 use crate::adapter::code_adapter::InMemoryAuthorisationCodeAdapter;
@@ -15,17 +15,19 @@ use crate::session::AuthenticatedUser;
 
 pub struct AdapterContainer {
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
-    client: Arc<dyn Adapter<Item = ClientInformation, Id = String> + Send + Sync>,
+    client: Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>,
     user: Arc<dyn Adapter<Item = AuthenticatedUser, Id = String> + Send + Sync>,
     interaction: Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>,
 }
 
 impl AdapterContainer {
-    pub fn code(&self) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = String>> {
+    pub fn code(&self) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync> {
         self.code.clone()
     }
 
-    pub fn client(&self) -> Arc<dyn Adapter<Item = ClientInformation, Id = String> + Send + Sync> {
+    pub fn client(
+        &self,
+    ) -> Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync> {
         self.client.clone()
     }
 

@@ -22,10 +22,9 @@ impl InMemoryClientAdapter {
 #[async_trait]
 impl Adapter for InMemoryClientAdapter {
     type Item = ClientInformation;
-    type Id = String;
+    type Id = ClientID;
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
-        let id = ClientID::new(id.into());
         let storage = self.storage.read().unwrap();
         let item = storage.get(&id).cloned();
         item
