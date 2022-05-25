@@ -2,20 +2,14 @@ use std::sync::Arc;
 
 use axum::extract::{Extension, Query};
 use axum::response::Response;
-use thiserror::Error;
 
-use oidc_core::authorisation_request::{AuthorisationRequest, ValidatedAuthorisationRequest};
+use oidc_core::authorisation_request::AuthorisationRequest;
 use oidc_core::configuration::adapter_container::AdapterContainer;
 use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_core::response_mode::encoder::{
-    encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
-    ResponseModeEncoder,
-};
-use oidc_core::response_type::errors::OpenIdError;
-use oidc_core::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
+use oidc_core::response_mode::encoder::{DynamicResponseModeEncoder, ResponseModeEncoder};
+use oidc_core::response_type::resolver::ResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_types::client::{ClientID, ClientInformation};
-use oidc_types::response_mode::ResponseMode;
 
 use crate::extractors::SessionHolder;
 use crate::routes::error::AuthorisationErrorWrapper;

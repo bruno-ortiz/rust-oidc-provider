@@ -43,6 +43,7 @@ where
 mod tests {
     use josekit::jwk::Jwk;
     use url::Url;
+    use oidc_types::client::ClientID;
 
     use oidc_types::scopes;
     use oidc_types::subject::Subject;
@@ -54,7 +55,7 @@ mod tests {
     fn test_can_hash() {
         let code = AuthorisationCode {
             code: String::from("some-value"),
-            client_id: "some-id".into(),
+            client_id: ClientID::default(),
             subject: Subject::new("sub"),
             scope: scopes!("openid accounts"),
             redirect_uri: Url::parse("https://test.com/callback").unwrap(),

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use chrono::{Duration, Utc};
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::Value;
+use time::{Duration, OffsetDateTime};
 
 use oidc_types::jose::jwt::JWT;
 use oidc_types::jose::JwsHeaderExt;
@@ -65,7 +65,7 @@ impl JwtEncoder {
         let mut payload = JwtPayload::new();
         payload.set_issuer(context.configuration.issuer());
         payload.set_audience(vec![context.client.id.to_string()]);
-        let exp = Utc::now() + Duration::minutes(EXP_IN_MINUTES);
+        let exp = OffsetDateTime::now_utc() + Duration::minutes(EXP_IN_MINUTES);
         payload.set_expires_at(&exp.into());
         for (key, value) in parameters {
             payload

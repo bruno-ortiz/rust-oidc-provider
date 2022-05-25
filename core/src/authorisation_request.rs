@@ -4,7 +4,7 @@ use url::Url;
 
 use oidc_types::client::{ClientID, ClientInformation};
 use oidc_types::jose::jwt::JWT;
-use oidc_types::pkce::CodeChallengeMethod;
+use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::ResponseType;
@@ -22,7 +22,7 @@ pub struct ValidatedAuthorisationRequest {
     pub scope: Scopes,
     pub state: Option<State>,
     pub response_mode: Option<ResponseMode>,
-    pub code_challenge: Option<String>,
+    pub code_challenge: Option<CodeChallenge>,
     pub code_challenge_method: Option<CodeChallengeMethod>,
     pub resource: Option<Url>,
     //rfc8707
@@ -91,7 +91,6 @@ impl AuthorisationRequest {
             return Err((err, self));
         }
 
-        //todo: finish validations: i.e: scopes, response_type, response_mode
         Ok(ValidatedAuthorisationRequest {
             response_type: self.response_type.expect("Response type not found"),
             client_id: self.client_id.expect("ClientId not found"),
@@ -99,7 +98,7 @@ impl AuthorisationRequest {
             scope: self.scope.expect("Scope not found"),
             state: self.state,
             response_mode: self.response_mode,
-            code_challenge: self.code_challenge,
+            code_challenge: self.code_challenge.map(CodeChallenge::new),
             code_challenge_method: self.code_challenge_method,
             resource: self.resource,
             include_granted_scopes: self.include_granted_scopes,
@@ -109,7 +108,7 @@ impl AuthorisationRequest {
         })
     }
 
-    pub fn validate_redirect_uri(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
+    fn validate_redirect_uri(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
         let redirect_uri = self
             .redirect_uri
             .as_ref()

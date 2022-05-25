@@ -187,8 +187,6 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "serde",
- "time 0.1.44",
  "winapi",
 ]
 
@@ -227,7 +225,7 @@ dependencies = [
  "rand",
  "sha2",
  "subtle",
- "time 0.3.9",
+ "time",
  "version_check",
 ]
 
@@ -713,7 +711,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "time 0.3.9",
+ "time",
 ]
 
 [[package]]
@@ -853,13 +851,14 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64",
- "chrono",
  "form_urlencoded",
  "josekit",
  "oidc-types",
  "serde",
  "sha2",
  "thiserror",
+ "time",
+ "tokio",
  "url",
  "uuid",
 ]
@@ -876,7 +875,7 @@ dependencies = [
  "oidc-types",
  "rand",
  "tera",
- "time 0.3.9",
+ "time",
  "tokio",
  "tower",
  "tower-http",
@@ -896,7 +895,7 @@ dependencies = [
  "oidc-types",
  "serde",
  "thiserror",
- "time 0.3.9",
+ "time",
  "tokio",
  "tower",
  "tower-cookies",
@@ -909,7 +908,6 @@ name = "oidc-types"
 version = "0.1.0"
 dependencies = [
  "base64",
- "chrono",
  "indexmap",
  "josekit",
  "lazy_static",
@@ -917,6 +915,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "time",
  "url",
  "uuid",
 ]
@@ -1428,17 +1427,6 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi",
-]
-
-[[package]]
-name = "time"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
@@ -1446,6 +1434,7 @@ dependencies = [
  "itoa",
  "libc",
  "num_threads",
+ "serde",
  "time-macros",
 ]
 

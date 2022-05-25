@@ -5,7 +5,7 @@ use std::fmt::{Debug, Display, Formatter};
 use serde::{Serialize, Serializer};
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Issuer(Url);
 
 impl Issuer {
@@ -38,7 +38,7 @@ impl Display for Issuer {
 
 impl From<Issuer> for String {
     fn from(iss: Issuer) -> Self {
-        iss.0.into()
+        iss.0.to_string()
     }
 }
 

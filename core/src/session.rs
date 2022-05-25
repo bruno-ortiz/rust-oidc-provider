@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::{Error as UuidError, Uuid};
 
 use oidc_types::subject::Subject;
@@ -11,19 +11,36 @@ use oidc_types::subject::Subject;
 pub struct AuthenticatedUser {
     session: SessionID,
     subject: Subject,
-    auth_time: DateTime<Utc>,
+    auth_time: OffsetDateTime,
     max_age: u64,
 }
 
 impl AuthenticatedUser {
+    pub fn new(
+        session: SessionID,
+        subject: Subject,
+        auth_time: OffsetDateTime,
+        max_age: u64,
+    ) -> Self {
+        Self {
+            session,
+            subject,
+            auth_time,
+            max_age,
+        }
+    }
+
     pub fn sub(&self) -> &Subject {
         &self.subject
     }
-    pub fn session(&self) -> &SessionID {
-        &self.session
+    pub fn session(&self) -> SessionID {
+        self.session
     }
-    pub fn auth_time(&self) -> &SessionID {
-        &self.session
+    pub fn auth_time(&self) -> OffsetDateTime {
+        self.auth_time
+    }
+    pub fn max_age(&self) -> u64 {
+        self.max_age
     }
 }
 

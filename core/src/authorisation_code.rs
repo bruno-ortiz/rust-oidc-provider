@@ -10,13 +10,13 @@ use oidc_types::subject::Subject;
 
 use crate::response_type::UrlEncodable;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CodeStatus {
     Awaiting,
     Consumed,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AuthorisationCode {
     pub code: String,
     pub client_id: ClientID,

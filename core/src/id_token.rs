@@ -1,17 +1,24 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
-use chrono::{DateTime, TimeZone};
 use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::{Number, Value};
+use oidc_types::hash::Hashable;
 use thiserror::Error;
+use time::OffsetDateTime;
 
+use crate::access_token::AccessToken;
+use crate::authorisation_code::AuthorisationCode;
+use crate::hash::TokenHasher;
+use crate::response_type::errors::OpenIdError;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt::JWT;
 use oidc_types::jose::JwsHeaderExt;
+use oidc_types::state::State;
+use oidc_types::subject::Subject;
 
 use crate::response_type::UrlEncodable;
 
@@ -30,19 +37,28 @@ pub enum IdTokenError {
 pub struct IdToken(JWT);
 
 impl IdToken {
-    pub fn builder<Tz: TimeZone>() -> IdTokenBuilder<Tz> {
-        IdTokenBuilder::new()
+    pub fn builder(signing_key: &Jwk) -> IdTokenBuilder {
+        IdTokenBuilder::new(signing_key)
+    }
+
+    // pub fn sub(&self) -> Subject {
+    //     self.0.
+    // }
+
+    pub fn serialized(self) -> String {
+        self.0.serialize_owned()
     }
 }
 
 #[derive(Debug)]
-pub struct IdTokenBuilder<Tz: TimeZone> {
-    issuer: Option<Issuer>,
-    sub: Option<String>,
+pub struct IdTokenBuilder<'a> {
+    signing_key: &'a Jwk,
+    issuer: Option<&'a Issuer>,
+    sub: Option<&'a Subject>,
     audience: Vec<String>,
-    expires_at: Option<DateTime<Tz>>,
-    issued_at: Option<DateTime<Tz>>,
-    auth_time: Option<DateTime<Tz>>,
+    expires_at: Option<OffsetDateTime>,
+    issued_at: Option<OffsetDateTime>,
+    auth_time: Option<OffsetDateTime>,
     nonce: Option<String>,
     acr: Option<String>,
     amr: Option<String>,
@@ -52,9 +68,10 @@ pub struct IdTokenBuilder<Tz: TimeZone> {
     at_hash: Option<String>,
 }
 
-impl<Tz: TimeZone> IdTokenBuilder<Tz> {
-    fn new() -> Self {
+impl<'a> IdTokenBuilder<'a> {
+    fn new(signing_key: &'a Jwk) -> Self {
         IdTokenBuilder {
+            signing_key,
             issuer: None,
             sub: None,
             audience: Vec::new(),
@@ -71,13 +88,13 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
         }
     }
 
-    pub fn with_issuer(mut self, issuer: Issuer) -> Self {
+    pub fn with_issuer(mut self, issuer: &'a Issuer) -> Self {
         self.issuer = Some(issuer);
         self
     }
 
-    pub fn with_sub(mut self, sub: &str) -> Self {
-        self.sub = Some(sub.to_owned());
+    pub fn with_sub(mut self, sub: &'a Subject) -> Self {
+        self.sub = Some(sub);
         self
     }
 
@@ -86,17 +103,17 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
         self
     }
 
-    pub fn with_exp(mut self, exp: DateTime<Tz>) -> Self {
+    pub fn with_exp(mut self, exp: OffsetDateTime) -> Self {
         self.expires_at = Some(exp);
         self
     }
 
-    pub fn with_iat(mut self, iat: DateTime<Tz>) -> Self {
+    pub fn with_iat(mut self, iat: OffsetDateTime) -> Self {
         self.issued_at = Some(iat);
         self
     }
 
-    pub fn with_auth_time(mut self, auth_time: DateTime<Tz>) -> Self {
+    pub fn with_auth_time(mut self, auth_time: OffsetDateTime) -> Self {
         self.auth_time = Some(auth_time);
         self
     }
@@ -118,23 +135,32 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
         self
     }
 
-    pub fn with_c_hash(mut self, c_hash: String) -> Self {
-        self.c_hash = Some(c_hash);
-        self
+    pub fn with_c_hash(mut self, code: Option<&AuthorisationCode>) -> Result<Self, OpenIdError> {
+        if let Some(code) = code {
+            let c_hash = Self::build_hash(self.signing_key, code)?;
+            self.c_hash = Some(c_hash);
+        }
+        Ok(self)
     }
 
-    pub fn with_s_hash(mut self, s_hash: String) -> Self {
-        self.s_hash = Some(s_hash);
-        self
+    pub fn with_s_hash(mut self, state: Option<&State>) -> Result<Self, OpenIdError> {
+        if let Some(state) = state {
+            let s_hash = Self::build_hash(self.signing_key, state)?;
+            self.s_hash = Some(s_hash);
+        }
+        Ok(self)
     }
 
-    pub fn with_at_hash(mut self, at_hash: String) -> Self {
-        self.at_hash = Some(at_hash);
-        self
+    pub fn with_at_hash(mut self, access_token: Option<&AccessToken>) -> Result<Self, OpenIdError> {
+        if let Some(at) = access_token {
+            let at_hash = Self::build_hash(self.signing_key, at)?;
+            self.at_hash = Some(at_hash);
+        }
+        Ok(self)
     }
 
-    pub fn build(mut self, key: &Jwk) -> Result<IdToken, IdTokenError> {
-        let header = JwsHeader::from_key(key);
+    pub fn build(mut self) -> Result<IdToken, IdTokenError> {
+        let header = JwsHeader::from_key(self.signing_key);
         let mut payload = JwtPayload::new();
         if self.audience.is_empty() {
             return Err(IdTokenError::MissingRequiredClaim("audience".to_owned()));
@@ -144,55 +170,75 @@ impl<Tz: TimeZone> IdTokenBuilder<Tz> {
         payload.set_subject(self.sub.required("sub")?);
         payload.set_expires_at(&self.expires_at.required("expires_at")?.into());
         payload.set_issued_at(&self.issued_at.required("issued_at")?.into());
-        payload.set_auth_time(&self.auth_time.required("auth_time")?.into());
-        payload.set_nonce(self.nonce.required("nonce")?);
-        payload.set_acr(self.acr.required("acr")?);
-        payload.set_amr(self.amr.required("amr")?);
-        payload.set_azp(self.acr.required("azp")?);
-        let jwt = JWT::new(header, payload, key)
+
+        payload.set_auth_time(self.auth_time);
+        payload.set_nonce(self.nonce);
+        payload.set_acr(self.acr);
+        payload.set_amr(self.amr);
+        payload.set_azp(self.azp);
+        let jwt = JWT::new(header, payload, self.signing_key)
             .map_err(|err| IdTokenError::EncodingErr { source: err })?;
         Ok(IdToken(jwt))
+    }
+
+    fn build_hash<H: Hashable>(signing_key: &Jwk, hashable: &H) -> Result<String, OpenIdError> {
+        let hash = hashable
+            .hash(signing_key)
+            .map_err(|source| OpenIdError::ServerError {
+                source: source.into(),
+            })?;
+        Ok(hash)
     }
 }
 
 trait JwtPayloadExt {
-    fn set_auth_time(&mut self, value: &SystemTime);
-    fn set_nonce(&mut self, value: impl Into<String>);
-    fn set_acr(&mut self, value: impl Into<String>);
-    fn set_amr(&mut self, value: impl Into<String>);
-    fn set_azp(&mut self, value: impl Into<String>);
+    fn set_auth_time(&mut self, value: Option<OffsetDateTime>);
+    fn set_nonce(&mut self, value: Option<String>);
+    fn set_acr(&mut self, value: Option<String>);
+    fn set_amr(&mut self, value: Option<String>);
+    fn set_azp(&mut self, value: Option<String>);
 }
 
 impl JwtPayloadExt for JwtPayload {
-    fn set_auth_time(&mut self, value: &SystemTime) {
-        let val = Number::from(
-            value
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        );
-        self.set_claim("auth_time", Some(Value::Number(val)))
-            .expect("Cannot set auth_time on JWT");
+    fn set_auth_time(&mut self, value: Option<OffsetDateTime>) {
+        if let Some(time) = value {
+            let time = SystemTime::from(time);
+            let val = Number::from(
+                time.duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs(),
+            );
+            self.set_claim("auth_time", Some(Value::Number(val)))
+                .expect("Cannot set auth_time on JWT");
+        }
     }
 
-    fn set_nonce(&mut self, value: impl Into<String>) {
-        self.set_claim("nonce", Some(Value::String(value.into())))
-            .expect("Cannot set nonce on JWT");
+    fn set_nonce(&mut self, value: Option<String>) {
+        if let Some(nonce) = value {
+            self.set_claim("nonce", Some(Value::String(nonce)))
+                .expect("Cannot set nonce on JWT");
+        }
     }
 
-    fn set_acr(&mut self, value: impl Into<String>) {
-        self.set_claim("acr", Some(Value::String(value.into())))
-            .expect("Cannot set acr on JWT");
+    fn set_acr(&mut self, value: Option<String>) {
+        if let Some(acr) = value {
+            self.set_claim("acr", Some(Value::String(acr)))
+                .expect("Cannot set acr on JWT");
+        }
     }
 
-    fn set_amr(&mut self, value: impl Into<String>) {
-        self.set_claim("amr", Some(Value::String(value.into())))
-            .expect("Cannot set amr on JWT");
+    fn set_amr(&mut self, value: Option<String>) {
+        if let Some(amr) = value {
+            self.set_claim("amr", Some(Value::String(amr)))
+                .expect("Cannot set amr on JWT");
+        }
     }
 
-    fn set_azp(&mut self, value: impl Into<String>) {
-        self.set_claim("azp", Some(Value::String(value.into())))
-            .expect("Cannot set azp on JWT");
+    fn set_azp(&mut self, value: Option<String>) {
+        if let Some(azp) = value {
+            self.set_claim("azp", Some(Value::String(azp)))
+                .expect("Cannot set azp on JWT");
+        }
     }
 }
 

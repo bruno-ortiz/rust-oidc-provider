@@ -1,8 +1,7 @@
 use std::fmt::{Display, Formatter};
-use std::ops::Deref;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -34,6 +33,12 @@ impl Display for ClientID {
     }
 }
 
+impl Default for ClientID {
+    fn default() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClientMetadata {
     pub redirect_uris: Vec<Url>,
@@ -58,6 +63,6 @@ pub struct ClientMetadata {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClientInformation {
     pub id: ClientID,
-    pub issue_date: DateTime<Utc>,
+    pub issue_date: OffsetDateTime,
     pub metadata: ClientMetadata,
 }

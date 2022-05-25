@@ -12,7 +12,7 @@ url = { version = "2.2.2", features = ["serde"] }
 regex = "1.5.5"
 lazy_static = "1.4.0"
 josekit = { version = "0.8.0" }
-chrono = { version = "0.4.19", features = ["serde"] }
+time = { version = "0.3.9", features=["serde-human-readable"]}
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
 serde_json = "1.0.80"
 base64 = "0.13.0"

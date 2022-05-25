@@ -139,7 +139,7 @@ impl OpenIDProviderConfiguration {
         //todo: permit multiple signing keys, and let the resolver decide???
         self.jwks
             .iter()
-            .find(|key| key.algorithm().is_some() && key.key_type() == "sig")
+            .find(|key| key.algorithm().is_some() && key.key_use() == Some("sig"))
     }
 }
 

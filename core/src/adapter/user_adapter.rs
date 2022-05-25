@@ -29,10 +29,10 @@ impl Adapter for InMemoryUserAdapter {
         item
     }
 
-    async fn save(&self, item: Self::Item) -> Result<(), PersistenceError> {
+    async fn save(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
         let mut storage = self.storage.write().unwrap();
         let id = item.session();
-        storage.insert(id.to_string(), item);
-        Ok(())
+        storage.insert(id.to_string(), item.clone());
+        Ok(item)
     }
 }

@@ -30,9 +30,9 @@ impl Adapter for InMemoryInteractionAdapter {
         item
     }
 
-    async fn save(&self, item: Self::Item) -> Result<(), PersistenceError> {
+    async fn save(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
         let mut storage = self.storage.write().unwrap();
-        storage.insert(*item.id(), item);
-        Ok(())
+        storage.insert(*item.id(), item.clone());
+        Ok(item)
     }
 }

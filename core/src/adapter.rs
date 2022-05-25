@@ -18,5 +18,5 @@ pub trait Adapter {
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item>;
 
-    async fn save(&self, item: Self::Item) -> Result<(), PersistenceError>;
+    async fn save(&self, item: Self::Item) -> Result<Self::Item, PersistenceError>;
 }

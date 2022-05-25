@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CodeChallengeMethod {
     Plain,
@@ -8,5 +8,11 @@ pub enum CodeChallengeMethod {
     None,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CodeChallenge(String);
+
+impl CodeChallenge {
+    pub fn new<S: Into<String>>(cc: S) -> Self {
+        Self(cc.into())
+    }
+}

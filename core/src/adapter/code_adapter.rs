@@ -29,10 +29,10 @@ impl Adapter for InMemoryAuthorisationCodeAdapter {
         item
     }
 
-    async fn save(&self, item: Self::Item) -> Result<(), PersistenceError> {
+    async fn save(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
         let mut storage = self.storage.write().unwrap();
         let id = item.code.clone();
-        storage.insert(id, item);
-        Ok(())
+        storage.insert(id, item.clone());
+        Ok(item)
     }
 }

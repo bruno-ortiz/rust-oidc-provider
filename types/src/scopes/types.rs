@@ -42,7 +42,7 @@ impl Display for Scope {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Scopes(Vec<Scope>);
 
 impl Scopes {
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_can_create_scopes() {
-        let scopes: Scopes = scopes!("xpto", "rng:42");
+        let scopes: Scopes = scopes!["xpto", "rng:42"];
 
         let first = scopes.get(0);
         let second = scopes.get(1);
