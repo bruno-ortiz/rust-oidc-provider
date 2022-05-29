@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use url::Url;
 
@@ -35,8 +35,8 @@ impl Hashable for AuthorisationCode {
 }
 
 impl UrlEncodable for AuthorisationCode {
-    fn params(self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
+    fn params(self) -> IndexMap<String, String> {
+        let mut map = IndexMap::new();
         map.insert("code".to_owned(), self.code);
         map
     }

@@ -1,12 +1,11 @@
-use std::collections::HashMap;
 use indexmap::IndexMap;
 
 pub trait UrlEncodable {
-    fn params(self) -> HashMap<String, String>;
+    fn params(self) -> IndexMap<String, String>;
 }
 
-impl UrlEncodable for HashMap<String, String> {
-    fn params(self) -> HashMap<String, String> {
+impl UrlEncodable for IndexMap<String, String> {
+    fn params(self) -> IndexMap<String, String> {
         self
     }
 }
@@ -16,7 +15,7 @@ where
     T1: UrlEncodable,
     T2: UrlEncodable,
 {
-    fn params(self) -> HashMap<String, String> {
+    fn params(self) -> IndexMap<String, String> {
         let mut first = self.0.params();
         let second = self.1.params();
         first.extend(second);
@@ -30,7 +29,7 @@ where
     T2: UrlEncodable,
     T3: UrlEncodable,
 {
-    fn params(self) -> HashMap<String, String> {
+    fn params(self) -> IndexMap<String, String> {
         let mut first = self.0.params();
         let second = self.1.params();
         let third = self.2.params();

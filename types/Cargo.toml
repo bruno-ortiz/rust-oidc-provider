@@ -17,4 +17,4 @@ uuid = { version = "0.8.2", features = ["v4", "serde"] }
 serde_json = "1.0.80"
 base64 = "0.13.0"
 thiserror = "1.0.31"
-indexmap = "1.8.1"
+indexmap = "1.8.2"

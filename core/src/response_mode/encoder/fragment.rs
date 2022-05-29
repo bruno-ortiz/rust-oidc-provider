@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use form_urlencoded::Serializer;
+use indexmap::IndexMap;
 
 use oidc_types::response_mode::ResponseMode;
 
@@ -13,7 +14,7 @@ impl ResponseModeEncoder for FragmentEncoder {
     fn encode(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let mut callback_uri = context.redirect_uri.clone();
         let fragment = Self::encode_fragment(parameters);
@@ -29,7 +30,7 @@ impl EncoderDecider for FragmentEncoder {
 }
 
 impl FragmentEncoder {
-    fn encode_fragment(parameters: HashMap<String, String>) -> String {
+    fn encode_fragment(parameters: IndexMap<String, String>) -> String {
         let mut serializer = Serializer::new("".to_string());
         serializer.extend_pairs(parameters).finish()
     }
@@ -37,7 +38,7 @@ impl FragmentEncoder {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use indexmap::IndexMap;
 
     use url::Url;
 
@@ -45,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_can_append_fragment_to_url() {
-        let mut params = HashMap::new();
+        let mut params = IndexMap::new();
         params.insert("code".to_string(), "some_code".to_string());
         params.insert("token".to_string(), "some_token".to_string());
 

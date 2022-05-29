@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
@@ -23,7 +23,7 @@ impl ResponseModeEncoder for JwtEncoder {
     fn encode(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let signing_key = context
             .configuration
@@ -35,7 +35,7 @@ impl ResponseModeEncoder for JwtEncoder {
         let jwt = JWT::encode_string(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
 
-        let mut params = HashMap::new();
+        let mut params = IndexMap::new();
         params.insert("response".to_owned(), jwt);
 
         match context.response_mode {
@@ -60,7 +60,7 @@ impl JwtEncoder {
     fn build_payload(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> JwtPayload {
         let mut payload = JwtPayload::new();
         payload.set_issuer(context.configuration.issuer());

@@ -1,5 +1,6 @@
 use crate::hash::Hashable;
 use crate::url_encodable::UrlEncodable;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -19,8 +20,8 @@ impl Hashable for State {
 }
 
 impl UrlEncodable for State {
-    fn params(self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
+    fn params(self) -> IndexMap<String, String> {
+        let mut map = IndexMap::new();
         map.insert("state".to_owned(), self.0);
         map
     }

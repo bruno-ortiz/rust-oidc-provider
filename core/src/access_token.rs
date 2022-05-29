@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use oidc_types::hash::Hashable;
 use std::collections::HashMap;
 
@@ -13,8 +14,8 @@ impl Hashable for AccessToken {
 }
 
 impl UrlEncodable for AccessToken {
-    fn params(self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
+    fn params(self) -> IndexMap<String, String> {
+        let mut map = IndexMap::new();
         map.insert("access_token".to_owned(), self.0);
         map
     }

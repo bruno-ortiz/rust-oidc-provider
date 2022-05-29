@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
+use indexmap::IndexMap;
 
 use oidc_types::response_type;
 use oidc_types::response_type::{ResponseType, ResponseTypeValue};
@@ -46,7 +47,7 @@ impl DynamicResponseTypeResolver {
 
 #[async_trait]
 impl ResponseTypeResolver for DynamicResponseTypeResolver {
-    type Output = HashMap<String, String>;
+    type Output = IndexMap<String, String>;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let rt = &context.request.response_type;
@@ -62,14 +63,14 @@ pub trait ResolverWrapper {
     async fn resolve(
         &self,
         context: &OpenIDContext,
-    ) -> Result<HashMap<String, String>, OpenIdError>;
+    ) -> Result<IndexMap<String, String>, OpenIdError>;
 }
 #[async_trait]
 impl<RT: ResponseTypeResolver + Sync> ResolverWrapper for RT {
     async fn resolve(
         &self,
         context: &OpenIDContext,
-    ) -> Result<HashMap<String, String>, OpenIdError> {
+    ) -> Result<IndexMap<String, String>, OpenIdError> {
         let result = self.resolve(context).await?;
         Ok(result.params())
     }

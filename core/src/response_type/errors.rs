@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::HashMap;
 
 use thiserror::Error;
@@ -29,8 +30,8 @@ pub enum OpenIdError {
 }
 
 impl UrlEncodable for OpenIdError {
-    fn params(self) -> HashMap<String, String> {
-        let mut parameters = HashMap::new();
+    fn params(self) -> IndexMap<String, String> {
+        let mut parameters = IndexMap::new();
         match self {
             OpenIdError::InvalidRequest { description } => {
                 parameters.insert("error".to_owned(), "invalid_request".to_owned());

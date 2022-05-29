@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::time::SystemTime;
 
@@ -285,8 +286,8 @@ impl<T> OptionRequiredExt<T> for Option<T> {
 }
 
 impl UrlEncodable for IdToken {
-    fn params(self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
+    fn params(self) -> IndexMap<String, String> {
+        let mut map = IndexMap::new();
         map.insert("id_token".to_owned(), self.0.serialize_owned());
         map
     }

@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -33,7 +34,7 @@ pub trait ResponseModeEncoder {
     fn encode(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse>;
 }
 
@@ -54,7 +55,7 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
     fn encode(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let response_mode = &context.response_mode;
         let encoder = self
@@ -100,7 +101,7 @@ where
     fn encode(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         T::encode(self, context, parameters)
     }

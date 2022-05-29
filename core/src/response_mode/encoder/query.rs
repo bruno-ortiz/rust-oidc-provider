@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use oidc_types::response_mode::ResponseMode;
 use std::collections::HashMap;
 
@@ -10,7 +11,7 @@ impl ResponseModeEncoder for QueryEncoder {
     fn encode(
         &self,
         context: &EncodingContext,
-        parameters: HashMap<String, String>,
+        parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let mut callback_uri = context.redirect_uri.clone();
         callback_uri

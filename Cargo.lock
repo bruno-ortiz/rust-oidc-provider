@@ -852,6 +852,7 @@ dependencies = [
  "async-trait",
  "base64",
  "form_urlencoded",
+ "indexmap",
  "josekit",
  "oidc-types",
  "serde",
