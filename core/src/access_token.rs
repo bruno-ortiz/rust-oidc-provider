@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use oidc_types::hash::Hashable;
-use std::collections::HashMap;
+
 
 use crate::response_type::UrlEncodable;
 

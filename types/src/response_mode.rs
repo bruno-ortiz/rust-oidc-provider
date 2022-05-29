@@ -59,7 +59,7 @@ mod tests {
     fn serialize(response_mode: &ResponseMode) -> String {
         serde_json::to_string(response_mode)
             .unwrap()
-            .replace("\"", "")
+            .replace('\"', "")
     }
 
     fn deserialize(response_mode: &str) -> ResponseMode {

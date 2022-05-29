@@ -26,13 +26,13 @@ impl Adapter for InMemoryClientAdapter {
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
         let storage = self.storage.read().unwrap();
-        let item = storage.get(&id).cloned();
+        let item = storage.get(id).cloned();
         item
     }
 
     async fn save(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
         let mut storage = self.storage.write().unwrap();
-        let id = item.id.clone();
+        let id = item.id;
         storage.insert(id, item.clone());
         Ok(item)
     }

@@ -2,7 +2,7 @@ use crate::hash::Hashable;
 use crate::url_encodable::UrlEncodable;
 use indexmap::IndexMap;
 use serde::Deserialize;
-use std::collections::HashMap;
+
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct State(String);

@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use std::collections::HashMap;
+
 use std::time::SystemTime;
 
 use josekit::jwk::Jwk;
