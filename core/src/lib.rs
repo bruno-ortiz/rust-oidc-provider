@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod access_token;
 mod adapter;
 pub mod authorisation_code;

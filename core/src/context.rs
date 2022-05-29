@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use oidc_types::client::ClientInformation;
+use oidc_types::response_type::Flow;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
@@ -26,5 +27,9 @@ impl OpenIDContext {
             request,
             configuration,
         }
+    }
+
+    pub fn flow_type(&self) -> Flow {
+        self.request.response_type.flow()
     }
 }

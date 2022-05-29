@@ -14,7 +14,27 @@ use thiserror::Error;
 use crate::response_mode::ResponseMode;
 use crate::serialize_to_str;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, Ord, PartialOrd)]
+#[macro_export]
+macro_rules! response_type {
+    ($($rt:expr),*) =>{
+        {
+            let mut temp_vec = vec![];
+            $(
+                temp_vec.push($rt);
+            )*
+            $crate::response_type::ResponseType::new(temp_vec)
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Flow {
+    Code,
+    Implicit,
+    Hybrid,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Copy, Clone, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseTypeValue {
     Code,
@@ -56,6 +76,16 @@ impl FromStr for ResponseTypeValue {
 lazy_static! {
     static ref FRAGMENT_VALUES: Vec<ResponseTypeValue> =
         vec![ResponseTypeValue::IdToken, ResponseTypeValue::Token];
+    static ref CODE_FLOW: ResponseType = response_type![ResponseTypeValue::Code];
+    static ref CODE_ID_TOKEN_FLOW: ResponseType =
+        response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken];
+    static ref CODE_ID_TOKEN_TOKEN_FLOW: ResponseType = response_type![
+        ResponseTypeValue::Code,
+        ResponseTypeValue::IdToken,
+        ResponseTypeValue::Token
+    ];
+    static ref CODE_TOKEN_FLOW: ResponseType =
+        response_type![ResponseTypeValue::Code, ResponseTypeValue::Token];
 }
 
 #[derive(Debug, Eq, Clone)]
@@ -78,6 +108,19 @@ impl ResponseType {
             ResponseMode::Fragment
         } else {
             ResponseMode::Query
+        }
+    }
+
+    pub fn flow(&self) -> Flow {
+        if *self == *CODE_FLOW {
+            Flow::Code
+        } else if *self == *CODE_ID_TOKEN_FLOW
+            || *self == *CODE_TOKEN_FLOW
+            || *self == *CODE_ID_TOKEN_TOKEN_FLOW
+        {
+            Flow::Hybrid
+        } else {
+            Flow::Implicit
         }
     }
 }
@@ -140,19 +183,6 @@ impl<'de> Deserialize<'de> for ResponseType {
             }
         }
         deserializer.deserialize_str(ResponseTypeVisitor)
-    }
-}
-
-#[macro_export]
-macro_rules! response_type {
-    ($($rt:expr),*) =>{
-        {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push($rt);
-            )*
-            $crate::response_type::ResponseType::new(temp_vec)
-        }
     }
 }
 

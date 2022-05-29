@@ -1,4 +1,3 @@
-use serde::ser::Impossible;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]

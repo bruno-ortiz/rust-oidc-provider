@@ -110,6 +110,7 @@ mod tests {
             redirect_uri: Url::parse("https://test.com/callback").unwrap(),
             scope: scopes!("openid", "test"),
             state: None,
+            nonce: None,
             response_mode: None,
             code_challenge: Some(CodeChallenge::new("some code here")),
             code_challenge_method: Some(CodeChallengeMethod::Plain),

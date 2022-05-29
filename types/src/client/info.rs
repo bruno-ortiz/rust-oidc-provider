@@ -29,7 +29,7 @@ impl From<ClientID> for String {
 
 impl Display for ClientID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", 0)
+        write!(f, "{}", self.0)
     }
 }
 

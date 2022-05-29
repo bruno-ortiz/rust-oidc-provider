@@ -17,6 +17,7 @@ use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt::JWT;
 use oidc_types::jose::JwsHeaderExt;
+use oidc_types::nonce::Nonce;
 use oidc_types::state::State;
 use oidc_types::subject::Subject;
 
@@ -41,9 +42,9 @@ impl IdToken {
         IdTokenBuilder::new(signing_key)
     }
 
-    // pub fn sub(&self) -> Subject {
-    //     self.0.
-    // }
+    pub fn payload(&self) -> &JwtPayload {
+        self.0.payload()
+    }
 
     pub fn serialized(self) -> String {
         self.0.serialize_owned()
@@ -59,7 +60,7 @@ pub struct IdTokenBuilder<'a> {
     expires_at: Option<OffsetDateTime>,
     issued_at: Option<OffsetDateTime>,
     auth_time: Option<OffsetDateTime>,
-    nonce: Option<String>,
+    nonce: Option<Nonce>,
     acr: Option<String>,
     amr: Option<String>,
     azp: Option<String>,
@@ -118,8 +119,8 @@ impl<'a> IdTokenBuilder<'a> {
         self
     }
 
-    pub fn with_nonce(mut self, nonce: &str) -> Self {
-        self.nonce = Some(nonce.to_owned());
+    pub fn with_nonce(mut self, nonce: Option<&Nonce>) -> Self {
+        self.nonce = nonce.cloned();
         self
     }
     pub fn with_acr(mut self, acr: &str) -> Self {
@@ -176,6 +177,9 @@ impl<'a> IdTokenBuilder<'a> {
         payload.set_acr(self.acr);
         payload.set_amr(self.amr);
         payload.set_azp(self.azp);
+        payload.set_s_hash(self.s_hash);
+        payload.set_c_hash(self.c_hash);
+        payload.set_at_hash(self.at_hash);
         let jwt = JWT::new(header, payload, self.signing_key)
             .map_err(|err| IdTokenError::EncodingErr { source: err })?;
         Ok(IdToken(jwt))
@@ -193,10 +197,13 @@ impl<'a> IdTokenBuilder<'a> {
 
 trait JwtPayloadExt {
     fn set_auth_time(&mut self, value: Option<OffsetDateTime>);
-    fn set_nonce(&mut self, value: Option<String>);
+    fn set_nonce(&mut self, value: Option<Nonce>);
     fn set_acr(&mut self, value: Option<String>);
     fn set_amr(&mut self, value: Option<String>);
     fn set_azp(&mut self, value: Option<String>);
+    fn set_s_hash(&mut self, value: Option<String>);
+    fn set_c_hash(&mut self, value: Option<String>);
+    fn set_at_hash(&mut self, value: Option<String>);
 }
 
 impl JwtPayloadExt for JwtPayload {
@@ -213,9 +220,9 @@ impl JwtPayloadExt for JwtPayload {
         }
     }
 
-    fn set_nonce(&mut self, value: Option<String>) {
+    fn set_nonce(&mut self, value: Option<Nonce>) {
         if let Some(nonce) = value {
-            self.set_claim("nonce", Some(Value::String(nonce)))
+            self.set_claim("nonce", Some(Value::String(nonce.into())))
                 .expect("Cannot set nonce on JWT");
         }
     }
@@ -238,6 +245,27 @@ impl JwtPayloadExt for JwtPayload {
         if let Some(azp) = value {
             self.set_claim("azp", Some(Value::String(azp)))
                 .expect("Cannot set azp on JWT");
+        }
+    }
+
+    fn set_s_hash(&mut self, value: Option<String>) {
+        if let Some(s_hash) = value {
+            self.set_claim("s_hash", Some(Value::String(s_hash)))
+                .expect("Cannot set s_hash on JWT");
+        }
+    }
+
+    fn set_c_hash(&mut self, value: Option<String>) {
+        if let Some(c_hash) = value {
+            self.set_claim("c_hash", Some(Value::String(c_hash)))
+                .expect("Cannot set c_hash on JWT");
+        }
+    }
+
+    fn set_at_hash(&mut self, value: Option<String>) {
+        if let Some(at_hash) = value {
+            self.set_claim("at_hash", Some(Value::String(at_hash)))
+                .expect("Cannot set at_hash on JWT");
         }
     }
 }

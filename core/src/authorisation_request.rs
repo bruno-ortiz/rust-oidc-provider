@@ -4,6 +4,7 @@ use url::Url;
 
 use oidc_types::client::{ClientID, ClientInformation};
 use oidc_types::jose::jwt::JWT;
+use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
@@ -21,6 +22,7 @@ pub struct ValidatedAuthorisationRequest {
     pub redirect_uri: Url,
     pub scope: Scopes,
     pub state: Option<State>,
+    pub nonce: Option<Nonce>,
     pub response_mode: Option<ResponseMode>,
     pub code_challenge: Option<CodeChallenge>,
     pub code_challenge_method: Option<CodeChallengeMethod>,
@@ -56,6 +58,7 @@ pub struct AuthorisationRequest {
     pub redirect_uri: Option<Url>,
     pub scope: Option<Scopes>,
     pub state: Option<State>,
+    pub nonce: Option<Nonce>,
     pub response_mode: Option<ResponseMode>,
     pub code_challenge: Option<String>,
     pub code_challenge_method: Option<CodeChallengeMethod>,
@@ -97,6 +100,7 @@ impl AuthorisationRequest {
             redirect_uri: self.redirect_uri.expect("Redirect URI not found"),
             scope: self.scope.expect("Scope not found"),
             state: self.state,
+            nonce: self.nonce,
             response_mode: self.response_mode,
             code_challenge: self.code_challenge.map(CodeChallenge::new),
             code_challenge_method: self.code_challenge_method,

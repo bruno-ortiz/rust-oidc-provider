@@ -8,7 +8,7 @@ use josekit::jws::{
 use josekit::jwt;
 use josekit::jwt::JwtPayload;
 use serde::de::{Error, Visitor};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::jose::error::JWTError;
@@ -63,6 +63,22 @@ impl JWT {
             payload,
             signed_repr: str_jwt.to_owned(),
         })
+    }
+
+    pub fn header(&self) -> &JwsHeader {
+        &self.header
+    }
+
+    pub fn payload(&self) -> &JwtPayload {
+        &self.payload
+    }
+
+    pub fn serialize(&self) -> &str {
+        &self.signed_repr
+    }
+
+    pub fn serialize_owned(self) -> String {
+        self.signed_repr
     }
 
     fn get_signer(key: &Jwk) -> Result<Box<dyn JwsSigner>, JWTError> {
@@ -146,14 +162,6 @@ impl JWT {
         };
         Ok(signer)
     }
-
-    pub fn serialize(&self) -> &str {
-        &self.signed_repr
-    }
-
-    pub fn serialize_owned(self) -> String {
-        self.signed_repr
-    }
 }
 
 impl Serialize for JWT {
@@ -182,7 +190,7 @@ impl<'de> Deserialize<'de> for JWT {
             where
                 E: Error,
             {
-                let jwt = JWT::decode_no_verify(v).map_err(de::Error::custom)?;
+                let jwt = JWT::decode_no_verify(v).map_err(Error::custom)?;
                 Ok(jwt)
             }
         }

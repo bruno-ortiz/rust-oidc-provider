@@ -42,8 +42,8 @@ where
 #[cfg(test)]
 mod tests {
     use josekit::jwk::Jwk;
-    use url::Url;
     use oidc_types::client::ClientID;
+    use url::Url;
 
     use oidc_types::scopes;
     use oidc_types::subject::Subject;

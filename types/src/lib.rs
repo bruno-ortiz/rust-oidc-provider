@@ -7,9 +7,11 @@ pub mod grant_type;
 pub mod hash;
 pub mod issuer;
 pub mod jose;
+pub mod nonce;
 pub mod pkce;
 pub mod prompt;
 pub mod response_mode;
+#[allow(clippy::vec_init_then_push)]
 pub mod response_type;
 pub mod scopes;
 pub mod state;
