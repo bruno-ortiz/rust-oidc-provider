@@ -20,7 +20,6 @@ use crate::services::interaction::Interaction;
 pub struct OpenIDProviderConfiguration {
     pkce: PKCE,
     jwks: JwkSet,
-    //TODO: impl routes
     routes: Routes,
     adapters: AdapterContainer,
     response_types_supported: Vec<ResponseType>,
@@ -151,9 +150,9 @@ impl Default for OpenIDProviderConfiguration {
             routes: Routes::default(),
             adapters: AdapterContainer::default(),
             response_types_supported: vec![
-                response_type![Code, IdToken],
                 response_type![Code],
                 response_type![IdToken],
+                response_type![Code, IdToken],
             ],
             response_modes_supported: vec![ResponseMode::Query, ResponseMode::Fragment],
             jwt_secure_response_mode: false,

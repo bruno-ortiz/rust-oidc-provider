@@ -76,15 +76,19 @@ impl FromStr for ResponseTypeValue {
 lazy_static! {
     static ref FRAGMENT_VALUES: Vec<ResponseTypeValue> =
         vec![ResponseTypeValue::IdToken, ResponseTypeValue::Token];
-    static ref CODE_FLOW: ResponseType = response_type![ResponseTypeValue::Code];
-    static ref CODE_ID_TOKEN_FLOW: ResponseType =
+    pub static ref CODE_FLOW: ResponseType = response_type![ResponseTypeValue::Code];
+    pub static ref ID_TOKEN_FLOW: ResponseType = response_type![ResponseTypeValue::IdToken];
+    pub static ref TOKEN_FLOW: ResponseType = response_type![ResponseTypeValue::Token];
+    pub static ref CODE_ID_TOKEN_FLOW: ResponseType =
         response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken];
-    static ref CODE_ID_TOKEN_TOKEN_FLOW: ResponseType = response_type![
+    pub static ref CODE_ID_TOKEN_TOKEN_FLOW: ResponseType = response_type![
         ResponseTypeValue::Code,
         ResponseTypeValue::IdToken,
         ResponseTypeValue::Token
     ];
-    static ref CODE_TOKEN_FLOW: ResponseType =
+    pub static ref ID_TOKEN_TOKEN_FLOW: ResponseType =
+        response_type![ResponseTypeValue::IdToken, ResponseTypeValue::Token];
+    pub static ref CODE_TOKEN_FLOW: ResponseType =
         response_type![ResponseTypeValue::Code, ResponseTypeValue::Token];
 }
 
@@ -117,6 +121,7 @@ impl ResponseType {
         } else if *self == *CODE_ID_TOKEN_FLOW
             || *self == *CODE_TOKEN_FLOW
             || *self == *CODE_ID_TOKEN_TOKEN_FLOW
+            || *self == *ID_TOKEN_TOKEN_FLOW
         {
             Flow::Hybrid
         } else {

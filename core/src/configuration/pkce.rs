@@ -9,7 +9,7 @@ pub struct PKCE {
 impl Default for PKCE {
     fn default() -> Self {
         PKCE {
-            required: true,
+            required: false,
             methods: vec![CodeChallengeMethod::S256],
         }
     }
