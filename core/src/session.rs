@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+use oidc_types::identifiable::Identifiable;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::{Error as UuidError, Uuid};
@@ -70,5 +71,11 @@ impl Default for SessionID {
 impl Display for SessionID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl Identifiable<String> for AuthenticatedUser {
+    fn id(&self) -> String {
+        self.session.0.to_string()
     }
 }

@@ -1,3 +1,4 @@
+use oidc_types::identifiable::Identifiable;
 use uuid::Uuid;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
@@ -36,5 +37,11 @@ impl Interaction {
     }
     pub fn user(&self) -> &Option<AuthenticatedUser> {
         &self.user
+    }
+}
+
+impl Identifiable<Uuid> for Interaction {
+    fn id(&self) -> Uuid {
+        self.id
     }
 }

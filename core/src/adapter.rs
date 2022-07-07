@@ -3,10 +3,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 use thiserror::Error;
 
-pub mod client_adapter;
-pub mod code_adapter;
-pub mod interaction_adapter;
-pub mod user_adapter;
+pub mod generic_adapter;
 
 #[derive(Error, Debug)]
 pub enum PersistenceError {}

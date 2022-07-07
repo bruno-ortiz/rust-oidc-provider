@@ -5,6 +5,7 @@ mod discovery;
 pub mod grant;
 pub mod grant_type;
 pub mod hash;
+pub mod identifiable;
 pub mod issuer;
 pub mod jose;
 pub mod nonce;

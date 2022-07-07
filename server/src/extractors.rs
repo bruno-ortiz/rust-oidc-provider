@@ -14,9 +14,6 @@ pub const SESSION_KEY: &str = "oidc-session";
 
 pub type ShareableSessionInner = Arc<Mutex<SessionInner>>;
 
-#[derive(Debug, Clone)]
-pub struct SessionHolder(ShareableSessionInner);
-
 #[derive(Debug)]
 pub struct SessionInner {
     session: SessionID,
@@ -68,6 +65,9 @@ impl SessionInner {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct SessionHolder(ShareableSessionInner);
 
 impl SessionHolder {
     pub fn new(inner: ShareableSessionInner) -> Self {

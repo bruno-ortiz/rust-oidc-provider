@@ -4,6 +4,7 @@ use url::Url;
 
 use oidc_types::client::ClientID;
 use oidc_types::hash::Hashable;
+use oidc_types::identifiable::Identifiable;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
@@ -39,5 +40,11 @@ impl UrlEncodable for AuthorisationCode {
         let mut map = IndexMap::new();
         map.insert("code".to_owned(), self.code);
         map
+    }
+}
+
+impl Identifiable<String> for AuthorisationCode {
+    fn id(&self) -> String {
+        self.code.clone()
     }
 }

@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use oidc_types::hash::Hashable;
+use oidc_types::identifiable::Identifiable;
 use time::Duration;
 
 use crate::response_type::UrlEncodable;
@@ -47,5 +48,11 @@ impl UrlEncodable for AccessToken {
             map.insert("refresh_token".to_owned(), rt);
         }
         map
+    }
+}
+
+impl Identifiable<String> for AccessToken {
+    fn id(&self) -> String {
+        self.token.clone()
     }
 }

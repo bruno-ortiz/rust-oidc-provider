@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::auth_method::AuthMethod;
 use crate::grant_type::GrantType;
+use crate::identifiable::Identifiable;
 use crate::jose::jwk_set::JwkSet;
 use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
@@ -65,4 +66,10 @@ pub struct ClientInformation {
     pub id: ClientID,
     pub issue_date: OffsetDateTime,
     pub metadata: ClientMetadata,
+}
+
+impl Identifiable<ClientID> for ClientInformation {
+    fn id(&self) -> ClientID {
+        self.id
+    }
 }

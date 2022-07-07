@@ -48,7 +48,7 @@ impl ResponseTypeResolver for CodeResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::code_adapter::InMemoryAuthorisationCodeAdapter;
+    use crate::adapter::generic_adapter::InMemoryGenericAdapter;
     use crate::authorisation_request::ValidatedAuthorisationRequest;
     use crate::configuration::OpenIDProviderConfiguration;
     use crate::session::{AuthenticatedUser, SessionID};
@@ -63,7 +63,7 @@ mod tests {
     #[tokio::test]
     async fn can_generate_authorisation_code() {
         let context = setup_context();
-        let resolver = CodeResolver::new(Arc::new(InMemoryAuthorisationCodeAdapter::new()));
+        let resolver = CodeResolver::new(Arc::new(InMemoryGenericAdapter::new()));
 
         let code = resolver
             .resolve(&context)
@@ -85,7 +85,7 @@ mod tests {
     #[tokio::test]
     async fn can_find_authorisation_code() {
         let context = setup_context();
-        let adapter = Arc::new(InMemoryAuthorisationCodeAdapter::new());
+        let adapter = Arc::new(InMemoryGenericAdapter::new());
         let resolver = CodeResolver::new(adapter.clone());
 
         let code = resolver

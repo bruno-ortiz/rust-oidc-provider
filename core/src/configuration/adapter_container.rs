@@ -2,12 +2,10 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
+use crate::access_token::AccessToken;
 use oidc_types::client::{ClientID, ClientInformation};
 
-use crate::adapter::client_adapter::InMemoryClientAdapter;
-use crate::adapter::code_adapter::InMemoryAuthorisationCodeAdapter;
-use crate::adapter::interaction_adapter::InMemoryInteractionAdapter;
-use crate::adapter::user_adapter::InMemoryUserAdapter;
+use crate::adapter::generic_adapter::InMemoryGenericAdapter;
 use crate::adapter::Adapter;
 use crate::authorisation_code::AuthorisationCode;
 use crate::services::interaction::Interaction;
@@ -15,6 +13,7 @@ use crate::session::AuthenticatedUser;
 
 pub struct AdapterContainer {
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
+    token: Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync>,
     client: Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>,
     user: Arc<dyn Adapter<Item = AuthenticatedUser, Id = String> + Send + Sync>,
     interaction: Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>,
@@ -31,7 +30,7 @@ impl AdapterContainer {
         self.client.clone()
     }
 
-    pub fn user(&self) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = String>> {
+    pub fn user(&self) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = String> + Send + Sync> {
         self.user.clone()
     }
 
@@ -43,10 +42,11 @@ impl AdapterContainer {
 impl Default for AdapterContainer {
     fn default() -> Self {
         AdapterContainer {
-            code: Arc::new(InMemoryAuthorisationCodeAdapter::new()),
-            client: Arc::new(InMemoryClientAdapter::new()),
-            user: Arc::new(InMemoryUserAdapter::new()),
-            interaction: Arc::new(InMemoryInteractionAdapter::new()),
+            code: Arc::new(InMemoryGenericAdapter::new()),
+            token: Arc::new(InMemoryGenericAdapter::new()),
+            client: Arc::new(InMemoryGenericAdapter::new()),
+            user: Arc::new(InMemoryGenericAdapter::new()),
+            interaction: Arc::new(InMemoryGenericAdapter::new()),
         }
     }
 }
