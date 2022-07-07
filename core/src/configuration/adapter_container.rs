@@ -24,6 +24,10 @@ impl AdapterContainer {
         self.code.clone()
     }
 
+    pub fn token(&self) -> Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync> {
+        self.token.clone()
+    }
+
     pub fn client(
         &self,
     ) -> Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync> {

@@ -14,14 +14,17 @@ use crate::response_type::resolver::ResponseTypeResolver;
 
 pub struct CodeIdTokenTokenResolver {
     code_resolver: CodeResolver,
+    token_resolver: TokenResolver,
 }
 
 impl CodeIdTokenTokenResolver {
     pub fn new(
-        adapter: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
+        code_adapter: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
+        token_adapter: Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync>,
     ) -> Self {
         Self {
-            code_resolver: CodeResolver::new(adapter),
+            code_resolver: CodeResolver::new(code_adapter),
+            token_resolver: TokenResolver::new(token_adapter),
         }
     }
 }
@@ -32,7 +35,7 @@ impl ResponseTypeResolver for CodeIdTokenTokenResolver {
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let code = self.code_resolver.resolve(context);
-        let token = TokenResolver.resolve(context);
+        let token = self.token_resolver.resolve(context);
 
         let (code, token) = tokio::try_join!(code, token)?;
 
