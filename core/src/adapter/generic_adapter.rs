@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::hash::Hash;
 use std::sync::RwLock;
 
@@ -7,7 +6,6 @@ use async_trait::async_trait;
 use oidc_types::identifiable::Identifiable;
 
 use crate::adapter::{Adapter, PersistenceError};
-use crate::authorisation_code::AuthorisationCode;
 
 pub struct InMemoryGenericAdapter<ID, IT> {
     storage: RwLock<HashMap<ID, IT>>,

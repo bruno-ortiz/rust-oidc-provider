@@ -42,9 +42,29 @@ impl ResponseTypeResolver for TokenResolver {
 
 #[cfg(test)]
 mod tests {
+    use crate::adapter::generic_adapter::InMemoryGenericAdapter;
+    use crate::adapter::Adapter;
+    use crate::context::test_utils::setup_context;
+    use crate::response_type::resolver::token::TokenResolver;
+    use crate::response_type::resolver::ResponseTypeResolver;
+    use oidc_types::hash::Hashable;
+    use oidc_types::identifiable::Identifiable;
+    use oidc_types::response_type;
+    use oidc_types::response_type::ResponseTypeValue;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_can_create_access_token() {
-        todo!()
+        let context = setup_context(response_type!(ResponseTypeValue::Token), None, None);
+        let adapter = Arc::new(InMemoryGenericAdapter::new());
+
+        let resolver = TokenResolver::new(adapter.clone());
+
+        let token = resolver.resolve(&context).await.expect("Should be Ok()");
+
+        let new_token = adapter.find(&token.id()).await;
+
+        assert!(new_token.is_some());
+        assert_eq!(token, new_token.unwrap());
     }
 }

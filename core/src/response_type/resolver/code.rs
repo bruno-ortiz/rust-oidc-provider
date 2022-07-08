@@ -49,20 +49,13 @@ impl ResponseTypeResolver for CodeResolver {
 mod tests {
     use super::*;
     use crate::adapter::generic_adapter::InMemoryGenericAdapter;
-    use crate::authorisation_request::ValidatedAuthorisationRequest;
-    use crate::configuration::OpenIDProviderConfiguration;
-    use crate::session::{AuthenticatedUser, SessionID};
-    use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
-    use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
+    use crate::context::test_utils::setup_context;
+    use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
-    use oidc_types::subject::Subject;
-    use oidc_types::{response_type, scopes};
-    use time::OffsetDateTime;
-    use url::Url;
 
     #[tokio::test]
     async fn can_generate_authorisation_code() {
-        let context = setup_context();
+        let context = setup_context(response_type![ResponseTypeValue::Code], None, None);
         let resolver = CodeResolver::new(Arc::new(InMemoryGenericAdapter::new()));
 
         let code = resolver
@@ -84,7 +77,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_find_authorisation_code() {
-        let context = setup_context();
+        let context = setup_context(response_type![ResponseTypeValue::Code], None, None);
         let adapter = Arc::new(InMemoryGenericAdapter::new());
         let resolver = CodeResolver::new(adapter.clone());
 
@@ -99,58 +92,5 @@ mod tests {
             .expect("Expected authorisation code to be saved");
 
         assert_eq!(code, saved_code)
-    }
-
-    //noinspection DuplicatedCode
-    fn setup_context() -> OpenIDContext {
-        let client_id = ClientID::new(Uuid::new_v4());
-        let request = ValidatedAuthorisationRequest {
-            client_id,
-            response_type: response_type![ResponseTypeValue::Code],
-            redirect_uri: Url::parse("https://test.com/callback").unwrap(),
-            scope: scopes!("openid", "test"),
-            state: None,
-            nonce: None,
-            response_mode: None,
-            code_challenge: Some(CodeChallenge::new("some code here")),
-            code_challenge_method: Some(CodeChallengeMethod::Plain),
-            resource: None,
-            include_granted_scopes: None,
-            request_uri: None,
-            request: None,
-            prompt: None,
-        };
-        let client = ClientInformation {
-            id: client_id,
-            issue_date: OffsetDateTime::now_utc(),
-            metadata: ClientMetadata {
-                redirect_uris: vec![],
-                token_endpoint_auth_method: None,
-                grant_types: vec![],
-                response_types: vec![],
-                scope: scopes!("openid", "test"),
-                client_name: None,
-                client_uri: None,
-                logo_uri: None,
-                tos_uri: None,
-                policy_uri: None,
-                contacts: vec![],
-                jwks_uri: None,
-                jwks: None,
-                software_id: None,
-                software_version: None,
-                software_statement: None,
-            },
-        };
-
-        let user = AuthenticatedUser::new(
-            SessionID::default(),
-            Subject::new("some-id"),
-            OffsetDateTime::now_utc(),
-            120,
-        );
-
-        let config = OpenIDProviderConfiguration::default();
-        OpenIDContext::new(Arc::new(client), user, request, Arc::new(config))
     }
 }
