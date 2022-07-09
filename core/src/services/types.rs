@@ -24,7 +24,7 @@ pub struct Interaction {
 impl Interaction {
     pub fn login(session: SessionID, request: ValidatedAuthorisationRequest) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: Uuid::new_v4(),
             session,
             request,
             status: InteractionStatus::Login,

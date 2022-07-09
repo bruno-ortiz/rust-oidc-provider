@@ -75,14 +75,14 @@ impl OidcServer {
         let encoder = Arc::new(DynamicResponseModeEncoder::from(
             self.configuration.borrow(),
         ));
-        let auth_service = Arc::new(AuthorisationService::new(
+        let authorisation_service = Arc::new(AuthorisationService::new(
             DynamicResponseTypeResolver::from(self.configuration.borrow()),
             encoder.clone(),
             self.configuration.clone(),
         ));
         let interaction_service = Arc::new(InteractionService::new(
             self.configuration.clone(),
-            auth_service.clone(),
+            authorisation_service.clone(),
         ));
         // .route("interaction/login", post(login_complete))
         let mut router = Router::new().route(
@@ -99,7 +99,7 @@ impl OidcServer {
                 .add_extension(client_service)
                 .add_extension(interaction_service)
                 .add_extension(encoder)
-                .add_extension(auth_service)
+                .add_extension(authorisation_service)
                 .add_extension(self.configuration.clone()),
         )
     }

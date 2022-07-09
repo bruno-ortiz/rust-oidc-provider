@@ -38,7 +38,7 @@ impl AdapterContainer {
         self.user.clone()
     }
 
-    pub fn interaction(&self) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid>> {
+    pub fn interaction(&self) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync> {
         self.interaction.clone()
     }
 }

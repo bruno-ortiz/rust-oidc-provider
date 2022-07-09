@@ -47,7 +47,6 @@ mod tests {
     use crate::context::test_utils::setup_context;
     use crate::response_type::resolver::token::TokenResolver;
     use crate::response_type::resolver::ResponseTypeResolver;
-    use oidc_types::hash::Hashable;
     use oidc_types::identifiable::Identifiable;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
