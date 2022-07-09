@@ -17,6 +17,6 @@ pub mod response_type;
 pub mod scopes;
 pub mod state;
 pub mod subject;
-mod subject_type;
+pub mod subject_type;
 pub mod url_encodable;
 mod utils;

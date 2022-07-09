@@ -10,12 +10,18 @@ use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
 use oidc_types::scopes::Scopes;
+use oidc_types::subject_type::SubjectType;
 use oidc_types::{response_type, scopes};
 
 use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
 use crate::services::interaction::Interaction;
+
+const DEFAULT_ISSUER: &str = "http://localhost:3000";
+
+type InteractionFunction =
+    Box<dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>;
 
 pub struct OpenIDProviderConfiguration {
     pkce: PKCE,
@@ -28,10 +34,10 @@ pub struct OpenIDProviderConfiguration {
     issuer: Issuer,
     grant_types_supported: Vec<GrantType>,
     scopes_supported: Scopes,
-    interaction_config:
-        Box<dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>,
+    interaction_base_url: Url,
+    interaction_config: InteractionFunction,
+    subject_types_supported: Vec<SubjectType>,
     acr_values_supported: Option<Vec<String>>,
-    subject_types_supported: Option<Vec<String>>,
     id_token_signing_alg_values_supported: Option<Vec<String>>,
     id_token_encryption_alg_values_supported: Option<Vec<String>>,
     id_token_encryption_enc_values_supported: Option<Vec<String>>,
@@ -81,6 +87,24 @@ impl OpenIDProviderConfiguration {
 
     pub fn issuer(&self) -> &Issuer {
         &self.issuer
+    }
+
+    pub fn support_scopes(mut self, scopes: Scopes) -> Self {
+        self.scopes_supported = scopes;
+        self
+    }
+
+    pub fn scopes_supported(&self) -> &Scopes {
+        &self.scopes_supported
+    }
+
+    pub fn support_grants(mut self, grants: Vec<GrantType>) -> Self {
+        self.grant_types_supported = grants;
+        self
+    }
+
+    pub fn grants_supported(&self) -> &Vec<GrantType> {
+        &self.grant_types_supported
     }
 
     pub fn with_response_types(mut self, response_types: Vec<ResponseType>) -> Self {
@@ -156,15 +180,17 @@ impl Default for OpenIDProviderConfiguration {
             ],
             response_modes_supported: vec![ResponseMode::Query, ResponseMode::Fragment],
             jwt_secure_response_mode: false,
-            issuer: Issuer::new("http://localhost:3000"),
+            issuer: Issuer::new(DEFAULT_ISSUER),
             scopes_supported: scopes!("openid"),
             grant_types_supported: vec![
                 GrantType::AuthorizationCode,
                 GrantType::ClientCredentials,
                 GrantType::RefreshToken,
             ],
+            interaction_base_url: Url::parse(DEFAULT_ISSUER)
+                .expect("Default issuer should be a valid url"),
             interaction_config: Box::new(|interaction, config| {
-                let base_url = config.issuer.inner_ref();
+                let base_url = &config.interaction_base_url;
                 let mut url = if interaction.user().is_none() {
                     base_url
                         .join("/interaction/login/")
@@ -178,8 +204,8 @@ impl Default for OpenIDProviderConfiguration {
                     .append_pair("interaction_id", &interaction.id().to_string());
                 url
             }),
+            subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise], //TODO: create subject type resolvers
             acr_values_supported: None,
-            subject_types_supported: None,
             id_token_signing_alg_values_supported: None,
             id_token_encryption_alg_values_supported: None,
             id_token_encryption_enc_values_supported: None,

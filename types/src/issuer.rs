@@ -15,10 +15,6 @@ impl Issuer {
             Err(error) => panic!("Configured issuer should be a valid URL. Err: {:?}", error),
         }
     }
-
-    pub fn inner_ref(&self) -> &Url {
-        &self.0
-    }
 }
 
 impl Serialize for Issuer {
