@@ -7,7 +7,9 @@ use axum::Router;
 use futures::try_join;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
+use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
+use tracing::info;
 
 use oidc_core::client::ClientService;
 use oidc_core::configuration::OpenIDProviderConfiguration;
@@ -49,7 +51,7 @@ impl OidcServer {
         // run it
         let oidc_server = async {
             let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-            println!("listening on {}", addr);
+            info!("OpenId Server listening on {}", addr);
             axum::Server::bind(&addr)
                 .serve(oidc_router.into_make_service())
                 .await
@@ -58,7 +60,7 @@ impl OidcServer {
         let admin_server = async {
             let admin_router = Router::new().route("/admin", get(admin));
             let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
-            println!("listening on {}", addr);
+            info!("Admin Server listening on {}", addr);
             axum::Server::bind(&addr)
                 .serve(admin_router.into_make_service())
                 .await
@@ -94,8 +96,9 @@ impl OidcServer {
         }
         router.layer(
             ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
                 .layer(CookieManagerLayer::new())
-                .layer(SessionManagerLayer::signed(&[0; 32]))
+                .layer(SessionManagerLayer::signed(&[0; 32])) //TODO: key configuration
                 .add_extension(client_service)
                 .add_extension(interaction_service)
                 .add_extension(encoder)

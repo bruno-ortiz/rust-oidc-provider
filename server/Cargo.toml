@@ -14,7 +14,7 @@ hyper = { version = "0.14.19", features = ["full"] }
 tokio = { version = "1.18.2", features = ["full"] }
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
 serde = { version = "1.0.136", features = ["derive"] }
-tower-http = { version = "0.3.2", features = ["fs", "add-extension", "util"] }
+tower-http = { version = "0.3.2", features = ["fs", "add-extension", "util", "trace"] }
 tower = "0.4.12"
 tower-cookies = { version = "0.6.0", features = ["signed"] }
 cookie = { version = "0.16.0", features = ["key-expansion"] }
@@ -23,6 +23,7 @@ futures = "0.3.21"
 anyhow = "1.0.57"
 thiserror = "1.0.31"
 time = "0.3.9"
+tracing = "0.1.35"
 
 [dev-dependencies]
 axum-macros = "0.2.2"

@@ -15,8 +15,10 @@ use oidc_server::server::OidcServer;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let app = Router::new()
-        .route("/login", get(login))
+        .route("/interaction/login", get(login))
         .nest("/assets", serve_dir("./oidc-example/static/assets"));
 
     OidcServer::new().with_router(app).run().await.unwrap()
