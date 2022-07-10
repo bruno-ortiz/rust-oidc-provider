@@ -2,7 +2,8 @@ use oidc_types::identifiable::Identifiable;
 use uuid::Uuid;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
-use crate::session::{AuthenticatedUser, SessionID};
+use crate::session::SessionID;
+use crate::user::AuthenticatedUser;
 
 #[derive(Debug, Clone)]
 pub enum InteractionStatus {

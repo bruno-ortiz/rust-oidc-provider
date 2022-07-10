@@ -9,7 +9,7 @@ use crate::adapter::generic_adapter::InMemoryGenericAdapter;
 use crate::adapter::Adapter;
 use crate::authorisation_code::AuthorisationCode;
 use crate::services::interaction::Interaction;
-use crate::session::AuthenticatedUser;
+use crate::user::AuthenticatedUser;
 
 pub struct AdapterContainer {
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,

@@ -7,30 +7,17 @@ use oidc_types::subject::Subject;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::response_mode::encoder::ResponseModeEncoder;
-use crate::response_type::resolver::ResponseTypeResolver;
-use crate::services::authorisation::{AuthorisationError, AuthorisationService};
+use crate::services::authorisation::AuthorisationError;
 pub use crate::services::types::Interaction;
 use crate::session::SessionID;
 
-pub struct InteractionService<R, E> {
+pub struct InteractionService {
     configuration: Arc<OpenIDProviderConfiguration>,
-    auth_service: Arc<AuthorisationService<R, E>>,
 }
 
-impl<R, E> InteractionService<R, E>
-where
-    R: ResponseTypeResolver,
-    E: ResponseModeEncoder,
-{
-    pub fn new(
-        configuration: Arc<OpenIDProviderConfiguration>,
-        auth_service: Arc<AuthorisationService<R, E>>,
-    ) -> Self {
-        Self {
-            configuration,
-            auth_service,
-        }
+impl InteractionService {
+    pub fn new(configuration: Arc<OpenIDProviderConfiguration>) -> Self {
+        Self { configuration }
     }
 
     pub async fn begin_interaction(
@@ -50,13 +37,13 @@ where
         Ok(result)
     }
 
-    pub fn complete_login(
+    pub async fn complete_login(
         &self,
         interaction_id: Uuid,
         subject: Subject,
     ) -> Result<Url, AuthorisationError> {
         let repository = self.configuration.adapters().interaction();
-        let interaction = repository.find(&interaction_id);
+        let interaction = repository.find(&interaction_id).await;
         todo!()
     }
 }

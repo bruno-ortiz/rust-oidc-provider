@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
+use josekit::jwk::alg::ec::EcCurve;
 use josekit::jwk::Jwk;
+use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
 use josekit::JoseError;
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;
@@ -20,7 +22,11 @@ pub struct JwkSet {
 
 impl Default for JwkSet {
     fn default() -> Self {
-        JwkSet::new(Vec::new())
+        let mut jwk = Jwk::generate_ec_key(EcCurve::P256).unwrap();
+        jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.to_string());
+        jwk.set_key_id("default-key");
+        jwk.set_key_use("sig");
+        JwkSet::new(vec![jwk])
     }
 }
 

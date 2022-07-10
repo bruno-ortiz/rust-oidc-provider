@@ -94,19 +94,6 @@ impl DynamicResponseModeEncoder {
     }
 }
 
-impl<T> ResponseModeEncoder for Arc<T>
-where
-    T: ResponseModeEncoder,
-{
-    fn encode(
-        &self,
-        context: &EncodingContext,
-        parameters: IndexMap<String, String>,
-    ) -> Result<AuthorisationResponse> {
-        T::encode(self, context, parameters)
-    }
-}
-
 pub fn encode_response<E: ResponseModeEncoder, P: UrlEncodable>(
     context: EncodingContext,
     encoder: &E,

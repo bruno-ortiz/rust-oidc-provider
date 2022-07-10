@@ -4,7 +4,7 @@ use axum::extract::{Extension, Query};
 use axum::response::{IntoResponse, Redirect, Response, Result};
 
 use oidc_core::authorisation_request::AuthorisationRequest;
-use oidc_core::configuration::adapter_container::AdapterContainer;
+use oidc_core::client::retrieve_client_info;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::response_mode::encoder::{
     encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
@@ -14,8 +14,8 @@ use oidc_core::response_type::errors::OpenIdError;
 use oidc_core::response_type::resolver::ResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_core::services::interaction::InteractionService;
-use oidc_core::session::{AuthenticatedUser, SessionID};
-use oidc_types::client::{ClientID, ClientInformation};
+use oidc_core::user::find_user_by_session;
+use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
 
 use crate::extractors::SessionHolder;
@@ -25,27 +25,21 @@ use crate::routes::error::AuthorisationErrorWrapper;
 pub async fn authorise<R, E>(
     request: Query<AuthorisationRequest>,
     auth_service: Extension<Arc<AuthorisationService<R, E>>>,
-    interaction_service: Extension<Arc<InteractionService<R, E>>>,
+    interaction_service: Extension<Arc<InteractionService>>,
     encoder: Extension<Arc<DynamicResponseModeEncoder>>,
-    oidc_configuration: Extension<Arc<OpenIDProviderConfiguration>>,
+    configuration: Extension<Arc<OpenIDProviderConfiguration>>,
     session: SessionHolder,
 ) -> Result<Response, AuthorisationErrorWrapper>
 where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    let adapters = oidc_configuration.adapters();
-    let client_id = request
-        .client_id
-        .as_ref()
-        .ok_or(AuthorisationError::MissingClient)?;
-    let client = get_client(adapters, client_id).await?;
-    match request.0.validate(&client, &oidc_configuration) {
+    let client = get_client(&configuration, &request).await?;
+    match request.0.validate(&client, &configuration) {
         Ok(req) => {
-            let user = get_user(adapters, session.session_id()).await;
-            return match user {
+            return match find_user_by_session(&configuration, session.session_id()).await {
                 Some(user) => {
-                    let res = auth_service.authorise(user, client.clone(), req).await?;
+                    let res = auth_service.authorise(user, client, req).await?;
                     Ok(respond(res))
                 }
                 None => {
@@ -57,7 +51,7 @@ where
             };
         }
         Err((err, request)) => {
-            handle_validation_error(&encoder, &oidc_configuration, &client, err, request)
+            handle_validation_error(&encoder, &configuration, &client, err, request)
         }
     }
 }
@@ -104,18 +98,15 @@ fn encoding_context<'a>(
 }
 
 async fn get_client(
-    adapters: &AdapterContainer,
-    client_id: &ClientID,
-) -> Result<Arc<ClientInformation>, AuthorisationError> {
-    let client = adapters
-        .client()
-        .find(client_id)
+    configuration: &OpenIDProviderConfiguration,
+    request: &AuthorisationRequest,
+) -> Result<ClientInformation, AuthorisationError> {
+    let client_id = request
+        .client_id
+        .as_ref()
+        .ok_or(AuthorisationError::MissingClient)?;
+    let client = retrieve_client_info(configuration, client_id)
         .await
-        .map(Arc::new)
         .ok_or(AuthorisationError::InvalidClient)?;
     Ok(client)
-}
-
-async fn get_user(adapters: &AdapterContainer, session: SessionID) -> Option<AuthenticatedUser> {
-    adapters.user().find(&session.to_string()).await
 }

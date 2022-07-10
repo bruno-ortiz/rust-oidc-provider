@@ -5,7 +5,7 @@ use oidc_types::response_type::Flow;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::session::AuthenticatedUser;
+use crate::user::AuthenticatedUser;
 
 pub struct OpenIDContext {
     pub client: Arc<ClientInformation>,
@@ -39,7 +39,8 @@ pub mod test_utils {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
     use crate::configuration::OpenIDProviderConfiguration;
     use crate::context::OpenIDContext;
-    use crate::session::{AuthenticatedUser, SessionID};
+    use crate::session::SessionID;
+    use crate::user::AuthenticatedUser;
     use josekit::jwk::alg::ec::EcCurve;
     use josekit::jwk::Jwk;
     use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;

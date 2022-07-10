@@ -1,10 +1,12 @@
 use std::fmt::Debug;
 
 use josekit::jwk::Jwk;
+use josekit::jws::{EdDSA, ES256, PS256, RS256};
 use url::Url;
 
 use oidc_types::grant_type::GrantType;
 use oidc_types::issuer::Issuer;
+use oidc_types::jose::algorithm::Algorithm;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::ResponseType;
@@ -38,17 +40,17 @@ pub struct OpenIDProviderConfiguration {
     interaction_config: InteractionFunction,
     subject_types_supported: Vec<SubjectType>,
     acr_values_supported: Option<Vec<String>>,
-    id_token_signing_alg_values_supported: Option<Vec<String>>,
+    id_token_signing_alg_values_supported: Vec<Algorithm>,
     id_token_encryption_alg_values_supported: Option<Vec<String>>,
     id_token_encryption_enc_values_supported: Option<Vec<String>>,
-    userinfo_signing_alg_values_supported: Option<Vec<String>>,
+    userinfo_signing_alg_values_supported: Vec<Algorithm>,
     userinfo_encryption_alg_values_supported: Option<Vec<String>>,
     userinfo_encryption_enc_values_supported: Option<Vec<String>>,
-    request_object_signing_alg_values_supported: Option<Vec<String>>,
+    request_object_signing_alg_values_supported: Vec<Algorithm>,
     request_object_encryption_alg_values_supported: Option<Vec<String>>,
     request_object_encryption_enc_values_supported: Option<Vec<String>>,
     token_endpoint_auth_methods_supported: Option<Vec<String>>,
-    token_endpoint_auth_signing_alg_values_supported: Option<Vec<String>>,
+    token_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
     display_values_supported: Option<Vec<String>>,
     claim_types_supported: Option<Vec<String>>,
     claims_supported: Option<Vec<String>>,
@@ -206,17 +208,37 @@ impl Default for OpenIDProviderConfiguration {
             }),
             subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise], //TODO: create subject type resolvers
             acr_values_supported: None,
-            id_token_signing_alg_values_supported: None,
+            id_token_signing_alg_values_supported: vec![
+                Algorithm::from(RS256),
+                Algorithm::from(PS256),
+                Algorithm::from(ES256),
+                Algorithm::from(EdDSA),
+            ],
             id_token_encryption_alg_values_supported: None,
             id_token_encryption_enc_values_supported: None,
-            userinfo_signing_alg_values_supported: None,
+            userinfo_signing_alg_values_supported: vec![
+                Algorithm::from(RS256),
+                Algorithm::from(PS256),
+                Algorithm::from(ES256),
+                Algorithm::from(EdDSA),
+            ],
             userinfo_encryption_alg_values_supported: None,
             userinfo_encryption_enc_values_supported: None,
-            request_object_signing_alg_values_supported: None,
+            request_object_signing_alg_values_supported: vec![
+                Algorithm::from(RS256),
+                Algorithm::from(PS256),
+                Algorithm::from(ES256),
+                Algorithm::from(EdDSA),
+            ],
             request_object_encryption_alg_values_supported: None,
             request_object_encryption_enc_values_supported: None,
             token_endpoint_auth_methods_supported: None,
-            token_endpoint_auth_signing_alg_values_supported: None,
+            token_endpoint_auth_signing_alg_values_supported: vec![
+                Algorithm::from(RS256),
+                Algorithm::from(PS256),
+                Algorithm::from(ES256),
+                Algorithm::from(EdDSA),
+            ],
             display_values_supported: None,
             claim_types_supported: None,
             claims_supported: None,

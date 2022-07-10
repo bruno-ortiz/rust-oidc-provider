@@ -11,7 +11,6 @@ use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
 use tracing::info;
 
-use oidc_core::client::ClientService;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
@@ -72,24 +71,16 @@ impl OidcServer {
 
     fn oidc_router(&self) -> Router {
         let routes = self.configuration.routes();
-        let adapter = self.configuration.adapters();
-        let client_service = Arc::new(ClientService::new(adapter.client()));
-        let encoder = Arc::new(DynamicResponseModeEncoder::from(
-            self.configuration.borrow(),
-        ));
         let authorisation_service = Arc::new(AuthorisationService::new(
             DynamicResponseTypeResolver::from(self.configuration.borrow()),
-            encoder.clone(),
+            DynamicResponseModeEncoder::from(self.configuration.borrow()),
             self.configuration.clone(),
         ));
-        let interaction_service = Arc::new(InteractionService::new(
-            self.configuration.clone(),
-            authorisation_service.clone(),
-        ));
+        let interaction_service = Arc::new(InteractionService::new(self.configuration.clone()));
         // .route("interaction/login", post(login_complete))
         let mut router = Router::new().route(
             routes.authorisation.as_str(),
-            get(authorise::<DynamicResponseTypeResolver, Arc<DynamicResponseModeEncoder>>),
+            get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
         );
         if let Some(custom_routes) = self.custom_routes.as_ref().cloned() {
             router = router.nest("/", custom_routes);
@@ -99,9 +90,10 @@ impl OidcServer {
                 .layer(TraceLayer::new_for_http())
                 .layer(CookieManagerLayer::new())
                 .layer(SessionManagerLayer::signed(&[0; 32])) //TODO: key configuration
-                .add_extension(client_service)
                 .add_extension(interaction_service)
-                .add_extension(encoder)
+                .add_extension(Arc::new(DynamicResponseModeEncoder::from(
+                    self.configuration.borrow(),
+                )))
                 .add_extension(authorisation_service)
                 .add_extension(self.configuration.clone()),
         )

@@ -16,6 +16,15 @@ impl Algorithm {
     }
 }
 
+impl<A> From<A> for Algorithm
+where
+    A: JwsAlgorithm + 'static,
+{
+    fn from(alg: A) -> Self {
+        Algorithm::new(Box::new(alg))
+    }
+}
+
 impl PartialEq for Algorithm {
     fn eq(&self, other: &Self) -> bool {
         self.0.name() == other.0.name()

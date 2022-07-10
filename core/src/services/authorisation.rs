@@ -13,7 +13,7 @@ use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::session::AuthenticatedUser;
+use crate::user::AuthenticatedUser;
 
 #[derive(Error, Debug)]
 pub enum AuthorisationError {
@@ -51,9 +51,10 @@ where
     pub async fn authorise(
         &self,
         user: AuthenticatedUser,
-        client: Arc<ClientInformation>,
+        client: ClientInformation,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
+        let client = Arc::new(client);
         let context = OpenIDContext::new(client.clone(), user, request, self.configuration.clone());
         let auth_result = self.resolver.resolve(&context).await;
 
