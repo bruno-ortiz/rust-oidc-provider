@@ -15,7 +15,6 @@ use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
-use oidc_core::services::interaction::InteractionService;
 
 use crate::middleware::SessionManagerLayer;
 use crate::routes::authorisation::authorise;
@@ -76,8 +75,6 @@ impl OidcServer {
             DynamicResponseModeEncoder::from(self.configuration.borrow()),
             self.configuration.clone(),
         ));
-        let interaction_service = Arc::new(InteractionService::new(self.configuration.clone()));
-        // .route("interaction/login", post(login_complete))
         let mut router = Router::new().route(
             routes.authorisation.as_str(),
             get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
@@ -90,7 +87,6 @@ impl OidcServer {
                 .layer(TraceLayer::new_for_http())
                 .layer(CookieManagerLayer::new())
                 .layer(SessionManagerLayer::signed(&[0; 32])) //TODO: key configuration
-                .add_extension(interaction_service)
                 .add_extension(Arc::new(DynamicResponseModeEncoder::from(
                     self.configuration.borrow(),
                 )))

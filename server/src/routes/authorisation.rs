@@ -25,7 +25,6 @@ use crate::routes::error::AuthorisationErrorWrapper;
 pub async fn authorise<R, E>(
     request: Query<AuthorisationRequest>,
     auth_service: Extension<Arc<AuthorisationService<R, E>>>,
-    interaction_service: Extension<Arc<InteractionService>>,
     encoder: Extension<Arc<DynamicResponseModeEncoder>>,
     configuration: Extension<Arc<OpenIDProviderConfiguration>>,
     session: SessionHolder,
@@ -37,18 +36,10 @@ where
     let client = get_client(&configuration, &request).await?;
     match request.0.validate(&client, &configuration) {
         Ok(req) => {
-            return match find_user_by_session(&configuration, session.session_id()).await {
-                Some(user) => {
-                    let res = auth_service.authorise(user, client, req).await?;
-                    Ok(respond(res))
-                }
-                None => {
-                    let url = interaction_service
-                        .begin_interaction(session.session_id(), req)
-                        .await?;
-                    Ok(respond(AuthorisationResponse::Redirect(url)))
-                }
-            };
+            let res = auth_service
+                .authorise(session.session_id(), client, req)
+                .await?;
+            Ok(respond(res))
         }
         Err((err, request)) => {
             handle_validation_error(&encoder, &configuration, &client, err, request)

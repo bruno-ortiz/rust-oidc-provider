@@ -13,7 +13,9 @@ use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::user::AuthenticatedUser;
+use crate::services::interaction::begin_interaction;
+use crate::session::SessionID;
+use crate::user::{find_user_by_session, AuthenticatedUser};
 
 #[derive(Error, Debug)]
 pub enum AuthorisationError {
@@ -49,6 +51,25 @@ where
     }
 
     pub async fn authorise(
+        &self,
+        session: SessionID,
+        client: ClientInformation,
+        request: ValidatedAuthorisationRequest,
+    ) -> Result<AuthorisationResponse, AuthorisationError> {
+        return match find_user_by_session(&self.configuration, session).await {
+            Some(user) => {
+                //TODO: check consent and grant
+                let res = self.do_authorise(user, client, request).await?;
+                Ok(res)
+            }
+            None => {
+                let url = begin_interaction(&self.configuration, session, request).await?;
+                Ok(AuthorisationResponse::Redirect(url))
+            }
+        };
+    }
+
+    async fn do_authorise(
         &self,
         user: AuthenticatedUser,
         client: ClientInformation,
