@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -13,12 +15,25 @@ use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
 
+#[derive(Debug, Clone, Error)]
+#[error("Cannot parse ClientID. Reason: {}", .0)]
+pub struct ParseError(uuid::Error);
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct ClientID(Uuid);
 
 impl ClientID {
     pub fn new(id: Uuid) -> Self {
         Self(id)
+    }
+}
+
+impl FromStr for ClientID {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let uuid = Uuid::parse_str(s).map_err(ParseError)?;
+        Ok(ClientID::new(uuid))
     }
 }
 

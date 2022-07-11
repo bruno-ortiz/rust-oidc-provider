@@ -21,8 +21,8 @@ use crate::user::{find_user_by_session, AuthenticatedUser};
 pub enum AuthorisationError {
     #[error("Invalid redirect_uri")]
     InvalidRedirectUri,
-    #[error("Invalid client")]
-    InvalidClient,
+    #[error("Invalid client {}", .0)]
+    InvalidClient(String),
     #[error("Missing client")]
     MissingClient,
     #[error(transparent)]

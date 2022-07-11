@@ -15,7 +15,7 @@ impl IntoResponse for AuthorisationErrorWrapper {
 
         match self.0 {
             AuthorisationError::InvalidRedirectUri
-            | AuthorisationError::InvalidClient
+            | AuthorisationError::InvalidClient(_)
             | AuthorisationError::MissingClient => Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .body(body)

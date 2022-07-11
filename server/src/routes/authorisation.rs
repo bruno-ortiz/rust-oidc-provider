@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 
 use axum::extract::{Extension, Query};
@@ -13,7 +14,7 @@ use oidc_core::response_mode::encoder::{
 use oidc_core::response_type::errors::OpenIdError;
 use oidc_core::response_type::resolver::ResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
-use oidc_types::client::ClientInformation;
+use oidc_types::client::{ClientID, ClientInformation};
 use oidc_types::response_mode::ResponseMode;
 
 use crate::extractors::SessionHolder;
@@ -93,9 +94,12 @@ async fn get_client(
     let client_id = request
         .client_id
         .as_ref()
-        .ok_or(AuthorisationError::MissingClient)?;
+        .ok_or(AuthorisationError::MissingClient)
+        .and_then(|cid| {
+            ClientID::from_str(cid).map_err(|_| AuthorisationError::InvalidClient(cid.clone()))
+        })?;
     let client = retrieve_client_info(configuration, client_id)
         .await
-        .ok_or(AuthorisationError::InvalidClient)?;
+        .ok_or_else(|| AuthorisationError::InvalidClient(client_id.to_string()))?;
     Ok(client)
 }

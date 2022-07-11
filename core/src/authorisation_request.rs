@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use serde::Deserialize;
+use std::str::FromStr;
 use url::Url;
 
 use oidc_types::client::{ClientID, ClientInformation};
@@ -54,7 +55,7 @@ impl ValidatedAuthorisationRequest {
 #[derive(Debug, Deserialize)]
 pub struct AuthorisationRequest {
     pub response_type: Option<ResponseType>,
-    pub client_id: Option<ClientID>,
+    pub client_id: Option<String>,
     pub redirect_uri: Option<Url>,
     pub scope: Option<Scopes>,
     pub state: Option<State>,
@@ -96,7 +97,10 @@ impl AuthorisationRequest {
 
         Ok(ValidatedAuthorisationRequest {
             response_type: self.response_type.expect("Response type not found"),
-            client_id: self.client_id.expect("ClientId not found"),
+            client_id: self
+                .client_id
+                .map(|cid| ClientID::from_str(&cid).expect("Invalid ClientID"))
+                .expect("ClientId not found"),
             redirect_uri: self.redirect_uri.expect("Redirect URI not found"),
             scope: self.scope.expect("Scope not found"),
             state: self.state,
