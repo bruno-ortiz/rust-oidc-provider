@@ -92,7 +92,7 @@ impl From<&OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
         let code_adapter = configuration.adapters().code();
         let token_adapter = configuration.adapters().token();
         let mut resolver = DynamicResponseTypeResolver::new();
-        for rt in configuration.response_types() {
+        for rt in configuration.response_types_supported() {
             if *rt == *CODE_FLOW {
                 resolver.push(
                     rt.clone(),

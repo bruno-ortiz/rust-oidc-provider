@@ -85,7 +85,7 @@ where
             redirect_uri: &context.request.redirect_uri,
             response_mode: context
                 .request
-                .response_mode(self.configuration.is_jarm_enabled()),
+                .response_mode(*self.configuration.jwt_secure_response_mode()),
         };
         match auth_result {
             Ok(res) => Ok(encode_response(

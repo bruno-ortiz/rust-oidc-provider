@@ -5,7 +5,7 @@ use std::prelude::v1::Result::Err;
 use josekit::jws::JwsAlgorithm;
 use josekit::jws::*;
 use serde::de::{Error, StdError, Visitor};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug)]
 pub struct Algorithm(Box<dyn JwsAlgorithm>);
@@ -75,7 +75,7 @@ impl<'de> Deserialize<'de> for Algorithm {
                     "ES384" => Ok(Algorithm::new(Box::new(ES384))),
                     "ES512" => Ok(Algorithm::new(Box::new(ES512))),
                     "EdDSA" => Ok(Algorithm::new(Box::new(EdDSA))),
-                    _ => Err(de::Error::custom(format!("Unsupported algorithm {}", alg))),
+                    _ => Err(Error::custom(format!("Unsupported algorithm {}", alg))),
                 }
             }
         }

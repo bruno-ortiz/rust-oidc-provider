@@ -180,6 +180,8 @@ impl AuthorisationRequest {
         configuration: &OpenIDProviderConfiguration,
         response_type: &ResponseType,
     ) -> bool {
-        configuration.response_types().contains(response_type)
+        configuration
+            .response_types_supported()
+            .contains(response_type)
     }
 }

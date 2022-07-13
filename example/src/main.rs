@@ -8,7 +8,7 @@ use axum::routing::{get, get_service, MethodRouter};
 use axum::Router;
 use hyper::Body;
 use oidc_core::client::register_client;
-use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_core::configuration::OpenIDProviderConfigurationBuilder;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use tower_http::services::{ServeDir, ServeFile};
@@ -30,7 +30,10 @@ async fn main() {
         .route("/interaction/login", get(login))
         .nest("/assets", serve_dir("./oidc-example/static/assets"));
 
-    let config = OpenIDProviderConfiguration::new("http://localhost:3000");
+    let config = OpenIDProviderConfigurationBuilder::default()
+        .issuer("http://localhost:3000")
+        .build()
+        .expect("Expected valid configuration");
 
     let callback_url = "http://localhost:8000/callback"
         .try_into()

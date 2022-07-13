@@ -14,7 +14,7 @@ pub async fn begin_interaction(
     session: SessionID,
     request: ValidatedAuthorisationRequest,
 ) -> Result<Url, AuthorisationError> {
-    let interaction_fn = configuration.interaction();
+    let interaction_fn = configuration.interaction_fn();
     let interaction = Interaction::login(session, request);
     let result: Url = interaction_fn(&interaction, configuration);
 

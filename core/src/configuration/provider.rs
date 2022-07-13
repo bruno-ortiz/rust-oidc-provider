@@ -1,3 +1,5 @@
+use derive_builder::Builder;
+use derive_getters::Getters;
 use std::fmt::Debug;
 
 use josekit::jwk::Jwk;
@@ -25,18 +27,23 @@ const DEFAULT_ISSUER: &str = "http://localhost:3000";
 type InteractionFunction =
     Box<dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>;
 
+#[derive(Builder, Getters)]
+#[builder(pattern = "owned", setter(into, strip_option), default)]
 pub struct OpenIDProviderConfiguration {
     pkce: PKCE,
     jwks: JwkSet,
     routes: Routes,
     adapters: AdapterContainer,
     response_types_supported: Vec<ResponseType>,
+    #[builder(setter(custom))]
     response_modes_supported: Vec<ResponseMode>,
+    #[builder(setter(custom))]
     jwt_secure_response_mode: bool,
     issuer: Issuer,
     grant_types_supported: Vec<GrantType>,
     scopes_supported: Scopes,
     interaction_base_url: Url,
+    #[getter(rename = "interaction_fn")]
     interaction_config: InteractionFunction,
     subject_types_supported: Vec<SubjectType>,
     acr_values_supported: Option<Vec<String>>,
@@ -63,103 +70,21 @@ pub struct OpenIDProviderConfiguration {
     require_request_uri_registration: Option<bool>,
 }
 
-impl OpenIDProviderConfiguration {
-    pub fn new<T, E: Debug>(issuer: T) -> Self
-    where
-        T: TryInto<Url, Error = E>,
-    {
-        OpenIDProviderConfiguration {
-            issuer: Issuer::new(issuer),
-            ..OpenIDProviderConfiguration::default()
-        }
-    }
-
-    pub fn with_pkce(mut self, pkce: PKCE) -> Self {
-        self.pkce = pkce;
-        self
-    }
-
-    pub fn with_jwks<T>(mut self, jwks: T) -> Self
-    where
-        T: Into<JwkSet>,
-    {
-        self.jwks = jwks.into();
-        self
-    }
-
-    pub fn issuer(&self) -> &Issuer {
-        &self.issuer
-    }
-
-    pub fn support_scopes(mut self, scopes: Scopes) -> Self {
-        self.scopes_supported = scopes;
-        self
-    }
-
-    pub fn scopes_supported(&self) -> &Scopes {
-        &self.scopes_supported
-    }
-
-    pub fn support_grants(mut self, grants: Vec<GrantType>) -> Self {
-        self.grant_types_supported = grants;
-        self
-    }
-
-    pub fn grants_supported(&self) -> &Vec<GrantType> {
-        &self.grant_types_supported
-    }
-
-    pub fn with_response_types(mut self, response_types: Vec<ResponseType>) -> Self {
-        self.response_types_supported = response_types;
-        self
-    }
-
-    pub fn response_types(&self) -> &Vec<ResponseType> {
-        &self.response_types_supported
-    }
-
-    pub fn with_routes(mut self, routes: Routes) -> Self {
-        self.routes = routes;
-        self
-    }
-
-    pub fn routes(&self) -> &Routes {
-        &self.routes
-    }
-
-    pub fn with_adapters(mut self, adapters: AdapterContainer) -> Self {
-        self.adapters = adapters;
-        self
-    }
-
-    pub fn adapters(&self) -> &AdapterContainer {
-        &self.adapters
-    }
-
-    pub fn response_modes(&self) -> &Vec<ResponseMode> {
-        &self.response_modes_supported
-    }
-
-    pub fn interaction(
-        &self,
-    ) -> &(dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync) {
-        &self.interaction_config
-    }
-
+impl OpenIDProviderConfigurationBuilder {
     pub fn enable_jarm(mut self) -> Self {
-        self.jwt_secure_response_mode = true;
-        self.response_modes_supported.extend([
+        self.jwt_secure_response_mode = Some(true);
+        self.response_modes_supported = Some(vec![
+            ResponseMode::Query,
+            ResponseMode::Fragment,
             ResponseMode::Jwt,
             ResponseMode::QueryJwt,
             ResponseMode::FragmentJwt,
         ]);
         self
     }
+}
 
-    pub fn is_jarm_enabled(&self) -> bool {
-        self.jwt_secure_response_mode
-    }
-
+impl OpenIDProviderConfiguration {
     pub fn signing_key(&self) -> Option<&Jwk> {
         //todo: permit multiple signing keys, and let the resolver decide???
         self.jwks
@@ -262,8 +187,6 @@ mod tests {
 
     #[test]
     fn can_modify_default_configuration() {
-        let _config = OpenIDProviderConfiguration::new("http://localhost:3000")
-            .with_jwks(JwkSet::new(vec![]))
-            .with_pkce(PKCE::default());
+        todo!()
     }
 }
