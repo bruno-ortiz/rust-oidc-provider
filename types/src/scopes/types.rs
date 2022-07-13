@@ -1,6 +1,7 @@
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::scopes;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -97,6 +98,12 @@ impl From<&str> for Scope {
             }
             false => Scope::Simple(scope.to_owned()),
         }
+    }
+}
+
+impl Default for Scopes {
+    fn default() -> Self {
+        scopes!["openid"]
     }
 }
 

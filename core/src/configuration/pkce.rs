@@ -1,6 +1,6 @@
 use oidc_types::pkce::CodeChallengeMethod;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PKCE {
     required: bool,
     methods: Vec<CodeChallengeMethod>,

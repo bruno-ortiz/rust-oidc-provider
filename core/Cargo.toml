@@ -21,3 +21,4 @@ async-trait = "0.1.53"
 uuid = { version = "0.8.2", features = ["v4", "serde"] }
 tokio = { version = "1.18.0", features = ["full"] }
 indexmap = "1.8.2"
+derive_builder = "0.11.2"

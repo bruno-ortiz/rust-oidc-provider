@@ -1,3 +1,4 @@
+use derive_builder::Builder;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -55,7 +56,8 @@ impl Default for ClientID {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Builder, Default)]
+#[builder(setter(into, strip_option), default)]
 pub struct ClientMetadata {
     pub redirect_uris: Vec<Url>,
     pub token_endpoint_auth_method: Option<AuthMethod>,

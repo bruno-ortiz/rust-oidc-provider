@@ -1,5 +1,5 @@
-mod auth_method;
-mod claim_type;
+pub mod auth_method;
+pub mod claim_type;
 pub mod client;
 mod discovery;
 pub mod grant;

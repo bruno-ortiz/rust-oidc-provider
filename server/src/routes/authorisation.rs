@@ -1,11 +1,10 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use axum::extract::{Extension, Query};
 use axum::response::{IntoResponse, Redirect, Response, Result};
 
 use oidc_core::authorisation_request::AuthorisationRequest;
-use oidc_core::client::retrieve_client_info;
+use oidc_core::client::retrieve_client_info_by_unparsed;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::response_mode::encoder::{
     encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
@@ -94,12 +93,6 @@ async fn get_client(
     let client_id = request
         .client_id
         .as_ref()
-        .ok_or(AuthorisationError::MissingClient)
-        .and_then(|cid| {
-            ClientID::from_str(cid).map_err(|_| AuthorisationError::InvalidClient(cid.clone()))
-        })?;
-    let client = retrieve_client_info(configuration, client_id)
-        .await
-        .ok_or_else(|| AuthorisationError::InvalidClient(client_id.to_string()))?;
-    Ok(client)
+        .ok_or(AuthorisationError::MissingClient)?;
+    retrieve_client_info_by_unparsed(configuration, client_id).await
 }
