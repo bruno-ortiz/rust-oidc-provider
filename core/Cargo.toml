@@ -11,15 +11,15 @@ oidc-types = { path = "../types" }
 serde = { version = "1.0.136", features = ["derive"] }
 url = { version = "2.2.2", features = ["serde"] }
 form_urlencoded = "1.0.1"
-josekit = "0.8.0"
-anyhow = "1.0.57"
+josekit = "0.8.1"
+anyhow = "1.0.58"
 thiserror = "1.0.31"
-time = { version = "0.3.9" }
+time = { version = "0.3.11" }
 base64 = "0.13.0"
 sha2 = "0.10.2"
-async-trait = "0.1.53"
-uuid = { version = "0.8.2", features = ["v4", "serde"] }
-tokio = { version = "1.18.0", features = ["full"] }
-indexmap = "1.8.2"
+async-trait = "0.1.56"
+uuid = { version = "1.1.2", features = ["v4", "serde"] }
+tokio = { version = "1.20.0", features = ["full"] }
+indexmap = "1.9.1"
 derive_builder = "0.11.2"
 derive-getters = "0.2.0"
