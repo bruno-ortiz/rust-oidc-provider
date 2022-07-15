@@ -18,8 +18,8 @@ use oidc_server::server::OidcServer;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientInformation, ClientMetadataBuilder};
 use oidc_types::jose::jwk_set::JwkSet;
+use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
-use oidc_types::response_type::{ResponseType, ResponseTypeValue};
 use ResponseTypeValue::Code;
 
 #[tokio::main]
@@ -28,7 +28,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/interaction/login", get(login))
-        .nest("/assets", serve_dir("./oidc-example/static/assets"));
+        .nest("/assets", serve_dir("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
         .issuer("http://localhost:3000")
