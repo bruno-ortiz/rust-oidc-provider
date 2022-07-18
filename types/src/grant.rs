@@ -1,6 +1,9 @@
 use crate::scopes::Scopes;
 
-#[derive(Debug)]
+//we are enveloping scopes in a grant type so in the future
+// we may be able to ensure other types of checks in a grant,
+// like max duration for example
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Grant {
     scopes: Scopes,
 }

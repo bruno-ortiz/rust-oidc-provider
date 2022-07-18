@@ -1,6 +1,5 @@
 use indexmap::IndexMap;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use url::Url;
 

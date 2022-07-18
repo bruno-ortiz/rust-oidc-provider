@@ -4,10 +4,9 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use indexmap::IndexMap;
 
-use oidc_types::response_type;
 use oidc_types::response_type::{
-    ResponseType, ResponseTypeValue, CODE_FLOW, CODE_ID_TOKEN_FLOW, CODE_ID_TOKEN_TOKEN_FLOW,
-    CODE_TOKEN_FLOW, ID_TOKEN_FLOW, ID_TOKEN_TOKEN_FLOW, TOKEN_FLOW,
+    ResponseType, CODE_FLOW, CODE_ID_TOKEN_FLOW, CODE_ID_TOKEN_TOKEN_FLOW, CODE_TOKEN_FLOW,
+    ID_TOKEN_FLOW, ID_TOKEN_TOKEN_FLOW, TOKEN_FLOW,
 };
 
 use crate::configuration::OpenIDProviderConfiguration;

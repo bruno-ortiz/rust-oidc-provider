@@ -13,7 +13,7 @@ use oidc_core::response_mode::encoder::{
 use oidc_core::response_type::errors::OpenIdError;
 use oidc_core::response_type::resolver::ResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
-use oidc_types::client::{ClientID, ClientInformation};
+use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
 
 use crate::extractors::SessionHolder;

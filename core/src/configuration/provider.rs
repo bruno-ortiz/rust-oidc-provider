@@ -20,12 +20,10 @@ use oidc_types::{response_type, scopes};
 use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
-use crate::services::interaction::Interaction;
 
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
-
-type InteractionFunction =
-    Box<dyn Fn(&Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>;
+const DEFAULT_LOGIN_PATH: &str = "/interaction/login/";
+const DEFAULT_CONSENT_PATH: &str = "/interaction/consent/";
 
 #[derive(Builder, Getters)]
 #[builder(pattern = "owned", setter(into, strip_option), default)]
@@ -43,9 +41,8 @@ pub struct OpenIDProviderConfiguration {
     grant_types_supported: Vec<GrantType>,
     scopes_supported: Scopes,
     interaction_base_url: Url,
-    #[getter(rename = "interaction_fn")]
-    interaction_config: InteractionFunction,
     subject_types_supported: Vec<SubjectType>,
+    auth_max_age: u64,
     acr_values_supported: Option<Vec<String>>,
     id_token_signing_alg_values_supported: Vec<Algorithm>,
     id_token_encryption_alg_values_supported: Option<Vec<String>>,
@@ -85,6 +82,18 @@ impl OpenIDProviderConfigurationBuilder {
 }
 
 impl OpenIDProviderConfiguration {
+    pub fn interaction_login_url(&self) -> Url {
+        self.interaction_base_url
+            .join(DEFAULT_LOGIN_PATH)
+            .expect("Should return a valid url")
+    }
+
+    pub fn interaction_consent_url(&self) -> Url {
+        self.interaction_base_url
+            .join(DEFAULT_CONSENT_PATH)
+            .expect("Should return a valid url")
+    }
+
     pub fn signing_key(&self) -> Option<&Jwk> {
         //todo: permit multiple signing keys, and let the resolver decide???
         self.jwks
@@ -116,21 +125,7 @@ impl Default for OpenIDProviderConfiguration {
             ],
             interaction_base_url: Url::parse(DEFAULT_ISSUER)
                 .expect("Default issuer should be a valid url"),
-            interaction_config: Box::new(|interaction, config| {
-                let base_url = &config.interaction_base_url;
-                let mut url = if interaction.user().is_none() {
-                    base_url
-                        .join("/interaction/login/")
-                        .expect("Should return a valid url")
-                } else {
-                    base_url
-                        .join("/interaction/consent/")
-                        .expect("Should return a valid url")
-                };
-                url.query_pairs_mut()
-                    .append_pair("interaction_id", &interaction.id().to_string());
-                url
-            }),
+            auth_max_age: 3600,
             subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise], //TODO: create subject type resolvers
             acr_values_supported: None,
             id_token_signing_alg_values_supported: vec![

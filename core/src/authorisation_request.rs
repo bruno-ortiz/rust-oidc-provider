@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use serde::Deserialize;
 use std::str::FromStr;
+use tracing::error;
 use url::Url;
 
 use oidc_types::client::{ClientID, ClientInformation};
@@ -32,7 +33,7 @@ pub struct ValidatedAuthorisationRequest {
     pub include_granted_scopes: Option<bool>,
     pub request_uri: Option<Url>,
     pub request: Option<JWT>,
-    pub prompt: Option<Prompt>,
+    pub prompt: Option<Vec<Prompt>>,
 }
 
 impl ValidatedAuthorisationRequest {
@@ -68,7 +69,7 @@ pub struct AuthorisationRequest {
     pub include_granted_scopes: Option<bool>,
     pub request_uri: Option<Url>,
     pub request: Option<JWT>,
-    pub prompt: Option<Prompt>,
+    pub prompt: Option<String>,
 }
 
 impl AuthorisationRequest {
@@ -95,6 +96,24 @@ impl AuthorisationRequest {
             return Err((err, self));
         }
 
+        let prompt = self
+            .prompt
+            .as_ref()
+            .map(|p| p.split(' ').map(Prompt::try_from).collect::<Vec<_>>());
+
+        if let Some(ref prompt) = prompt {
+            if let Some(Err(err)) = prompt.iter().find(|&it| it.is_err()) {
+                error!("Err parsing prompt {}", err);
+                return Err((
+                    OpenIdError::InvalidRequest {
+                        description: "Invalid prompt",
+                    },
+                    self,
+                ));
+            }
+        }
+        let prompt = prompt.map(|it| it.into_iter().map(Result::unwrap).collect());
+
         Ok(ValidatedAuthorisationRequest {
             response_type: self.response_type.expect("Response type not found"),
             client_id: self
@@ -112,7 +131,7 @@ impl AuthorisationRequest {
             include_granted_scopes: self.include_granted_scopes,
             request_uri: self.request_uri,
             request: self.request,
-            prompt: self.prompt,
+            prompt,
         })
     }
 

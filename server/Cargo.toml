@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
+oidc-admin = { path = "../admin" }
 uuid = { version = "1.1.2", features = ["v4", "serde"] }
 serde = { version = "1.0.139", features = ["derive"] }
 axum = { version = "0.5.12", features = ["headers"] }

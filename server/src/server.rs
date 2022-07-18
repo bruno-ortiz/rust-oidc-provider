@@ -5,6 +5,8 @@ use std::sync::Arc;
 use axum::routing::get;
 use axum::Router;
 use futures::try_join;
+use oidc_admin::{AdminServer, AdminServerError};
+use thiserror::Error;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
@@ -18,6 +20,14 @@ use oidc_core::services::authorisation::AuthorisationService;
 
 use crate::middleware::SessionManagerLayer;
 use crate::routes::authorisation::authorise;
+
+#[derive(Debug, Error)]
+pub enum ServerError {
+    #[error("Error running oidc server {}", .0)]
+    OpenId(#[from] hyper::Error),
+    #[error("Error running admin server {}", .0)]
+    Admin(#[from] AdminServerError),
+}
 
 #[derive(Default)]
 pub struct OidcServer {
@@ -44,7 +54,7 @@ impl OidcServer {
         }
     }
 
-    pub async fn run(self) -> hyper::Result<()> {
+    pub async fn run(self) -> Result<(), ServerError> {
         let oidc_router = self.oidc_router();
         // run it
         let oidc_server = async {
@@ -53,15 +63,14 @@ impl OidcServer {
             axum::Server::bind(&addr)
                 .serve(oidc_router.into_make_service())
                 .await
+                .map_err(ServerError::OpenId)
         };
 
         let admin_server = async {
-            let admin_router = Router::new().route("/admin", get(admin));
             let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
             info!("Admin Server listening on {}", addr);
-            axum::Server::bind(&addr)
-                .serve(admin_router.into_make_service())
-                .await
+            let admin_server = AdminServer::new(self.configuration.clone());
+            admin_server.run(addr).await.map_err(ServerError::Admin)
         };
 
         try_join!(oidc_server, admin_server)?;
@@ -94,8 +103,4 @@ impl OidcServer {
                 .add_extension(self.configuration.clone()),
         )
     }
-}
-
-async fn admin() -> &'static str {
-    "test"
 }

@@ -3,5 +3,6 @@ members = [
     "server",
     "types",
     "core",
-    "example"
+    "example",
+    "admin"
 ]

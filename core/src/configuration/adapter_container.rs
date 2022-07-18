@@ -8,7 +8,7 @@ use oidc_types::client::{ClientID, ClientInformation};
 use crate::adapter::generic_adapter::InMemoryGenericAdapter;
 use crate::adapter::Adapter;
 use crate::authorisation_code::AuthorisationCode;
-use crate::services::interaction::Interaction;
+use crate::services::types::Interaction;
 use crate::user::AuthenticatedUser;
 
 pub struct AdapterContainer {

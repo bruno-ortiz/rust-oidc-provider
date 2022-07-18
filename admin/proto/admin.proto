@@ -1,0 +1,15 @@
+syntax = "proto3";
+package oidc.admin;
+
+service InteractionService {
+  rpc CompleteLogin (CompleteLoginRequest) returns (CompleteLoginReply);
+}
+
+message CompleteLoginRequest {
+  string interactionId = 1;
+  string sub = 2;
+}
+
+message CompleteLoginReply {
+  string redirect_uri = 1;
+}

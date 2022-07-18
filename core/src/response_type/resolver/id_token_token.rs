@@ -3,11 +3,9 @@ use crate::adapter::Adapter;
 use async_trait::async_trait;
 use std::sync::Arc;
 
-use crate::authorisation_code::AuthorisationCode;
 use crate::context::OpenIDContext;
 use crate::id_token::IdToken;
 use crate::response_type::errors::OpenIdError;
-use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
 use crate::response_type::resolver::token::TokenResolver;
 use crate::response_type::resolver::ResponseTypeResolver;

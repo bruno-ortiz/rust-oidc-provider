@@ -1,0 +1,19 @@
+[package]
+name = "oidc-admin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+oidc-core = { path = "../core" }
+oidc-types = { path = "../types" }
+tonic = "0.7.2"
+prost = "0.10.4"
+tokio = { version = "1.20.0", features = ["macros", "rt-multi-thread"] }
+thiserror = "1.0.31"
+uuid = { version = "1.1.2", features = ["v4", "serde"] }
+time = "0.3.11"
+
+[build-dependencies]
+tonic-build = "0.7.2"
