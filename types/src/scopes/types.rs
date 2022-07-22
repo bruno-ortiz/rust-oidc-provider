@@ -79,24 +79,25 @@ impl Display for Scopes {
     }
 }
 
-impl From<Vec<&str>> for Scopes {
-    fn from(values: Vec<&str>) -> Self {
+impl<T: Into<String>> From<Vec<T>> for Scopes {
+    fn from(values: Vec<T>) -> Self {
         let mut vec: Vec<Scope> = Vec::with_capacity(values.capacity());
         for v in values {
-            vec.push(v.into());
+            vec.push(v.into().into());
         }
         Scopes(vec)
     }
 }
 
-impl From<&str> for Scope {
-    fn from(scope: &str) -> Self {
-        match PARAMETERIZED_SCOPE_PATTERN.is_match(scope) {
+impl<T: Into<String>> From<T> for Scope {
+    fn from(scope: T) -> Self {
+        let scope = scope.into();
+        match PARAMETERIZED_SCOPE_PATTERN.is_match(&scope) {
             true => {
                 let parts: Vec<&str> = scope.split(':').collect();
                 Scope::Parameterized(parts[0].to_owned(), parts[1].to_owned())
             }
-            false => Scope::Simple(scope.to_owned()),
+            false => Scope::Simple(scope),
         }
     }
 }

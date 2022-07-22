@@ -2,7 +2,7 @@ use crate::hash::Hashable;
 use crate::url_encodable::UrlEncodable;
 use indexmap::IndexMap;
 use serde::Deserialize;
-
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct State(String);
@@ -10,6 +10,12 @@ pub struct State(String);
 impl State {
     pub fn new<T: Into<String>>(value: T) -> Self {
         Self(value.into())
+    }
+}
+
+impl Display for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

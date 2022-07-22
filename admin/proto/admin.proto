@@ -2,7 +2,73 @@ syntax = "proto3";
 package oidc.admin;
 
 service InteractionService {
+  rpc GetInteractionInfo(InteractionInfoRequest) returns (InteractionInfoReply);
+  rpc GetClientInfo(ClientInfoRequest) returns (ClientInfo);
   rpc CompleteLogin (CompleteLoginRequest) returns (CompleteLoginReply);
+  rpc ConfirmConsent (ConfirmConsentRequest) returns (ConfirmConsentReply);
+}
+
+message InteractionInfoRequest{
+  string interactionId = 1;
+}
+
+message InteractionInfoReply{
+  string interactionId = 1;
+  string sessionId = 2;
+  enum InteractionType{
+    LOGIN = 0;
+    CONSENT = 1;
+    NONE = 2;
+  }
+  InteractionType type = 3;
+  AuthorisationRequestInfo request = 4;
+  AuthenticatedUserInfo user = 5;
+}
+
+message AuthorisationRequestInfo{
+  string responseType = 1;
+  string clientId = 2;
+  string redirectUri = 3 ;
+  repeated string scopes = 4;
+  optional string state = 5;
+  optional string nonce = 6;
+  optional string response_mode = 7;
+  optional string code_challenge = 8;
+  optional string code_challenge_method = 9;
+  optional string resource = 10;
+  optional bool include_granted_scopes = 11;
+  optional string request_uri = 12;
+  optional string prompt = 13;
+}
+
+message AuthenticatedUserInfo {
+  string sub = 1;
+  string  auth_time = 2;
+  int64  max_age = 3;
+}
+
+message ClientInfoRequest{
+  string clientId = 1;
+}
+
+message ClientInfo {
+  string id = 1;
+  string scope = 2;
+  repeated string redirect_uris = 3;
+  repeated string grant_types = 4;
+  repeated string response_types = 5;
+  repeated string contacts = 6;
+  optional string token_endpoint_auth_method = 7;
+  optional string client_name = 8;
+  optional string client_uri = 9;
+  optional string logo_uri = 10;
+  optional string tos_uri = 11;
+  optional string policy_uri = 12;
+  optional string jwks_uri = 13;
+  optional string software_id = 14;
+  optional string software_version = 15;
+  // optional JWKS jwks= 16;
+  // optional JWT software_statement= 17;
 }
 
 message CompleteLoginRequest {
@@ -11,5 +77,15 @@ message CompleteLoginRequest {
 }
 
 message CompleteLoginReply {
+  string redirect_uri = 1;
+}
+
+
+message ConfirmConsentRequest {
+  string interactionId = 1;
+  repeated string scopes = 2;
+}
+
+message ConfirmConsentReply {
   string redirect_uri = 1;
 }

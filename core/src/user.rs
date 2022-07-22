@@ -44,6 +44,10 @@ impl AuthenticatedUser {
         self.max_age
     }
 
+    pub fn grant(&self) -> Option<&Grant> {
+        self.grant.as_ref() //TODO: create a GrantedUser?
+    }
+
     pub fn has_requested_grant(&self, requested: Grant) -> bool {
         if let Some(ref grant) = self.grant {
             *grant == requested

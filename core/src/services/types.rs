@@ -14,13 +14,11 @@ pub enum Interaction {
         id: Uuid,
         session: SessionID,
         request: ValidatedAuthorisationRequest,
-        interaction_url: Url,
     },
     Consent {
         id: Uuid,
         session: SessionID,
         request: ValidatedAuthorisationRequest,
-        interaction_url: Url,
         user: AuthenticatedUser,
     },
     None {
@@ -32,18 +30,12 @@ pub enum Interaction {
 }
 
 impl Interaction {
-    pub fn login(
-        session: SessionID,
-        request: ValidatedAuthorisationRequest,
-        interaction_url: Url,
-    ) -> Self {
+    pub fn login(session: SessionID, request: ValidatedAuthorisationRequest) -> Self {
         let id = Uuid::new_v4();
-        let url = Interaction::url(interaction_url, id);
         Self::Login {
             id,
             session,
             request,
-            interaction_url: url,
         }
     }
 
@@ -51,16 +43,13 @@ impl Interaction {
         session: SessionID,
         request: ValidatedAuthorisationRequest,
         user: AuthenticatedUser,
-        interaction_url: Url,
     ) -> Self {
         let id = Uuid::new_v4();
-        let url = Interaction::url(interaction_url, id);
         Self::Consent {
             id,
             session,
             request,
             user,
-            interaction_url: url,
         }
     }
 
@@ -77,23 +66,16 @@ impl Interaction {
         }
     }
 
-    fn url(mut interaction_url: Url, id: Uuid) -> Url {
-        interaction_url
-            .query_pairs_mut()
-            .append_pair("interaction_id", id.to_string().as_str());
-        interaction_url
+    pub fn uri(self, config: &OpenIDProviderConfiguration) -> Url {
+        let id = self.id();
+        let mut url = config.interaction_url_resolver()(self, config);
+        Self::add_id(&mut url, id);
+        url
     }
 
-    pub fn uri(self) -> Url {
-        match self {
-            Interaction::Login {
-                interaction_url, ..
-            } => interaction_url,
-            Interaction::Consent {
-                interaction_url, ..
-            } => interaction_url,
-            Interaction::None { .. } => panic!("Should not be called when interaction is None"),
-        }
+    fn add_id(url: &mut Url, id: Uuid) {
+        url.query_pairs_mut()
+            .append_pair("interaction_id", id.to_string().as_str());
     }
 
     pub async fn save(

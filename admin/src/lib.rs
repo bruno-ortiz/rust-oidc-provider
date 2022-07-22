@@ -1,4 +1,5 @@
 use crate::interaction::InteractionServiceImpl;
+pub use crate::oidc_admin::interaction_service_client::InteractionServiceClient;
 use crate::oidc_admin::interaction_service_server::InteractionServiceServer;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use std::net::SocketAddr;

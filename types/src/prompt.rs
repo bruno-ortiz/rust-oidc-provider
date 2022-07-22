@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -12,6 +13,17 @@ pub enum Prompt {
     Login,
     Consent,
     SelectAccount,
+}
+
+impl Display for Prompt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Prompt::None => write!(f, "none"),
+            Prompt::Login => write!(f, "login"),
+            Prompt::Consent => write!(f, "consent"),
+            Prompt::SelectAccount => write!(f, "select_account"),
+        }
+    }
 }
 
 impl TryFrom<&str> for Prompt {

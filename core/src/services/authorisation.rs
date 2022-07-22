@@ -57,20 +57,18 @@ where
         client: ClientInformation,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        match begin_interaction(&self.configuration, session, request).await? {
-            Interaction::Login {
-                interaction_url, ..
-            } => Ok(AuthorisationResponse::Redirect(interaction_url)),
-            Interaction::Consent {
-                interaction_url, ..
-            } => Ok(AuthorisationResponse::Redirect(interaction_url)),
+        let interaction = begin_interaction(&self.configuration, session, request).await?;
+        match interaction {
+            Interaction::Login { .. } | Interaction::Consent { .. } => Ok(
+                AuthorisationResponse::Redirect(interaction.uri(&self.configuration)),
+            ),
             Interaction::None { request, user, .. } => {
                 Ok(self.do_authorise(user, client, request).await?)
             }
         }
     }
 
-    async fn do_authorise(
+    pub async fn do_authorise(
         &self,
         user: AuthenticatedUser,
         client: ClientInformation,
@@ -88,13 +86,10 @@ where
                 .request
                 .response_mode(*self.configuration.jwt_secure_response_mode()),
         };
-        match auth_result {
-            Ok(res) => Ok(encode_response(
-                encoding_context,
-                &self.encoder,
-                res.params(),
-            )?),
-            Err(err) => Ok(encode_response(encoding_context, &self.encoder, err)?),
+        let mut parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
+        if let Some(state) = context.request.state {
+            parameters = (parameters, state).params();
         }
+        encode_response(encoding_context, &self.encoder, parameters)
     }
 }

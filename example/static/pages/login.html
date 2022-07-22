@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Login</title>
     <link href="/assets/css/login.css" rel="stylesheet">
 
 </head>
@@ -14,11 +14,14 @@
     </div>
 
     <div class="container">
-        <label for="uname"><b>Username</b></label>
-        <input type="text" placeholder="Enter foo" name="uname" required>
+        <label for="username"><b>Username</b></label>
+        <input type="text" placeholder="Enter foo" name="username" required>
 
-        <label for="psw"><b>Password</b></label>
-        <input type="password" placeholder="Enter 1234" name="psw" required>
+        <label for="password"><b>Password</b></label>
+        <input type="password" placeholder="Enter 1234" name="password" required>
+
+        <label for="interaction_id"><b>Password</b></label>
+        <input id="interaction_id" type="hidden" name="interaction_id" value="{{ interaction_id }}" required>
 
         <button type="submit">Login</button>
     </div>
@@ -28,6 +31,5 @@
         <span class="psw">Forgot <a href="#">password?</a></span>
     </div>
 </form>
-
 </body>
 </html>

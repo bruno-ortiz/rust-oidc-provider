@@ -20,6 +20,7 @@ use oidc_types::{response_type, scopes};
 use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
+use crate::services::types::Interaction;
 
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
 const DEFAULT_LOGIN_PATH: &str = "/interaction/login/";
@@ -41,6 +42,8 @@ pub struct OpenIDProviderConfiguration {
     grant_types_supported: Vec<GrantType>,
     scopes_supported: Scopes,
     interaction_base_url: Url,
+    #[builder(setter(skip))]
+    interaction_url_resolver: Box<dyn Fn(Interaction, &Self) -> Url + Send + Sync>,
     subject_types_supported: Vec<SubjectType>,
     auth_max_age: u64,
     acr_values_supported: Option<Vec<String>>,
@@ -125,6 +128,11 @@ impl Default for OpenIDProviderConfiguration {
             ],
             interaction_base_url: Url::parse(DEFAULT_ISSUER)
                 .expect("Default issuer should be a valid url"),
+            interaction_url_resolver: Box::new(|interaction, config| match interaction {
+                Interaction::Login { .. } => config.interaction_login_url(),
+                Interaction::Consent { .. } => config.interaction_consent_url(),
+                Interaction::None { .. } => panic!("Should not be called when interaction is None"),
+            }),
             auth_max_age: 3600,
             subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise], //TODO: create subject type resolvers
             acr_values_supported: None,

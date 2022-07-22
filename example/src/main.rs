@@ -1,33 +1,56 @@
+use std::collections::HashMap;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str::FromStr;
 
-use axum::http::{Request, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::routing::{get, get_service, MethodRouter};
-use axum::Router;
-use hyper::Body;
+use axum::extract::Query;
+use axum::http::StatusCode;
+use axum::response::{Html, IntoResponse, Redirect};
+use axum::routing::{get, get_service, post, MethodRouter};
+use axum::{Extension, Form, Router};
+use lazy_static::lazy_static;
+use oidc_admin::oidc_admin::{
+    ClientInfoRequest, CompleteLoginRequest, ConfirmConsentRequest, InteractionInfoRequest,
+};
+use oidc_admin::InteractionServiceClient;
 use oidc_core::client::register_client;
 use oidc_core::configuration::OpenIDProviderConfigurationBuilder;
-use time::{Duration, OffsetDateTime};
-use tower::ServiceExt;
-use tower_http::services::{ServeDir, ServeFile};
+use serde::Deserialize;
+use time::OffsetDateTime;
+use tower_http::services::ServeDir;
 
-use oidc_server::extractors::SessionHolder;
 use oidc_server::server::OidcServer;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientInformation, ClientMetadataBuilder};
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
+use tera::{Context, Tera};
 use ResponseTypeValue::Code;
+
+lazy_static! {
+    pub static ref TEMPLATES: Tera = {
+        let mut tera = match Tera::new("example/static/pages/**/*") {
+            Ok(t) => t,
+            Err(e) => {
+                println!("Parsing error(s): {}", e);
+                ::std::process::exit(1);
+            }
+        };
+        tera.autoescape_on(vec![".html", ".sql"]);
+        tera
+    };
+}
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/interaction/login", get(login))
+        .route("/interaction/login", get(login_page))
+        .route("/interaction/consent", get(consent_page))
+        .route("/login", post(login))
+        .route("/consent", post(consent))
         .nest("/assets", serve_dir("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
@@ -73,14 +96,94 @@ fn serve_dir<P: AsRef<Path>>(path: P) -> MethodRouter {
     })
 }
 
-async fn login(session: SessionHolder, request: Request<Body>) -> Response {
-    println!("session:{:?}", session);
+async fn login_page(Query(params): Query<HashMap<String, String>>) -> Html<String> {
+    let mut context: Context = Context::new();
+    context.insert("interaction_id", params.get("interaction_id").unwrap());
+    Html(TEMPLATES.render("login.html", &context).unwrap())
+}
 
-    session.set_duration(Duration::seconds(90));
-    let path: PathBuf = "./example/static/pages/login.html".parse().unwrap();
-    ServeFile::new(path)
-        .oneshot(request)
+async fn consent_page(
+    Query(params): Query<HashMap<String, String>>,
+    Extension(mut interaction_client): Extension<
+        InteractionServiceClient<tonic::transport::Channel>,
+    >,
+) -> Html<String> {
+    let mut context: Context = Context::new();
+    let interaction_id = params.get("interaction_id").unwrap();
+
+    let request = tonic::Request::new(InteractionInfoRequest {
+        interaction_id: interaction_id.to_owned(),
+    });
+    let interaction_info = interaction_client
+        .get_interaction_info(request)
         .await
         .unwrap()
-        .into_response()
+        .into_inner();
+
+    let auth_request = interaction_info.request.unwrap();
+    let request = tonic::Request::new(ClientInfoRequest {
+        client_id: auth_request.client_id,
+    });
+
+    let client_info = interaction_client
+        .get_client_info(request)
+        .await
+        .unwrap()
+        .into_inner();
+
+    context.insert("interaction_id", interaction_id);
+    context.insert("scopes", &auth_request.scopes);
+    context.insert("orgName", &client_info.client_name.unwrap());
+    Html(TEMPLATES.render("consent.html", &context).unwrap())
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+    interaction_id: String,
+}
+
+// #[axum_macros::debug_handler]
+async fn login(
+    Form(req): Form<LoginRequest>,
+    Extension(mut interaction_client): Extension<
+        InteractionServiceClient<tonic::transport::Channel>,
+    >,
+) -> impl IntoResponse {
+    let request = tonic::Request::new(CompleteLoginRequest {
+        sub: "some-user-id".to_string(),
+        interaction_id: req.interaction_id,
+    });
+    let res = interaction_client
+        .complete_login(request)
+        .await
+        .unwrap()
+        .into_inner();
+
+    Redirect::to(res.redirect_uri.as_str()).into_response()
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ConsentRequest {
+    interaction_id: String,
+}
+
+async fn consent(
+    Form(req): Form<ConsentRequest>,
+    Extension(mut interaction_client): Extension<
+        InteractionServiceClient<tonic::transport::Channel>,
+    >,
+) -> impl IntoResponse {
+    let request = tonic::Request::new(ConfirmConsentRequest {
+        interaction_id: req.interaction_id,
+        scopes: vec!["openid".to_owned()],
+    });
+    let res = interaction_client
+        .confirm_consent(request)
+        .await
+        .unwrap()
+        .into_inner();
+
+    Redirect::to(res.redirect_uri.as_str()).into_response()
 }

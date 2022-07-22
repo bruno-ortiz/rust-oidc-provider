@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 use crate::response_type::ResponseType;
 
@@ -26,6 +27,20 @@ impl ResponseMode {
                 _ => unreachable!("Invalid default response mode"),
             },
             _ => self,
+        }
+    }
+}
+
+impl Display for ResponseMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ResponseMode::FormPost => write!(f, "form_post"),
+            ResponseMode::Fragment => write!(f, "fragment"),
+            ResponseMode::Query => write!(f, "query"),
+            ResponseMode::Jwt => write!(f, "jwt"),
+            ResponseMode::QueryJwt => write!(f, "query.jwt"),
+            ResponseMode::FragmentJwt => write!(f, "fragment.jwt"),
+            ResponseMode::FormPostJwt => write!(f, "form_post.jwt"),
         }
     }
 }

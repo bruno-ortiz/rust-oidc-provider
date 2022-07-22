@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Consent</title>
+    <link href="/assets/css/consent.css" rel="stylesheet">
+
+</head>
+<body>
+
+<form action="/consent" method="post">
+    <div class="container">
+        <p>
+            A instituição {{ orgName }} gostaria de obter acesso aos seguintes
+            escopos.
+        </p>
+    </div>
+    <div class="container">
+        <ul>
+            {% for scope in scopes %}
+            <li>{{ scope }}</li>
+            {% endfor %}
+        </ul>
+        <input id="interaction_id" type="hidden" name="interaction_id" value="{{ interaction_id }}" required>
+        <button type="submit">Confirmar</button>
+    </div>
+
+    <div class="container" style="background-color:#f1f1f1">
+        <button type="button" class="cancelbtn">Recusar</button>
+    </div>
+</form>
+</body>
+</html>

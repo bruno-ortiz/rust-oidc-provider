@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use axum::routing::get;
 use axum::Router;
-use futures::try_join;
-use oidc_admin::{AdminServer, AdminServerError};
+use oidc_admin::{AdminServer, AdminServerError, InteractionServiceClient};
 use thiserror::Error;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
@@ -55,29 +54,26 @@ impl OidcServer {
     }
 
     pub async fn run(self) -> Result<(), ServerError> {
-        let oidc_router = self.oidc_router();
-        // run it
-        let oidc_server = async {
-            let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-            info!("OpenId Server listening on {}", addr);
-            axum::Server::bind(&addr)
-                .serve(oidc_router.into_make_service())
-                .await
-                .map_err(ServerError::OpenId)
-        };
-
-        let admin_server = async {
+        let configuration = self.configuration.clone();
+        tokio::spawn(async move {
             let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
             info!("Admin Server listening on {}", addr);
-            let admin_server = AdminServer::new(self.configuration.clone());
+            let admin_server = AdminServer::new(configuration);
             admin_server.run(addr).await.map_err(ServerError::Admin)
-        };
-
-        try_join!(oidc_server, admin_server)?;
+        });
+        let oidc_router = self.oidc_router().await;
+        let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+        info!("OpenId Server listening on {}", addr);
+        axum::Server::bind(&addr)
+            .serve(oidc_router.into_make_service())
+            .await
+            .map_err(ServerError::OpenId)?;
+        // try_join!(oidc_server, admin_server)?;
+        println!("joined");
         Ok(())
     }
 
-    fn oidc_router(&self) -> Router {
+    async fn oidc_router(&self) -> Router {
         let routes = self.configuration.routes();
         let authorisation_service = Arc::new(AuthorisationService::new(
             DynamicResponseTypeResolver::from(self.configuration.borrow()),
@@ -91,6 +87,9 @@ impl OidcServer {
         if let Some(custom_routes) = self.custom_routes.as_ref().cloned() {
             router = router.nest("/", custom_routes);
         }
+        let interaction_client = InteractionServiceClient::connect("http://localhost:4000")
+            .await
+            .expect("expected succesful gRPC connection");
         router.layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -100,7 +99,8 @@ impl OidcServer {
                     self.configuration.borrow(),
                 )))
                 .add_extension(authorisation_service)
-                .add_extension(self.configuration.clone()),
+                .add_extension(self.configuration.clone())
+                .add_extension(interaction_client.clone()),
         )
     }
 }

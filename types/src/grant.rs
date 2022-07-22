@@ -12,4 +12,8 @@ impl Grant {
     pub fn new(scopes: Scopes) -> Self {
         Self { scopes }
     }
+
+    pub fn scopes(&self) -> &Scopes {
+        &self.scopes
+    }
 }
