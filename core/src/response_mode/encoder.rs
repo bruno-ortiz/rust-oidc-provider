@@ -76,7 +76,7 @@ impl From<&OpenIDProviderConfiguration> for DynamicResponseModeEncoder {
         encoder.push(Box::new(QueryEncoder));
         encoder.push(Box::new(FragmentEncoder));
 
-        if *cfg.jwt_secure_response_mode() {
+        if cfg.jwt_secure_response_mode() {
             encoder.push(Box::new(JwtEncoder))
         }
         encoder

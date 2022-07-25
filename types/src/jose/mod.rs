@@ -1,9 +1,10 @@
 use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 
-pub mod algorithm;
 pub mod error;
+pub mod jwe;
 pub mod jwk_set;
+pub mod jws;
 pub mod jwt;
 
 pub trait JwsHeaderExt {

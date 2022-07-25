@@ -58,7 +58,7 @@ pub async fn complete_login(
                 session,
                 subject,
                 OffsetDateTime::now_utc(),
-                *configuration.auth_max_age(),
+                configuration.auth_max_age(),
             )
             .save(configuration)
             .await

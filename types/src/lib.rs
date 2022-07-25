@@ -1,7 +1,7 @@
 pub mod auth_method;
 pub mod claim_type;
 pub mod client;
-mod discovery;
+pub mod discovery;
 pub mod grant;
 pub mod grant_type;
 pub mod hash;

@@ -1,3 +1,11 @@
+GET http://localhost:3000/jwks.json
+Accept: application/json
+
+###
+GET http://localhost:3000/.well-known/openid-configuration
+Accept: application/json
+
+###
 GET http://localhost:3000/authorise?client_id=1d8fca3b-a2f1-48c2-924d-843e5173a951&redirect_uri=http://localhost:8000/callback&response_type=code id_token&scope=openid&state=some-state&nonce=some-nonce
 
 ###

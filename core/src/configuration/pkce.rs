@@ -1,16 +1,19 @@
+use getset::{CopyGetters, Getters};
 use oidc_types::pkce::CodeChallengeMethod;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters, CopyGetters)]
 pub struct PKCE {
+    #[get_copy = "pub"]
     required: bool,
-    methods: Vec<CodeChallengeMethod>,
+    #[get = "pub"]
+    methods_supported: Vec<CodeChallengeMethod>,
 }
 
 impl Default for PKCE {
     fn default() -> Self {
         PKCE {
             required: false,
-            methods: vec![CodeChallengeMethod::S256],
+            methods_supported: vec![CodeChallengeMethod::S256],
         }
     }
 }

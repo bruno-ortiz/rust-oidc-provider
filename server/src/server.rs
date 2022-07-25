@@ -19,6 +19,8 @@ use oidc_core::services::authorisation::AuthorisationService;
 
 use crate::middleware::SessionManagerLayer;
 use crate::routes::authorisation::authorise;
+use crate::routes::discovery::{discovery, DISCOVERY_ROUTE};
+use crate::routes::jwks::jwks;
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -80,10 +82,13 @@ impl OidcServer {
             DynamicResponseModeEncoder::from(self.configuration.borrow()),
             self.configuration.clone(),
         ));
-        let mut router = Router::new().route(
-            routes.authorisation.as_str(),
-            get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
-        );
+        let mut router = Router::new()
+            .route(DISCOVERY_ROUTE, get(discovery))
+            .route(
+                routes.authorisation,
+                get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
+            )
+            .route(routes.jwks, get(jwks));
         if let Some(custom_routes) = self.custom_routes.as_ref().cloned() {
             router = router.nest("/", custom_routes);
         }

@@ -1,46 +1,68 @@
-use crate::auth_method::AuthMethod;
 use crate::claim_type::ClaimType;
 use crate::grant_type::GrantType;
 use crate::issuer::Issuer;
-use crate::jose::algorithm::Algorithm;
+use crate::jose::jwe::alg::EncryptionAlgorithm;
+use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
+use crate::jose::jws::Algorithm;
 use crate::pkce::CodeChallengeMethod;
 use crate::response_mode::ResponseMode;
-use crate::response_type::ResponseTypeValue;
+use crate::response_type::ResponseType;
 use crate::scopes::Scope;
 use crate::subject_type::SubjectType;
+use derive_builder::Builder;
+use serde::Serialize;
+use serde_with::skip_serializing_none;
 use url::Url;
 
+#[skip_serializing_none]
+#[derive(Serialize, Builder)]
 pub struct OIDCProviderMetadata {
-    pub issuer: Issuer,
-    pub authorization_endpoint: Url,
-    pub end_session_endpoint: Url,
-    pub registration_endpoint: Url,
-    pub revocation_endpoint: Url,
-    pub introspection_endpoint: Url,
-    pub token_endpoint: Url,
-    pub userinfo_endpoint: Url,
-    pub jwks_uri: Url,
-    pub response_types_supported: Vec<ResponseTypeValue>,
-    pub scopes_supported: Vec<Scope>,
-    pub claims_supported: Vec<String>,
-    pub code_challenge_methods_supported: Vec<CodeChallengeMethod>,
-    pub grant_types_supported: Vec<GrantType>,
-    pub response_modes_supported: Vec<ResponseMode>,
-    pub id_token_signing_alg_values_supported: Vec<Algorithm>,
-    pub token_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
-    pub request_object_signing_alg_values_supported: Vec<Algorithm>,
-    pub userinfo_signing_alg_values_supported: Vec<Algorithm>,
-    pub authorization_signing_alg_values_supported: Vec<Algorithm>,
-    pub introspection_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
-    pub revocation_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
-    pub token_endpoint_auth_methods_supported: Vec<AuthMethod>,
-    pub subject_types_supported: Vec<SubjectType>,
-    pub introspection_endpoint_auth_methods_supported: Vec<AuthMethod>,
-    pub revocation_endpoint_auth_methods_supported: Vec<AuthMethod>,
-    pub claim_types_supported: Vec<ClaimType>,
-    pub claims_parameter_supported: bool,
-    pub request_parameter_supported: bool,
-    pub request_uri_parameter_supported: bool,
-    pub require_request_uri_registration: bool,
-    pub tls_client_certificate_bound_access_tokens: bool,
+    issuer: Issuer,
+    authorization_endpoint: Url,
+    response_types_supported: Vec<ResponseType>,
+    scopes_supported: Vec<Scope>,
+    jwks_uri: Url,
+    code_challenge_methods_supported: Vec<CodeChallengeMethod>,
+    grant_types_supported: Vec<GrantType>,
+    response_modes_supported: Vec<ResponseMode>,
+    id_token_signing_alg_values_supported: Vec<Algorithm>,
+    id_token_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
+    id_token_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
+    request_object_signing_alg_values_supported: Vec<Algorithm>,
+    request_object_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
+    request_object_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
+    authorization_signing_alg_values_supported: Option<Vec<Algorithm>>,
+    authorization_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
+    authorization_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
+    subject_types_supported: Vec<SubjectType>,
+    claims_supported: Vec<String>,
+    claim_types_supported: Option<Vec<ClaimType>>,
+    claims_parameter_supported: bool,
+    request_parameter_supported: bool,
+    request_uri_parameter_supported: bool,
+    require_request_uri_registration: bool,
+    tls_client_certificate_bound_access_tokens: bool,
 }
+
+/*
+TODO: implement session management
+end_session_endpoint: Url,
+check_session_iframe:Url,
+--------------------------------------
+TODO: implement DCR/DCM (RFC 7591, RFC 7592)
+registration_endpoint: Url,
+--------------------------------------
+TODO: enable this metadata when token endpoints is enabled
+token_endpoint: Url,
+token_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
+token_endpoint_auth_methods_supported: Vec<AuthMethod>,
+revocation_endpoint: Option<Url>,
+revocation_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
+revocation_endpoint_auth_methods_supported: Vec<AuthMethod>,
+introspection_endpoint: Url,
+introspection_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
+introspection_endpoint_auth_methods_supported: Vec<AuthMethod>,
+TODO: implement userinfo
+userinfo_endpoint: Url,
+userinfo_signing_alg_values_supported: Vec<Algorithm>,
+*/

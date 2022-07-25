@@ -84,7 +84,7 @@ where
             redirect_uri: &context.request.redirect_uri,
             response_mode: context
                 .request
-                .response_mode(*self.configuration.jwt_secure_response_mode()),
+                .response_mode(self.configuration.jwt_secure_response_mode()),
         };
         let mut parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
         if let Some(state) = context.request.state {

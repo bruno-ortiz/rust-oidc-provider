@@ -7,7 +7,7 @@ use josekit::jws::*;
 use serde::de::{Error, StdError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Algorithm(Box<dyn JwsAlgorithm>);
 
 impl Algorithm {
@@ -98,7 +98,7 @@ impl StdError for DeserializeError {}
 mod tests {
     use josekit::jws::ES256;
 
-    use crate::jose::algorithm::Algorithm;
+    use crate::jose::jws::Algorithm;
 
     #[test]
     fn test_can_serialize_algorithm() {
