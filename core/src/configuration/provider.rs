@@ -50,7 +50,8 @@ pub struct OpenIDProviderConfiguration {
     issuer: Issuer,
     grant_types_supported: Vec<GrantType>,
     scopes_supported: Scopes,
-    interaction_base_url: Url,
+    #[builder(setter(skip))]
+    interaction_base_url: Box<dyn Fn(&Self) -> &Url + Send + Sync>,
     #[builder(setter(skip))]
     interaction_url_resolver: Box<dyn Fn(Interaction, &Self) -> Url + Send + Sync>,
     subject_types_supported: Vec<SubjectType>, //TODO: create subject type resolvers
@@ -108,13 +109,15 @@ impl OpenIDProviderConfigurationBuilder {
 
 impl OpenIDProviderConfiguration {
     pub fn interaction_login_url(&self) -> Url {
-        self.interaction_base_url
+        let interaction_url_fn = &self.interaction_base_url;
+        interaction_url_fn(self)
             .join(DEFAULT_LOGIN_PATH)
             .expect("Should return a valid url")
     }
 
     pub fn interaction_consent_url(&self) -> Url {
-        self.interaction_base_url
+        let interaction_url_fn = &self.interaction_base_url;
+        interaction_url_fn(self)
             .join(DEFAULT_CONSENT_PATH)
             .expect("Should return a valid url")
     }
@@ -148,8 +151,7 @@ impl Default for OpenIDProviderConfiguration {
                 GrantType::ClientCredentials,
                 GrantType::RefreshToken,
             ],
-            interaction_base_url: Url::parse(DEFAULT_ISSUER)
-                .expect("Default issuer should be a valid url"),
+            interaction_base_url: Box::new(|config| config.issuer.inner()),
             interaction_url_resolver: Box::new(|interaction, config| match interaction {
                 Interaction::Login { .. } => config.interaction_login_url(),
                 Interaction::Consent { .. } => config.interaction_consent_url(),
