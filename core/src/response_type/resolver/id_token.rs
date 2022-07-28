@@ -37,7 +37,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             });
         }
         let id_token = IdToken::builder(signing_key)
-            .with_issuer(&context.configuration.issuer())
+            .with_issuer(context.configuration.issuer())
             .with_sub(context.user.sub())
             .with_audience(vec![context.client.id.into()])
             .with_exp(OffsetDateTime::now_utc() + Duration::hours(10)) //TODO: make duration configurable

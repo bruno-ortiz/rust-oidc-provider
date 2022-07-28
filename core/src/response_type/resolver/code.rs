@@ -37,7 +37,7 @@ impl ResponseTypeResolver for CodeResolver {
             code: Uuid::new_v4().to_string(),
             client_id: context.client.id,
             code_challenge: authorisation_request.code_challenge.clone(),
-            code_challenge_method: authorisation_request.code_challenge_method.clone(),
+            code_challenge_method: authorisation_request.code_challenge_method,
             scope: grant.scopes().clone(),
             redirect_uri: authorisation_request.redirect_uri.clone(),
             status: CodeStatus::Awaiting,

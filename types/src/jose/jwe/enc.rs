@@ -98,12 +98,12 @@ mod tests {
         let result =
             serde_json::to_string(&ContentEncryptionAlgorithm::new(Box::new(A128cbcHs256)));
 
-        assert_eq!("\"ES256\"", result.unwrap())
+        assert_eq!("\"A128CBC-HS256\"", result.unwrap())
     }
 
     #[test]
     fn test_can_deserialize_algorithm() {
-        let result = serde_json::from_str::<ContentEncryptionAlgorithm>("\"ES256\"");
+        let result = serde_json::from_str::<ContentEncryptionAlgorithm>("\"A128CBC-HS256\"");
 
         assert_eq!(
             ContentEncryptionAlgorithm::new(Box::new(A128cbcHs256)),

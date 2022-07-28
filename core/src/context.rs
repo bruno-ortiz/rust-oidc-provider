@@ -37,7 +37,7 @@ impl OpenIDContext {
 #[cfg(test)]
 pub mod test_utils {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
-    use crate::configuration::OpenIDProviderConfiguration;
+    use crate::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
     use crate::context::OpenIDContext;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
@@ -45,6 +45,7 @@ pub mod test_utils {
     use josekit::jwk::Jwk;
     use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
     use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
+    use oidc_types::grant::Grant;
     use oidc_types::jose::jwk_set::JwkSet;
     use oidc_types::nonce::Nonce;
     use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
@@ -110,15 +111,17 @@ pub mod test_utils {
             Subject::new("some-id"),
             OffsetDateTime::now_utc(),
             120,
-        );
+        )
+        .with_grant(Grant::new(scopes!("openid", "test")));
 
         let mut jwk = Jwk::generate_ec_key(EcCurve::P256).unwrap();
         jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.to_string());
         jwk.set_key_id("test-key-id");
         jwk.set_key_use("sig");
-        let config = OpenIDProviderConfiguration::new("https://oidc.rs.com")
-            .with_jwks(JwkSet::new(vec![jwk]))
-            .with_response_types(vec![
+        let config = OpenIDProviderConfigurationBuilder::default()
+            .issuer("https://oidc.rs.com")
+            .jwks(JwkSet::new(vec![jwk]))
+            .response_types_supported(vec![
                 response_type![Code],
                 response_type![IdToken],
                 response_type![Token],
@@ -126,7 +129,9 @@ pub mod test_utils {
                 response_type![Code, Token],
                 response_type![Code, IdToken, Token],
                 response_type![IdToken, Token],
-            ]);
+            ])
+            .build()
+            .unwrap();
         OpenIDContext::new(Arc::new(client), user, request, Arc::new(config))
     }
 }

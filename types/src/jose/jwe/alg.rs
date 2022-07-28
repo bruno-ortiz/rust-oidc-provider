@@ -113,12 +113,12 @@ mod tests {
     fn test_can_serialize_algorithm() {
         let result = serde_json::to_string(&EncryptionAlgorithm::new(Box::new(RSA_OAEP)));
 
-        assert_eq!("\"ES256\"", result.unwrap())
+        assert_eq!("\"RSA-OAEP\"", result.unwrap())
     }
 
     #[test]
     fn test_can_deserialize_algorithm() {
-        let result = serde_json::from_str::<EncryptionAlgorithm>("\"ES256\"");
+        let result = serde_json::from_str::<EncryptionAlgorithm>("\"RSA-OAEP\"");
 
         assert_eq!(
             EncryptionAlgorithm::new(Box::new(RSA_OAEP)),
