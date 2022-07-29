@@ -37,7 +37,7 @@ impl OpenIDContext {
 #[cfg(test)]
 pub mod test_utils {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
-    use crate::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
+    use crate::configuration::OpenIDProviderConfigurationBuilder;
     use crate::context::OpenIDContext;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;

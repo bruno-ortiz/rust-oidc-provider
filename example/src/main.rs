@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use axum::extract::Query;
 use axum::http::StatusCode;
-use axum::response::{Html, IntoResponse, Redirect};
+use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, get_service, post, MethodRouter};
 use axum::{Extension, Form, Router};
 use lazy_static::lazy_static;
@@ -150,7 +150,11 @@ async fn login(
     Extension(mut interaction_client): Extension<
         InteractionServiceClient<tonic::transport::Channel>,
     >,
-) -> impl IntoResponse {
+) -> Response {
+    if req.username != "xoze" || req.password != "1234" {
+        return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
+    }
+
     let request = tonic::Request::new(CompleteLoginRequest {
         sub: "some-user-id".to_string(),
         interaction_id: req.interaction_id,

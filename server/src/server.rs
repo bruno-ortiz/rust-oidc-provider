@@ -105,7 +105,7 @@ impl OidcServer {
                 )))
                 .add_extension(authorisation_service)
                 .add_extension(self.configuration.clone())
-                .add_extension(interaction_client.clone()),
+                .add_extension(interaction_client),
         )
     }
 }
