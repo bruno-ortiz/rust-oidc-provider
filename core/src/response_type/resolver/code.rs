@@ -27,12 +27,9 @@ impl ResponseTypeResolver for CodeResolver {
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let authorisation_request = &context.request;
-        let grant = context
-            .user
-            .grant()
-            .ok_or_else(|| OpenIdError::ServerError {
-                source: anyhow!("Trying to authorise user with no grant"),
-            })?;
+        let grant = context.user.grant().ok_or_else(|| {
+            OpenIdError::server_error(anyhow!("Trying to authorise user with no grant"))
+        })?;
         let code = AuthorisationCode {
             code: Uuid::new_v4().to_string(),
             client_id: context.client.id,
@@ -47,7 +44,7 @@ impl ResponseTypeResolver for CodeResolver {
             .adapter
             .save(code)
             .await
-            .map_err(|err| OpenIdError::ServerError { source: err.into() })?;
+            .map_err(|err| OpenIdError::server_error(err.into()))?;
         return Ok(code);
     }
 }

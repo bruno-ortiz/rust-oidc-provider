@@ -189,9 +189,7 @@ impl<'a> IdTokenBuilder<'a> {
     fn build_hash<H: Hashable>(signing_key: &Jwk, hashable: &H) -> Result<String, OpenIdError> {
         let hash = hashable
             .hash(signing_key)
-            .map_err(|source| OpenIdError::ServerError {
-                source: source.into(),
-            })?;
+            .map_err(|source| OpenIdError::server_error(source.into()))?;
         Ok(hash)
     }
 }

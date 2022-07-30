@@ -28,13 +28,11 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let signing_key = context
             .configuration
             .signing_key()
-            .ok_or(OpenIdError::ServerError {
-                source: anyhow!("Missing signing key"),
-            })?;
+            .ok_or(OpenIdError::server_error(anyhow!("Missing signing key")))?;
         if context.flow_type() == Flow::Hybrid && context.request.nonce.is_none() {
-            return Err(OpenIdError::InvalidRequest {
-                description: "Hybrid flow must contain a nonce in the auth request",
-            });
+            return Err(OpenIdError::invalid_request(
+                "Hybrid flow must contain a nonce in the auth request",
+            ));
         }
         let id_token = IdToken::builder(signing_key)
             .with_issuer(context.configuration.issuer())
@@ -48,7 +46,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             .with_at_hash(self.token)?
             .with_auth_time(context.user.auth_time())
             .build()
-            .map_err(|err| OpenIdError::ServerError { source: err.into() })?;
+            .map_err(|err| OpenIdError::server_error(err.into()))?;
         Ok(id_token)
     }
 }
@@ -58,6 +56,7 @@ mod tests {
     use super::*;
     use crate::context::test_utils::setup_context;
     use crate::hash::TokenHasher;
+    use crate::response_type::errors::OpenIdErrorType;
     use oidc_types::issuer::Issuer;
     use oidc_types::nonce::Nonce;
     use oidc_types::response_type;
@@ -129,9 +128,9 @@ mod tests {
         let result = resolver.resolve(&context).await;
 
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            OpenIdError::InvalidRequest { .. }
-        ))
+        assert_eq!(
+            result.unwrap_err().error_type(),
+            OpenIdErrorType::InvalidRequest
+        )
     }
 }

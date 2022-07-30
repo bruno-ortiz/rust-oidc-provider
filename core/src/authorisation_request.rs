@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use serde::Deserialize;
 use std::str::FromStr;
 use tracing::error;
@@ -85,12 +84,7 @@ impl AuthorisationRequest {
             return Err((err, self));
         }
         if self.client_id.is_none() {
-            return Err((
-                OpenIdError::InvalidRequest {
-                    description: "Missing client_id",
-                },
-                self,
-            ));
+            return Err((OpenIdError::invalid_request("Missing client_id"), self));
         }
         if let Err(err) = self.validate_redirect_uri(client) {
             return Err((err, self));
@@ -104,12 +98,7 @@ impl AuthorisationRequest {
         if let Some(ref prompt) = prompt {
             if let Some(Err(err)) = prompt.iter().find(|&it| it.is_err()) {
                 error!("Err parsing prompt {}", err);
-                return Err((
-                    OpenIdError::InvalidRequest {
-                        description: "Invalid prompt",
-                    },
-                    self,
-                ));
+                return Err((OpenIdError::invalid_request("Invalid prompt"), self));
             }
         }
         let prompt = prompt.map(|it| it.into_iter().map(Result::unwrap).collect());
@@ -139,15 +128,13 @@ impl AuthorisationRequest {
         let redirect_uri = self
             .redirect_uri
             .as_ref()
-            .ok_or(OpenIdError::InvalidRequest {
-                description: "Missing redirect_uri",
-            })?;
+            .ok_or(OpenIdError::invalid_request("Missing redirect_uri"))?;
         if client.metadata.redirect_uris.contains(redirect_uri) {
             Ok(())
         } else {
-            Err(OpenIdError::InvalidRequest {
-                description: "Redirect uri not registered for client",
-            })
+            Err(OpenIdError::invalid_request(
+                "Redirect uri not registered for client",
+            ))
         }
     }
 
@@ -157,12 +144,12 @@ impl AuthorisationRequest {
         configuration: &OpenIDProviderConfiguration,
     ) -> Result<(), OpenIdError> {
         match self.response_type {
-            None => Err(OpenIdError::InvalidRequest {
-                description: "Missing response type",
-            }),
+            None => Err(OpenIdError::invalid_request("Missing response type")),
             Some(ref rt) => {
                 if !AuthorisationRequest::server_allows_response_type(configuration, rt) {
-                    return Err(OpenIdError::UnsupportedResponseType(rt.clone()));
+                    return Err(OpenIdError::unsupported_response_type(
+                        "Unsupported response type",
+                    ));
                 }
                 let response_type_allowed = rt
                     .iter()
@@ -170,9 +157,9 @@ impl AuthorisationRequest {
                 if response_type_allowed {
                     Ok(())
                 } else {
-                    Err(OpenIdError::UnauthorizedClient {
-                        source: anyhow!("Response type not allowed for client {}", rt),
-                    })
+                    Err(OpenIdError::unauthorized_client(
+                        "Response type not allowed for client",
+                    ))
                 }
             }
         }
@@ -180,16 +167,14 @@ impl AuthorisationRequest {
 
     fn validate_scopes(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
         match self.scope {
-            None => Err(OpenIdError::InvalidRequest {
-                description: "Missing scope",
-            }),
+            None => Err(OpenIdError::invalid_request("Missing scope")),
             Some(ref scopes) => {
                 let invalid_scope = scopes
                     .iter()
                     .find(|&item| !client.metadata.scope.contains(item));
                 match invalid_scope {
                     None => Ok(()),
-                    Some(scope) => Err(OpenIdError::InvalidScope(scope.clone())),
+                    Some(scope) => Err(OpenIdError::invalid_scope(scope)),
                 }
             }
         }

@@ -61,8 +61,10 @@ impl ResponseTypeResolver for DynamicResponseTypeResolver {
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let rt = &context.request.response_type;
-        let resolver = self.resolver_map.get(rt).ok_or(OpenIdError::ServerError {
-            source: anyhow!("OpenId Server error, no resolver found for response type"),
+        let resolver = self.resolver_map.get(rt).ok_or_else(|| {
+            OpenIdError::server_error(anyhow!(
+                "OpenId Server error, no resolver found for response type"
+            ))
         })?;
         let response = resolver.resolve(context).await?;
         Ok(response)
