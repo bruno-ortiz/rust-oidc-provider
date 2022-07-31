@@ -22,8 +22,8 @@ impl ResponseModeEncoder for FragmentEncoder {
 }
 
 impl EncoderDecider for FragmentEncoder {
-    fn can_encode(&self, response_mode: &ResponseMode) -> bool {
-        *response_mode == ResponseMode::Fragment
+    fn can_encode(&self, response_mode: ResponseMode) -> bool {
+        response_mode == ResponseMode::Fragment
     }
 }
 

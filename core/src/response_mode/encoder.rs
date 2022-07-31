@@ -38,7 +38,7 @@ pub trait ResponseModeEncoder {
 }
 
 pub trait EncoderDecider: ResponseModeEncoder {
-    fn can_encode(&self, response_mode: &ResponseMode) -> bool;
+    fn can_encode(&self, response_mode: ResponseMode) -> bool;
 }
 
 pub enum AuthorisationResponse {
@@ -56,7 +56,7 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
-        let response_mode = &context.response_mode;
+        let response_mode = context.response_mode;
         let encoder = self
             .encoders
             .iter()

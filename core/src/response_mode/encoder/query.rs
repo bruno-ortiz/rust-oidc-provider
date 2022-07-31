@@ -22,7 +22,7 @@ impl ResponseModeEncoder for QueryEncoder {
 }
 
 impl EncoderDecider for QueryEncoder {
-    fn can_encode(&self, response_mode: &ResponseMode) -> bool {
-        *response_mode == ResponseMode::Query
+    fn can_encode(&self, response_mode: ResponseMode) -> bool {
+        response_mode == ResponseMode::Query
     }
 }

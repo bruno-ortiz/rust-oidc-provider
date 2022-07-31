@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::response_type::ResponseType;
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseMode {
     FormPost,
@@ -51,13 +51,13 @@ mod tests {
 
     #[test]
     fn test_can_serialize_response_mode() {
-        assert_eq!("form_post", serialize(&ResponseMode::FormPost));
-        assert_eq!("fragment", serialize(&ResponseMode::Fragment));
-        assert_eq!("query", serialize(&ResponseMode::Query));
-        assert_eq!("jwt", serialize(&ResponseMode::Jwt));
-        assert_eq!("query.jwt", serialize(&ResponseMode::QueryJwt));
-        assert_eq!("fragment.jwt", serialize(&ResponseMode::FragmentJwt));
-        assert_eq!("form_post.jwt", serialize(&ResponseMode::FormPostJwt));
+        assert_eq!("form_post", serialize(ResponseMode::FormPost));
+        assert_eq!("fragment", serialize(ResponseMode::Fragment));
+        assert_eq!("query", serialize(ResponseMode::Query));
+        assert_eq!("jwt", serialize(ResponseMode::Jwt));
+        assert_eq!("query.jwt", serialize(ResponseMode::QueryJwt));
+        assert_eq!("fragment.jwt", serialize(ResponseMode::FragmentJwt));
+        assert_eq!("form_post.jwt", serialize(ResponseMode::FormPostJwt));
     }
 
     #[test]
@@ -71,8 +71,8 @@ mod tests {
         assert_eq!(ResponseMode::FormPostJwt, deserialize("form_post.jwt"));
     }
 
-    fn serialize(response_mode: &ResponseMode) -> String {
-        serde_json::to_string(response_mode)
+    fn serialize(response_mode: ResponseMode) -> String {
+        serde_json::to_string(&response_mode)
             .unwrap()
             .replace('\"', "")
     }

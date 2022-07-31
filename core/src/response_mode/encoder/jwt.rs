@@ -31,7 +31,6 @@ impl ResponseModeEncoder for JwtEncoder {
             .ok_or(EncodingError::MissingSigningKey)?;
         let header = JwsHeader::from_key(signing_key);
         let payload = self.build_payload(context, parameters);
-        //todo: add state to the response
         let jwt = JWT::encode_string(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
 
@@ -48,11 +47,11 @@ impl ResponseModeEncoder for JwtEncoder {
 }
 
 impl EncoderDecider for JwtEncoder {
-    fn can_encode(&self, response_mode: &ResponseMode) -> bool {
-        *response_mode == ResponseMode::Jwt
-            || *response_mode == ResponseMode::QueryJwt
-            || *response_mode == ResponseMode::FragmentJwt
-            || *response_mode == ResponseMode::FormPostJwt
+    fn can_encode(&self, response_mode: ResponseMode) -> bool {
+        response_mode == ResponseMode::Jwt
+            || response_mode == ResponseMode::QueryJwt
+            || response_mode == ResponseMode::FragmentJwt
+            || response_mode == ResponseMode::FormPostJwt
     }
 }
 
