@@ -1,10 +1,11 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use oidc_types::response_type::Flow;
 use time::{Duration, OffsetDateTime};
 
-use crate::access_token::AccessToken;
-use crate::authorisation_code::AuthorisationCode;
+use oidc_types::access_token::AccessToken;
+use oidc_types::authorisation_code::AuthorisationCode;
+use oidc_types::response_type::Flow;
+
 use crate::context::OpenIDContext;
 use crate::id_token::IdToken;
 use crate::response_type::errors::OpenIdError;
@@ -28,7 +29,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let signing_key = context
             .configuration
             .signing_key()
-            .ok_or(OpenIdError::server_error(anyhow!("Missing signing key")))?;
+            .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
         if context.flow_type() == Flow::Hybrid && context.request.nonce.is_none() {
             return Err(OpenIdError::invalid_request(
                 "Hybrid flow must contain a nonce in the auth request",
@@ -53,16 +54,18 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::context::test_utils::setup_context;
-    use crate::hash::TokenHasher;
-    use crate::response_type::errors::OpenIdErrorType;
     use oidc_types::issuer::Issuer;
     use oidc_types::nonce::Nonce;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
     use oidc_types::state::State;
     use oidc_types::subject::Subject;
+
+    use crate::context::test_utils::setup_context;
+    use crate::hash::TokenHasher;
+    use crate::response_type::errors::OpenIdErrorType;
+
+    use super::*;
 
     #[tokio::test]
     async fn can_generate_id_token() {

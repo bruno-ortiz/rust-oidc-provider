@@ -2,14 +2,14 @@ use indexmap::IndexMap;
 
 use url::Url;
 
-use oidc_types::client::ClientID;
-use oidc_types::hash::Hashable;
-use oidc_types::identifiable::Identifiable;
-use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
-use oidc_types::scopes::Scopes;
-use oidc_types::subject::Subject;
+use crate::client::ClientID;
+use crate::hash::Hashable;
+use crate::identifiable::Identifiable;
+use crate::pkce::{CodeChallenge, CodeChallengeMethod};
+use crate::scopes::Scopes;
+use crate::subject::Subject;
 
-use crate::response_type::UrlEncodable;
+use crate::url_encodable::UrlEncodable;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CodeStatus {

@@ -1,4 +1,6 @@
+pub mod access_token;
 pub mod auth_method;
+pub mod authorisation_code;
 pub mod claim_type;
 pub mod client;
 pub mod discovery;

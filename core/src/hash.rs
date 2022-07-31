@@ -48,8 +48,8 @@ mod tests {
     use oidc_types::scopes;
     use oidc_types::subject::Subject;
 
-    use crate::authorisation_code::{AuthorisationCode, CodeStatus};
     use crate::hash::TokenHasher;
+    use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
 
     #[test]
     fn test_can_hash() {

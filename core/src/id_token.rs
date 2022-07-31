@@ -10,10 +10,10 @@ use oidc_types::hash::Hashable;
 use thiserror::Error;
 use time::OffsetDateTime;
 
-use crate::access_token::AccessToken;
-use crate::authorisation_code::AuthorisationCode;
 use crate::hash::TokenHasher;
 use crate::response_type::errors::OpenIdError;
+use oidc_types::access_token::AccessToken;
+use oidc_types::authorisation_code::AuthorisationCode;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt::JWT;

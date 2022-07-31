@@ -1,9 +1,10 @@
+use crate::hash::Hashable;
+use crate::identifiable::Identifiable;
 use indexmap::IndexMap;
-use oidc_types::hash::Hashable;
-use oidc_types::identifiable::Identifiable;
 use time::Duration;
+use uuid::Uuid;
 
-use crate::response_type::UrlEncodable;
+use crate::url_encodable::UrlEncodable;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AccessToken {
@@ -14,14 +15,9 @@ pub struct AccessToken {
 }
 
 impl AccessToken {
-    pub fn new(
-        token: String,
-        token_type: String,
-        expires_in: Duration,
-        refresh_token: Option<String>,
-    ) -> Self {
+    pub fn new(token_type: String, expires_in: Duration, refresh_token: Option<String>) -> Self {
         Self {
-            token,
+            token: Uuid::new_v4().to_string(),
             token_type,
             expires_in,
             refresh_token,

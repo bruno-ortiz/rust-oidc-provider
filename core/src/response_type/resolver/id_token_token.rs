@@ -1,6 +1,6 @@
-use crate::access_token::AccessToken;
 use crate::adapter::Adapter;
 use async_trait::async_trait;
+use oidc_types::access_token::AccessToken;
 use std::sync::Arc;
 
 use crate::context::OpenIDContext;

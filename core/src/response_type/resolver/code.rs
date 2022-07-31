@@ -4,10 +4,10 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::authorisation_code::{AuthorisationCode, CodeStatus};
 use crate::context::OpenIDContext;
 use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
+use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
 
 pub(crate) struct CodeResolver {
     adapter: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
