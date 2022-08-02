@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {
     AuthorizationCode,
-    Implicit,
+    Implicit, //todo remove?
     RefreshToken,
     ClientCredentials,
 }

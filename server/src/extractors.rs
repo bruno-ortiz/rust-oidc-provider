@@ -1,14 +1,17 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use axum::extract::{Extension, FromRequest, RequestParts};
-use axum::http::{Request, StatusCode};
-use axum::response::IntoResponse;
+use axum::extract::{Extension, FromRequest, Query, RequestParts};
+use axum::http::{HeaderMap, Request, StatusCode};
+use axum::response::{IntoResponse, Response};
+use serde::Deserialize;
 use time::Duration;
 use tower_cookies::{Cookie, Cookies, Key};
 
 use oidc_core::session::SessionID;
+use oidc_types::token_request::TokenRequest;
 
 pub const SESSION_KEY: &str = "oidc-session";
 
@@ -107,5 +110,26 @@ where
                 "Session manager layer not configured",
             ))
         }
+    }
+}
+
+#[derive(Clone, Deserialize)]
+struct TokenRequestHolder(TokenRequest);
+
+#[async_trait]
+impl<B> FromRequest<B> for TokenRequestHolder
+where
+    B: Send,
+{
+    type Rejection = Response;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let query = Query::<TokenRequestHolder>::from_request(req)
+            .await
+            .map_err(|err| err.into_response())?;
+        let headers = HeaderMap::from_request(req)
+            .await
+            .map_err(|err| err.into_response())?;
+        todo!()
     }
 }

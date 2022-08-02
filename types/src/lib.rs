@@ -20,5 +20,6 @@ pub mod scopes;
 pub mod state;
 pub mod subject;
 pub mod subject_type;
+pub mod token_request;
 pub mod url_encodable;
 mod utils;
