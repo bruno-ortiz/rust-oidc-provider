@@ -22,10 +22,12 @@ use tower_http::services::ServeDir;
 use oidc_server::server::OidcServer;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientInformation, ClientMetadataBuilder};
+use oidc_types::hashed_secret::HashedSecret;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use tera::{Context, Tera};
+use tracing::info;
 use ResponseTypeValue::Code;
 
 lazy_static! {
@@ -64,15 +66,21 @@ async fn main() {
     let client_metadata = ClientMetadataBuilder::default()
         .redirect_uris(vec![callback_url])
         .jwks(JwkSet::default())
-        .token_endpoint_auth_method(AuthMethod::PrivateKeyJwt)
+        .token_endpoint_auth_method(AuthMethod::ClientSecretPost)
         .client_name("Test client")
         .response_types(vec![Code, IdToken, Token])
         .build()
         .expect("Valid client metadata");
 
+    let (hashed, plain_text) = HashedSecret::random(config.secret_hasher()).unwrap();
+
+    info!("Use secret: {}", plain_text);
+
     let client = ClientInformation {
         id: ClientID::from_str("1d8fca3b-a2f1-48c2-924d-843e5173a951").unwrap(),
         metadata: client_metadata,
+        secret: hashed,
+        secret_expires_at: None,
         issue_date: OffsetDateTime::now_utc(),
     };
 

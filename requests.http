@@ -1,3 +1,9 @@
+POST http://localhost:3000/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=1d8fca3b-a2f1-48c2-924d-843e5173a951&client_secret=JiMMe%25f53S%2AONAo%26NquI
+
+###
 GET http://localhost:3000/jwks.json
 Accept: application/json
 

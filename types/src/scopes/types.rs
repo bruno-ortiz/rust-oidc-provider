@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
+use std::ops::Add;
 
 use crate::scopes;
 use lazy_static::lazy_static;
@@ -63,6 +64,10 @@ impl Scopes {
         self.0.contains(scope)
     }
 
+    pub fn contains_all(&self, scope: &Scopes) -> bool {
+        scope.iter().all(|item| self.contains(item))
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Scope> {
         self.0.iter()
     }
@@ -99,6 +104,15 @@ impl<T: Into<String>> From<T> for Scope {
             }
             false => Scope::Simple(scope),
         }
+    }
+}
+
+impl Add for Scopes {
+    type Output = Scopes;
+
+    fn add(mut self, mut rhs: Self) -> Self::Output {
+        self.0.append(&mut rhs.0);
+        Scopes::from_vec(self.0)
     }
 }
 

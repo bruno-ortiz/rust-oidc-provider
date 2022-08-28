@@ -46,6 +46,7 @@ pub mod test_utils {
     use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
     use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
     use oidc_types::grant::Grant;
+    use oidc_types::hashed_secret::{HashedSecret, SecretHasher};
     use oidc_types::jose::jwk_set::JwkSet;
     use oidc_types::nonce::Nonce;
     use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
@@ -83,9 +84,12 @@ pub mod test_utils {
             request: None,
             prompt: None,
         };
+        let (hashed_secret, _) = HashedSecret::random(SecretHasher::Sha256).unwrap();
         let client = ClientInformation {
             id: client_id,
             issue_date: OffsetDateTime::now_utc(),
+            secret: hashed_secret,
+            secret_expires_at: None,
             metadata: ClientMetadata {
                 redirect_uris: vec![],
                 token_endpoint_auth_method: None,

@@ -1,15 +1,19 @@
 use indexmap::IndexMap;
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-use oidc_types::scopes::Scope;
+use oidc_types::scopes::{Scope, Scopes};
 use thiserror::Error;
 
 use oidc_types::url_encodable::UrlEncodable;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OpenIdErrorType {
     InvalidRequest,
+    InvalidClient,
     UnauthorizedClient,
+    UnsupportedGrantType,
     UnsupportedResponseType,
     InvalidScope,
     ServerError,
@@ -25,19 +29,23 @@ impl Display for OpenIdErrorType {
             OpenIdErrorType::InvalidScope => write!(f, "invalid_scope"),
             OpenIdErrorType::ServerError => write!(f, "server_error"),
             OpenIdErrorType::TemporarilyUnavailable => write!(f, "temporary_unavailable"),
+            OpenIdErrorType::InvalidClient => write!(f, "invalid_client"),
+            OpenIdErrorType::UnsupportedGrantType => write!(f, "unsupported_grant_type"),
         }
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Serialize)]
 #[error("OpenId error: {:?}, description: {}", .error_type, .description)]
 pub struct OpenIdError {
+    #[serde(rename = "error")]
     error_type: OpenIdErrorType,
+    #[serde(rename = "error_description")]
     description: String,
 }
 
 impl OpenIdError {
-    pub fn new<D: Into<String>>(error_type: OpenIdErrorType, description: D) -> Self {
+    fn new<D: Into<String>>(error_type: OpenIdErrorType, description: D) -> Self {
         Self {
             error_type,
             description: description.into(),
@@ -48,11 +56,26 @@ impl OpenIdError {
         Self::new(OpenIdErrorType::InvalidRequest, description)
     }
 
+    pub fn invalid_client<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::InvalidRequest, description)
+    }
+
     pub fn invalid_scope(scope: &Scope) -> Self {
         Self::new(
             OpenIdErrorType::InvalidScope,
             format!("Invalid scope {}", scope),
         )
+    }
+
+    pub fn invalid_scopes(scope: &Scopes) -> Self {
+        Self::new(
+            OpenIdErrorType::InvalidScope,
+            format!("Invalid scope {}", scope),
+        )
+    }
+
+    pub fn unsupported_grant_type<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::UnsupportedGrantType, description)
     }
 
     pub fn unsupported_response_type<D: Into<String>>(description: D) -> Self {

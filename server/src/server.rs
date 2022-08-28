@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use oidc_admin::{AdminServer, AdminServerError, InteractionServiceClient};
 use thiserror::Error;
@@ -21,6 +21,7 @@ use crate::middleware::SessionManagerLayer;
 use crate::routes::authorisation::authorise;
 use crate::routes::discovery::{discovery, DISCOVERY_ROUTE};
 use crate::routes::jwks::jwks;
+use crate::routes::token::token;
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -88,14 +89,15 @@ impl OidcServer {
                 routes.authorisation,
                 get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
             )
-            .route(routes.jwks, get(jwks));
+            .route(routes.jwks, get(jwks))
+            .route(routes.token, post(token));
         if let Some(custom_routes) = self.custom_routes.as_ref().cloned() {
             router = router.nest("/", custom_routes);
         }
         let interaction_client = InteractionServiceClient::connect("http://localhost:4000")
             .await
             .expect("expected succesful gRPC connection");
-        router.layer(
+        router.route_layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(CookieManagerLayer::new())

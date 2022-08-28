@@ -7,6 +7,7 @@ use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::{Number, Value};
 use oidc_types::hash::Hashable;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -35,7 +36,7 @@ pub enum IdTokenError {
     MissingRequiredClaim(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IdToken(JWT);
 
 impl IdToken {

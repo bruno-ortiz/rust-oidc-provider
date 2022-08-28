@@ -1,7 +1,9 @@
-use axum::body;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum::{body, Json};
+use oidc_core::response_type::errors::{OpenIdError, OpenIdErrorType};
 use thiserror::Error;
+use tracing::error;
 
 use oidc_core::services::authorisation::AuthorisationError;
 
@@ -27,5 +29,22 @@ impl IntoResponse for AuthorisationErrorWrapper {
                     .unwrap()
             }
         }
+    }
+}
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub struct OpenIdErrorResponse(#[from] OpenIdError);
+
+impl IntoResponse for OpenIdErrorResponse {
+    fn into_response(self) -> Response {
+        let err = self.0;
+        error!("Request error, {}", err);
+        let status_code = if err.error_type() == OpenIdErrorType::InvalidClient {
+            StatusCode::UNAUTHORIZED
+        } else {
+            StatusCode::BAD_REQUEST
+        };
+        (status_code, Json(err)).into_response()
     }
 }

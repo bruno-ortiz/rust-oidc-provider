@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::auth_method::AuthMethod;
 use crate::grant_type::GrantType;
+use crate::hashed_secret::HashedSecret;
 use crate::identifiable::Identifiable;
 use crate::jose::jwk_set::JwkSet;
 use crate::jose::jwt::JWT;
@@ -78,11 +79,30 @@ pub struct ClientMetadata {
     pub software_statement: Option<JWT>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ClientInformation {
     pub id: ClientID,
     pub issue_date: OffsetDateTime,
+    pub secret: HashedSecret,
+    pub secret_expires_at: Option<OffsetDateTime>,
     pub metadata: ClientMetadata,
+}
+
+#[derive(Debug, Clone)]
+pub struct AuthenticatedClient(ClientInformation);
+
+impl AuthenticatedClient {
+    pub fn new(client: ClientInformation) -> Self {
+        Self(client)
+    }
+
+    pub fn info(self) -> ClientInformation {
+        self.0
+    }
+
+    pub fn info_ref(&self) -> &ClientInformation {
+        &self.0
+    }
 }
 
 impl Identifiable<ClientID> for ClientInformation {

@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Formatter};
+use std::str::FromStr;
 
 use josekit::jwk::Jwk;
 use josekit::jws::{
@@ -161,6 +162,15 @@ impl JWT {
             _ => unreachable!("should be unreachable"),
         };
         Ok(signer)
+    }
+}
+
+impl FromStr for JWT {
+    type Err = JWTError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let jwt = JWT::decode_no_verify(s)?;
+        Ok(jwt)
     }
 }
 

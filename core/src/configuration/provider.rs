@@ -16,6 +16,7 @@ use oidc_types::jose::jwe::alg::EncryptionAlgorithm;
 use oidc_types::jose::jwe::enc::ContentEncryptionAlgorithm;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::jose::jws::Algorithm;
+use oidc_types::password_hasher::HasherConfig;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
@@ -24,6 +25,7 @@ use oidc_types::subject_type::SubjectType;
 use oidc_types::{response_type, scopes};
 
 use crate::configuration::adapter_container::AdapterContainer;
+use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
 use crate::services::types::Interaction;
@@ -91,6 +93,10 @@ pub struct OpenIDProviderConfiguration {
     #[getset(skip)]
     #[get_copy = "pub"]
     require_request_uri_registration: bool,
+    #[getset(skip)]
+    #[get_copy = "pub"]
+    secret_hasher: HasherConfig,
+    client_credentials: ClientCredentialConfiguration,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -244,6 +250,8 @@ impl Default for OpenIDProviderConfiguration {
                 Algorithm::from(ES256),
                 Algorithm::from(EdDSA),
             ],
+            secret_hasher: HasherConfig::Sha256,
+            client_credentials: ClientCredentialConfiguration::default(),
             display_values_supported: None,
             claim_types_supported: None,
             service_documentation: None,

@@ -23,8 +23,13 @@ impl TokenResolver {
 impl ResponseTypeResolver for TokenResolver {
     type Output = AccessToken;
 
-    async fn resolve(&self, _context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
-        let token = AccessToken::new("Bearer".to_owned(), Duration::minutes(10), None);
+    async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
+        let token = AccessToken::new(
+            "Bearer".to_owned(),
+            Duration::minutes(10),
+            None,
+            Some(context.request.scope.clone()),
+        );
         let token = self
             .repository
             .save(token)
