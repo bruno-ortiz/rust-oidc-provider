@@ -6,11 +6,11 @@ use axum::response::{IntoResponse, Redirect, Response, Result};
 use oidc_core::authorisation_request::AuthorisationRequest;
 use oidc_core::client::retrieve_client_info_by_unparsed;
 use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_core::error::OpenIdError;
 use oidc_core::response_mode::encoder::{
     encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
     ResponseModeEncoder,
 };
-use oidc_core::response_type::errors::OpenIdError;
 use oidc_core::response_type::resolver::ResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_types::client::ClientInformation;

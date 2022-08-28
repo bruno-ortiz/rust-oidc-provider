@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
+use crate::error::OpenIdError;
 use crate::hash::TokenHasher;
-use crate::response_type::errors::OpenIdError;
 use oidc_types::access_token::AccessToken;
 use oidc_types::authorisation_code::AuthorisationCode;
 use oidc_types::issuer::Issuer;

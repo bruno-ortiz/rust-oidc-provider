@@ -1,6 +1,6 @@
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::response_type::errors::OpenIdError;
+use crate::error::OpenIdError;
 use anyhow::anyhow;
 use async_trait::async_trait;
 use oidc_types::access_token::{AccessToken, BEARER_TYPE};

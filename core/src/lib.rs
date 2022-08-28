@@ -6,6 +6,7 @@ pub mod client;
 pub mod client_auth;
 pub mod configuration;
 pub mod context;
+pub mod error;
 pub mod hash;
 pub mod id_token;
 pub mod response_mode;

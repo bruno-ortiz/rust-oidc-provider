@@ -11,7 +11,7 @@ use oidc_types::response_type::{
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
-use crate::response_type::errors::OpenIdError;
+use crate::error::OpenIdError;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::code_id_token::CodeIdTokenResolver;
 use crate::response_type::resolver::code_id_token_token::CodeIdTokenTokenResolver;

@@ -14,7 +14,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::response_type::errors::OpenIdError;
+use crate::error::OpenIdError;
 
 #[derive(Debug, Clone)]
 pub struct ValidatedAuthorisationRequest {

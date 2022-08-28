@@ -4,8 +4,8 @@ use oidc_types::access_token::AccessToken;
 use std::sync::Arc;
 
 use crate::context::OpenIDContext;
+use crate::error::OpenIdError;
 use crate::id_token::IdToken;
-use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
 use crate::response_type::resolver::token::TokenResolver;

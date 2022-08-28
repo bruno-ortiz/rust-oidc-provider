@@ -1,6 +1,6 @@
 use crate::adapter::Adapter;
 use crate::context::OpenIDContext;
-use crate::response_type::errors::OpenIdError;
+use crate::error::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
 use async_trait::async_trait;
 use oidc_types::access_token::AccessToken;

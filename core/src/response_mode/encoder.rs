@@ -9,11 +9,11 @@ use oidc_types::response_mode::ResponseMode;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::error::OpenIdError;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::jwt::JwtEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::errors::EncodingError;
-use crate::response_type::errors::OpenIdError;
 use crate::services::authorisation::AuthorisationError;
 
 pub(crate) mod fragment;

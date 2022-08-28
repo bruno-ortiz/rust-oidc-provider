@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{body, Json};
-use oidc_core::response_type::errors::{OpenIdError, OpenIdErrorType};
+use oidc_core::error::{OpenIdError, OpenIdErrorType};
 use thiserror::Error;
 use tracing::error;
 

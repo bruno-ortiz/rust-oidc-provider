@@ -3,7 +3,7 @@ use axum::http::header::AUTHORIZATION;
 use axum::http::StatusCode;
 use hyper::HeaderMap;
 use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_core::response_type::errors::OpenIdError;
+use oidc_core::error::OpenIdError;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::ClientID;
 use oidc_types::client_credentials::ClientCredential::{
@@ -86,7 +86,7 @@ impl Credentials {
             let parsed_credential = PrivateKeyJWTCredential::from(credential);
             credentials.insert(AuthMethod::PrivateKeyJwt, PrivateKeyJwt(parsed_credential));
         }
-        
+
         Ok(Credentials {
             credentials,
             client_id: client_id?,

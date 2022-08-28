@@ -7,8 +7,8 @@ use oidc_types::authorisation_code::AuthorisationCode;
 use oidc_types::response_type::Flow;
 
 use crate::context::OpenIDContext;
+use crate::error::OpenIdError;
 use crate::id_token::IdToken;
-use crate::response_type::errors::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub struct IDTokenResolver<'a> {
@@ -62,8 +62,8 @@ mod tests {
     use oidc_types::subject::Subject;
 
     use crate::context::test_utils::setup_context;
+    use crate::error::OpenIdErrorType;
     use crate::hash::TokenHasher;
-    use crate::response_type::errors::OpenIdErrorType;
 
     use super::*;
 
