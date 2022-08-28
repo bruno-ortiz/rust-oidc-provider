@@ -10,8 +10,6 @@ use uuid::Uuid;
 
 use crate::url_encodable::UrlEncodable;
 
-pub const BEARER_TYPE: &str = "Bearer";
-
 #[skip_serializing_none]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
@@ -25,6 +23,8 @@ pub struct AccessToken {
 }
 
 impl AccessToken {
+    pub const BEARER_TYPE: &'static str = "Bearer";
+
     pub fn new<TT: Into<String>>(
         token_type: TT,
         expires_in: Duration,
