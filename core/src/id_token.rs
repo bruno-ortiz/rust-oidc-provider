@@ -1,5 +1,3 @@
-use indexmap::IndexMap;
-
 use std::time::SystemTime;
 
 use josekit::jwk::Jwk;
@@ -7,7 +5,6 @@ use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::{Number, Value};
 use oidc_types::hash::Hashable;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -15,6 +12,7 @@ use crate::error::OpenIdError;
 use crate::hash::TokenHasher;
 use crate::models::access_token::AccessToken;
 use oidc_types::authorisation_code::AuthorisationCode;
+use oidc_types::id_token::IdToken;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt::JWT;
@@ -22,8 +20,6 @@ use oidc_types::jose::JwsHeaderExt;
 use oidc_types::nonce::Nonce;
 use oidc_types::state::State;
 use oidc_types::subject::Subject;
-
-use crate::response_type::UrlEncodable;
 
 #[derive(Error, Debug)]
 pub enum IdTokenError {
@@ -34,23 +30,6 @@ pub enum IdTokenError {
     },
     #[error("Required id_token claim {} not found", .0)]
     MissingRequiredClaim(String),
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct IdToken(JWT);
-
-impl IdToken {
-    pub fn builder(signing_key: &Jwk) -> IdTokenBuilder {
-        IdTokenBuilder::new(signing_key)
-    }
-
-    pub fn payload(&self) -> &JwtPayload {
-        self.0.payload()
-    }
-
-    pub fn serialized(self) -> String {
-        self.0.serialize_owned()
-    }
 }
 
 #[derive(Debug)]
@@ -72,7 +51,7 @@ pub struct IdTokenBuilder<'a> {
 }
 
 impl<'a> IdTokenBuilder<'a> {
-    fn new(signing_key: &'a Jwk) -> Self {
+    pub fn new(signing_key: &'a Jwk) -> Self {
         IdTokenBuilder {
             signing_key,
             issuer: None,
@@ -184,7 +163,7 @@ impl<'a> IdTokenBuilder<'a> {
         payload.set_at_hash(self.at_hash);
         let jwt = JWT::new(header, payload, self.signing_key)
             .map_err(|err| IdTokenError::EncodingErr { source: err })?;
-        Ok(IdToken(jwt))
+        Ok(IdToken::new(jwt))
     }
 
     fn build_hash<H: Hashable>(signing_key: &Jwk, hashable: &H) -> Result<String, OpenIdError> {
@@ -281,13 +260,5 @@ impl<T> OptionRequiredExt<T> for Option<T> {
         } else {
             Err(IdTokenError::MissingRequiredClaim(param.to_owned()))
         }
-    }
-}
-
-impl UrlEncodable for IdToken {
-    fn params(self) -> IndexMap<String, String> {
-        let mut map = IndexMap::new();
-        map.insert("id_token".to_owned(), self.0.serialize_owned());
-        map
     }
 }

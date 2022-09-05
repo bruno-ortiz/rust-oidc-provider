@@ -1,37 +1,31 @@
-use crate::hash::Hashable;
-use crate::jose::jwt::JWT;
+use crate::id_token::IdToken;
 use crate::refresh_token::RefreshToken;
-use indexmap::IndexMap;
 use serde::{Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use time::Duration;
-use uuid::Uuid;
-
-use crate::url_encodable::UrlEncodable;
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
-pub struct AccessToken {
+pub struct TokenResponse {
     token: String,
     token_type: String,
     #[serde(serialize_with = "serialize_duration")]
     expires_in: Duration,
     refresh_token: Option<RefreshToken>,
-    id_token: Option<JWT>,
+    id_token: Option<IdToken>,
 }
 
-impl AccessToken {
-    pub const BEARER_TYPE: &'static str = "Bearer";
-
-    pub fn new<TT: Into<String>>(
-        token_type: TT,
+impl TokenResponse {
+    pub fn new(
+        token: String,
+        token_type: String,
         expires_in: Duration,
         refresh_token: Option<RefreshToken>,
-        id_token: Option<JWT>,
+        id_token: Option<IdToken>,
     ) -> Self {
         Self {
-            token: Uuid::new_v4().to_string(),
-            token_type: token_type.into(),
+            token,
+            token_type,
             expires_in,
             refresh_token,
             id_token,

@@ -13,14 +13,11 @@ use oidc_core::client_auth::ClientAuthenticator;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::grant_type::GrantTypeResolver;
-use oidc_core::id_token::IdToken;
-use oidc_types::access_token::AccessToken;
+use oidc_types::access_token::TokenResponse;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::token_request::TokenRequestBody;
 use serde::de::value::Error as SerdeError;
-use serde::Serialize;
 use serde_urlencoded::from_bytes;
-use serde_with::skip_serializing_none;
 use thiserror::Error;
 use tracing::error;
 
@@ -28,7 +25,7 @@ use tracing::error;
 pub async fn token(
     request: TokenRequest,
     Extension(configuration): Extension<Arc<OpenIDProviderConfiguration>>,
-) -> axum::response::Result<Json<()>, OpenIdErrorResponse> {
+) -> axum::response::Result<Json<TokenResponse>, OpenIdErrorResponse> {
     let mut credentials = request.credentials;
     let client = retrieve_client_info(&configuration, credentials.client_id)
         .await
@@ -54,11 +51,14 @@ pub async fn token(
         .await
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
     let access_token = request.body.execute(&configuration, client).await?;
-    todo!();
-    // Ok(Json(TokenResponse {
-    //     access_token,
-    //     id_token: None,
-    // }))
+
+    Ok(Json(TokenResponse::new(
+        access_token.token,
+        access_token.t_type,
+        access_token.expires_in,
+        None,
+        None,
+    )))
 }
 
 #[derive(Debug, Error)]

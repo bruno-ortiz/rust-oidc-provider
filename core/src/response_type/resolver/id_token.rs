@@ -3,11 +3,12 @@ use async_trait::async_trait;
 use time::{Duration, OffsetDateTime};
 
 use oidc_types::authorisation_code::AuthorisationCode;
+use oidc_types::id_token::IdToken;
 use oidc_types::response_type::Flow;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
-use crate::id_token::IdToken;
+use crate::id_token::IdTokenBuilder;
 use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
 
@@ -35,7 +36,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 "Hybrid flow must contain a nonce in the auth request",
             ));
         }
-        let id_token = IdToken::builder(signing_key)
+        let id_token = IdTokenBuilder::new(signing_key)
             .with_issuer(context.configuration.issuer())
             .with_sub(context.user.sub())
             .with_audience(vec![context.client.id.into()])

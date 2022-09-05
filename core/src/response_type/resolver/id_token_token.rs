@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use oidc_types::id_token::IdToken;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
-use crate::id_token::IdToken;
 use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::id_token::IDTokenResolver;
 use crate::response_type::resolver::token::TokenResolver;

@@ -2,11 +2,11 @@ use async_trait::async_trait;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
-use crate::id_token::IdToken;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::id_token::IDTokenResolver;
 use crate::response_type::resolver::ResponseTypeResolver;
 use oidc_types::authorisation_code::AuthorisationCode;
+use oidc_types::id_token::IdToken;
 
 pub struct CodeIdTokenResolver;
 

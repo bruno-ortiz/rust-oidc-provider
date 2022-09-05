@@ -9,10 +9,10 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
-    token: String,
-    t_type: String,
+    pub token: String,
+    pub t_type: String,
+    pub expires_in: Duration,
     created: OffsetDateTime,
-    expires_in: Duration,
     scopes: Option<Scopes>,
 }
 
