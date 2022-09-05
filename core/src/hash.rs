@@ -43,6 +43,7 @@ where
 mod tests {
     use josekit::jwk::Jwk;
     use oidc_types::client::ClientID;
+    use time::{Duration, OffsetDateTime};
     use url::Url;
 
     use oidc_types::scopes;
@@ -62,6 +63,7 @@ mod tests {
             code_challenge: None,
             code_challenge_method: None,
             status: CodeStatus::Awaiting,
+            expires_in: OffsetDateTime::now_utc() + Duration::minutes(10),
         };
         let rsa_key = Jwk::from_bytes(r#"
         {
