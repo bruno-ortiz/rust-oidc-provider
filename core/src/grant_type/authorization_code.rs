@@ -34,7 +34,9 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         let ttl = configuration.ttl();
 
-        let rt_ttl = ttl.refresh_token_ttl(&client).await;
+        if configuration.issue_refresh_token(&client).await {
+            let rt_ttl = ttl.refresh_token_ttl(&client).await;
+        }
 
         // let access_token = AccessToken::bearer()
         todo!("sld")

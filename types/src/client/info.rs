@@ -99,6 +99,10 @@ impl AuthenticatedClient {
     pub fn info(self) -> ClientInformation {
         self.0
     }
+
+    pub fn allows_grant(&self, grant_type: GrantType) -> bool {
+        self.0.metadata.grant_types.contains(&grant_type)
+    }
 }
 
 impl AsRef<ClientInformation> for AuthenticatedClient {

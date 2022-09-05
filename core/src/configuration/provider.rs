@@ -1,4 +1,5 @@
 use derive_builder::Builder;
+use futures::future::BoxFuture;
 use getset::{CopyGetters, Getters};
 use josekit::jwe::enc::{A128CBC_HS256, A128GCM, A256CBC_HS512, A256GCM};
 use josekit::jwe::{Dir, A128KW, A256KW, ECDH_ES, RSA_OAEP};
@@ -10,6 +11,7 @@ use url::Url;
 
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::claim_type::ClaimType;
+use oidc_types::client::AuthenticatedClient;
 use oidc_types::grant_type::GrantType;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwe::alg::EncryptionAlgorithm;
@@ -34,6 +36,7 @@ use crate::services::types::Interaction;
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
 const DEFAULT_LOGIN_PATH: &str = "/interaction/login/";
 const DEFAULT_CONSENT_PATH: &str = "/interaction/consent/";
+type IssueRTFunc = Box<dyn Fn(&AuthenticatedClient) -> BoxFuture<bool> + Send + Sync>;
 
 #[derive(Builder, CopyGetters, Getters)]
 #[get = "pub"]
@@ -99,6 +102,8 @@ pub struct OpenIDProviderConfiguration {
     secret_hasher: HasherConfig,
     client_credentials: ClientCredentialConfiguration,
     ttl: TTL,
+    #[getset(skip)]
+    issue_refresh_token: IssueRTFunc,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -128,6 +133,11 @@ impl OpenIDProviderConfiguration {
         interaction_url_fn(self)
             .join(DEFAULT_CONSENT_PATH)
             .expect("Should return a valid url")
+    }
+
+    pub async fn issue_refresh_token(&self, client: &AuthenticatedClient) -> bool {
+        let func = &self.issue_refresh_token;
+        func(client).await
     }
 
     pub fn signing_key(&self) -> Option<&Jwk> {
@@ -255,6 +265,9 @@ impl Default for OpenIDProviderConfiguration {
             secret_hasher: HasherConfig::Sha256,
             client_credentials: ClientCredentialConfiguration::default(),
             ttl: TTL::default(),
+            issue_refresh_token: Box::new(|c| {
+                Box::pin(async { c.allows_grant(GrantType::RefreshToken) })
+            }),
             display_values_supported: None,
             claim_types_supported: None,
             service_documentation: None,
