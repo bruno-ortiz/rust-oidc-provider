@@ -12,6 +12,7 @@ use oidc_types::url_encodable::UrlEncodable;
 pub enum OpenIdErrorType {
     InvalidRequest,
     InvalidClient,
+    InvalidGrant,
     UnauthorizedClient,
     UnsupportedGrantType,
     UnsupportedResponseType,
@@ -31,6 +32,7 @@ impl Display for OpenIdErrorType {
             OpenIdErrorType::TemporarilyUnavailable => write!(f, "temporary_unavailable"),
             OpenIdErrorType::InvalidClient => write!(f, "invalid_client"),
             OpenIdErrorType::UnsupportedGrantType => write!(f, "unsupported_grant_type"),
+            OpenIdErrorType::InvalidGrant => write!(f, "invalid_grant"),
         }
     }
 }
@@ -54,6 +56,10 @@ impl OpenIdError {
 
     pub fn invalid_request<D: Into<String>>(description: D) -> Self {
         Self::new(OpenIdErrorType::InvalidRequest, description)
+    }
+
+    pub fn invalid_grant<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::InvalidGrant, description)
     }
 
     pub fn invalid_client<D: Into<String>>(description: D) -> Self {

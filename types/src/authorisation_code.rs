@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use time::OffsetDateTime;
 
 use url::Url;
 
@@ -27,6 +28,14 @@ pub struct AuthorisationCode {
     pub code_challenge_method: Option<CodeChallengeMethod>,
     pub redirect_uri: Url,
     pub scope: Scopes,
+    pub expires_in: OffsetDateTime,
+}
+
+impl AuthorisationCode {
+    pub fn is_expired(&self) -> bool {
+        let now = OffsetDateTime::now_utc();
+        self.expires_in <= now
+    }
 }
 
 impl Hashable for AuthorisationCode {

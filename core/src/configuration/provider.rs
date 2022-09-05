@@ -28,6 +28,7 @@ use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
+use crate::configuration::ttl::TTL;
 use crate::services::types::Interaction;
 
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
@@ -97,6 +98,7 @@ pub struct OpenIDProviderConfiguration {
     #[get_copy = "pub"]
     secret_hasher: HasherConfig,
     client_credentials: ClientCredentialConfiguration,
+    ttl: TTL,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -252,6 +254,7 @@ impl Default for OpenIDProviderConfiguration {
             ],
             secret_hasher: HasherConfig::Sha256,
             client_credentials: ClientCredentialConfiguration::default(),
+            ttl: TTL::default(),
             display_values_supported: None,
             claim_types_supported: None,
             service_documentation: None,

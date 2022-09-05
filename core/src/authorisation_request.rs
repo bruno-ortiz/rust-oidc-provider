@@ -90,6 +90,16 @@ impl AuthorisationRequest {
             return Err((err, self));
         }
 
+        const MIN_ENTROPY: usize = 43;
+        if let Some(ref challenge) = self.code_challenge {
+            if challenge.len() < MIN_ENTROPY {
+                return Err((
+                    OpenIdError::invalid_request("Code challenge must have a minimum length of 43"),
+                    self,
+                ));
+            }
+        }
+
         let prompt = self
             .prompt
             .as_ref()

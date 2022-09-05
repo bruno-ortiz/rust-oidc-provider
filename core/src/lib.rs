@@ -10,6 +10,7 @@ pub mod error;
 pub mod grant_type;
 pub mod hash;
 pub mod id_token;
+mod models;
 pub mod response_mode;
 pub mod response_type;
 pub mod services;

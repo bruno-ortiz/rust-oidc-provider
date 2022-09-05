@@ -99,8 +99,10 @@ impl AuthenticatedClient {
     pub fn info(self) -> ClientInformation {
         self.0
     }
+}
 
-    pub fn info_ref(&self) -> &ClientInformation {
+impl AsRef<ClientInformation> for AuthenticatedClient {
+    fn as_ref(&self) -> &ClientInformation {
         &self.0
     }
 }

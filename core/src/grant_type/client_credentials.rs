@@ -17,14 +17,19 @@ impl GrantTypeResolver for ClientCredentialsGrant {
         client: AuthenticatedClient,
     ) -> Result<AccessToken, OpenIdError> {
         let cc_config = configuration.client_credentials();
+        let ttl = configuration.ttl();
         let scopes = if let Some(requested_scope) = self.scope {
             let client_info = client.info();
             Some(validate_scopes(cc_config, requested_scope, client_info)?)
         } else {
             None
         };
-        let access_token =
-            AccessToken::new(AccessToken::BEARER_TYPE, cc_config.duration, None, scopes);
+        let access_token = AccessToken::new(
+            AccessToken::BEARER_TYPE,
+            (ttl.client_credentials)(),
+            None,
+            scopes,
+        );
         let access_token = configuration
             .adapters()
             .token()

@@ -39,6 +39,14 @@ impl AccessToken {
             scopes,
         }
     }
+
+    pub fn bearer(
+        expires_in: Duration,
+        refresh_token: Option<RefreshToken>,
+        scopes: Option<Scopes>,
+    ) -> Self {
+        Self::new(AccessToken::BEARER_TYPE, expires_in, refresh_token, scopes)
+    }
 }
 
 impl Hashable for AccessToken {

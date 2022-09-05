@@ -2,6 +2,7 @@ use crate::adapter::Adapter;
 use anyhow::anyhow;
 use async_trait::async_trait;
 use std::sync::Arc;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::context::OpenIDContext;
@@ -30,6 +31,7 @@ impl ResponseTypeResolver for CodeResolver {
         let grant = context.user.grant().ok_or_else(|| {
             OpenIdError::server_error(anyhow!("Trying to authorise user with no grant"))
         })?;
+        let ttl = context.configuration.ttl();
         let code = AuthorisationCode {
             code: Uuid::new_v4().to_string(),
             client_id: context.client.id,
@@ -39,6 +41,7 @@ impl ResponseTypeResolver for CodeResolver {
             redirect_uri: authorisation_request.redirect_uri.clone(),
             status: CodeStatus::Awaiting,
             subject: context.user.sub().clone(),
+            expires_in: OffsetDateTime::now_utc() + ttl.authorization_code,
         };
         let code = self
             .adapter
