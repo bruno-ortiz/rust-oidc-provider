@@ -1,37 +1,22 @@
-use crate::adapter::Adapter;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
+use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
 use async_trait::async_trait;
-use oidc_types::access_token::AccessToken;
-use std::sync::Arc;
-use time::Duration;
 
-pub struct TokenResolver {
-    repository: Arc<dyn Adapter<Id = String, Item = AccessToken> + Send + Sync>,
-}
-
-impl TokenResolver {
-    pub fn new(adapter: Arc<dyn Adapter<Id = String, Item = AccessToken> + Send + Sync>) -> Self {
-        Self {
-            repository: adapter,
-        }
-    }
-}
-
+pub struct TokenResolver;
 #[async_trait]
 impl ResponseTypeResolver for TokenResolver {
     type Output = AccessToken;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
-        let token = AccessToken::new(
-            "Bearer".to_owned(),
-            Duration::minutes(10),
-            None,
-            Some(context.request.scope.clone()),
-        );
-        let token = self
-            .repository
+        let ttl = context.configuration.ttl();
+        let at_ttl = ttl.access_token_ttl();
+        let token = AccessToken::bearer(at_ttl, Some(context.request.scope.clone()));
+        let token = context
+            .configuration
+            .adapters()
+            .token()
             .save(token)
             .await
             .map_err(|err| OpenIdError::server_error(err.into()))?;
@@ -56,7 +41,7 @@ mod tests {
         let context = setup_context(response_type!(ResponseTypeValue::Token), None, None);
         let adapter = Arc::new(InMemoryGenericAdapter::new());
 
-        let resolver = TokenResolver::new(adapter.clone());
+        let resolver = TokenResolver;
 
         let token = resolver.resolve(&context).await.expect("Should be Ok()");
 

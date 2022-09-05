@@ -1,8 +1,8 @@
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
+use crate::models::access_token::AccessToken;
 use async_trait::async_trait;
-use oidc_types::access_token::AccessToken;
 use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
 use oidc_types::client::AuthenticatedClient;
 use oidc_types::pkce::{validate_pkce, CodeChallengeError};

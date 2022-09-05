@@ -19,6 +19,11 @@ impl TTL {
         let func = &self.refresh_token;
         func(client).await
     }
+
+    pub fn access_token_ttl(&self) -> Duration {
+        let func = &self.access_token;
+        func()
+    }
 }
 
 impl Default for TTL {

@@ -28,7 +28,7 @@ use tracing::error;
 pub async fn token(
     request: TokenRequest,
     Extension(configuration): Extension<Arc<OpenIDProviderConfiguration>>,
-) -> axum::response::Result<Json<TokenResponse>, OpenIdErrorResponse> {
+) -> axum::response::Result<Json<()>, OpenIdErrorResponse> {
     let mut credentials = request.credentials;
     let client = retrieve_client_info(&configuration, credentials.client_id)
         .await
@@ -54,10 +54,11 @@ pub async fn token(
         .await
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
     let access_token = request.body.execute(&configuration, client).await?;
-    Ok(Json(TokenResponse {
-        access_token,
-        id_token: None,
-    }))
+    todo!();
+    // Ok(Json(TokenResponse {
+    //     access_token,
+    //     id_token: None,
+    // }))
 }
 
 #[derive(Debug, Error)]
@@ -111,12 +112,4 @@ where
             body: token_request,
         })
     }
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize)]
-pub struct TokenResponse {
-    #[serde(flatten)]
-    access_token: AccessToken,
-    id_token: Option<IdToken>,
 }

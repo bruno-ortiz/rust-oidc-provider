@@ -2,9 +2,9 @@ use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
+use crate::models::access_token::AccessToken;
 use anyhow::anyhow;
 use async_trait::async_trait;
-use oidc_types::access_token::AccessToken;
 use oidc_types::client::{AuthenticatedClient, ClientInformation};
 use oidc_types::scopes::Scopes;
 use oidc_types::token_request::ClientCredentialsGrant;
@@ -24,12 +24,8 @@ impl GrantTypeResolver for ClientCredentialsGrant {
         } else {
             None
         };
-        let access_token = AccessToken::new(
-            AccessToken::BEARER_TYPE,
-            (ttl.client_credentials)(),
-            None,
-            scopes,
-        );
+        let at_duration = (ttl.client_credentials)();
+        let access_token = AccessToken::bearer(at_duration, scopes);
         let access_token = configuration
             .adapters()
             .token()

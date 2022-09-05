@@ -174,6 +174,14 @@ impl FromStr for JWT {
     }
 }
 
+impl PartialEq for JWT {
+    fn eq(&self, other: &Self) -> bool {
+        self.signed_repr == other.signed_repr
+    }
+}
+
+impl Eq for JWT {}
+
 impl Serialize for JWT {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

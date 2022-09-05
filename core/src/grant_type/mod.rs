@@ -4,8 +4,8 @@ mod refresh_token;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
+use crate::models::access_token::AccessToken;
 use async_trait::async_trait;
-use oidc_types::access_token::AccessToken;
 use oidc_types::client::AuthenticatedClient;
 use oidc_types::token_request::TokenRequestBody;
 

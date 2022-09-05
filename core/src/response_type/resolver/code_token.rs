@@ -1,39 +1,22 @@
-use crate::adapter::Adapter;
 use async_trait::async_trait;
-use oidc_types::access_token::AccessToken;
-use std::sync::Arc;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
+use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::code::CodeResolver;
 use crate::response_type::resolver::token::TokenResolver;
 use crate::response_type::resolver::ResponseTypeResolver;
 use oidc_types::authorisation_code::AuthorisationCode;
 
-pub struct CodeTokenResolver {
-    code_resolver: CodeResolver,
-    token_resolver: TokenResolver,
-}
-
-impl CodeTokenResolver {
-    pub fn new(
-        code_adapter: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
-        token_adapter: Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync>,
-    ) -> Self {
-        CodeTokenResolver {
-            code_resolver: CodeResolver::new(code_adapter),
-            token_resolver: TokenResolver::new(token_adapter),
-        }
-    }
-}
+pub struct CodeTokenResolver;
 
 #[async_trait]
 impl ResponseTypeResolver for CodeTokenResolver {
     type Output = (AuthorisationCode, AccessToken);
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
-        let code = self.code_resolver.resolve(context);
-        let access_token = self.token_resolver.resolve(context);
+        let code = CodeResolver.resolve(context);
+        let access_token = TokenResolver.resolve(context);
 
         let res = tokio::try_join!(code, access_token)?;
         Ok(res)

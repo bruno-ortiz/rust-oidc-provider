@@ -2,13 +2,13 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::{Duration, OffsetDateTime};
 
-use oidc_types::access_token::AccessToken;
 use oidc_types::authorisation_code::AuthorisationCode;
 use oidc_types::response_type::Flow;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::id_token::IdToken;
+use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub struct IDTokenResolver<'a> {

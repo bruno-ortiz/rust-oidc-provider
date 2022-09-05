@@ -13,7 +13,7 @@ use time::OffsetDateTime;
 
 use crate::error::OpenIdError;
 use crate::hash::TokenHasher;
-use oidc_types::access_token::AccessToken;
+use crate::models::access_token::AccessToken;
 use oidc_types::authorisation_code::AuthorisationCode;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
@@ -36,7 +36,7 @@ pub enum IdTokenError {
     MissingRequiredClaim(String),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct IdToken(JWT);
 
 impl IdToken {

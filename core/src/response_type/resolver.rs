@@ -90,48 +90,22 @@ impl<RT: ResponseTypeResolver + Sync> ResolverWrapper for RT {
 
 impl From<&OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
     fn from(configuration: &OpenIDProviderConfiguration) -> Self {
-        let code_adapter = configuration.adapters().code();
-        let token_adapter = configuration.adapters().token();
         let mut resolver = DynamicResponseTypeResolver::new();
         for rt in configuration.response_types_supported() {
             if *rt == *CODE_FLOW {
-                resolver.push(
-                    rt.clone(),
-                    Box::new(CodeResolver::new(code_adapter.clone())),
-                )
+                resolver.push(rt.clone(), Box::new(CodeResolver))
             } else if *rt == *ID_TOKEN_FLOW {
                 resolver.push(rt.clone(), Box::new(IDTokenResolver::new(None, None)))
             } else if *rt == *CODE_ID_TOKEN_FLOW {
-                resolver.push(
-                    rt.clone(),
-                    Box::new(CodeIdTokenResolver::new(code_adapter.clone())),
-                )
+                resolver.push(rt.clone(), Box::new(CodeIdTokenResolver))
             } else if *rt == *CODE_TOKEN_FLOW {
-                resolver.push(
-                    rt.clone(),
-                    Box::new(CodeTokenResolver::new(
-                        code_adapter.clone(),
-                        token_adapter.clone(),
-                    )),
-                )
+                resolver.push(rt.clone(), Box::new(CodeTokenResolver))
             } else if *rt == *CODE_ID_TOKEN_TOKEN_FLOW {
-                resolver.push(
-                    rt.clone(),
-                    Box::new(CodeIdTokenTokenResolver::new(
-                        code_adapter.clone(),
-                        token_adapter.clone(),
-                    )),
-                )
+                resolver.push(rt.clone(), Box::new(CodeIdTokenTokenResolver))
             } else if *rt == *ID_TOKEN_TOKEN_FLOW {
-                resolver.push(
-                    rt.clone(),
-                    Box::new(IdTokenTokenResolver::new(token_adapter.clone())),
-                )
+                resolver.push(rt.clone(), Box::new(IdTokenTokenResolver))
             } else if *rt == *TOKEN_FLOW {
-                resolver.push(
-                    rt.clone(),
-                    Box::new(TokenResolver::new(token_adapter.clone())),
-                )
+                resolver.push(rt.clone(), Box::new(TokenResolver))
             } else {
                 panic!("unsupported response type {}", rt)
             }

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use oidc_types::access_token::AccessToken;
 use oidc_types::client::{ClientID, ClientInformation};
 
 use crate::adapter::generic_adapter::InMemoryGenericAdapter;
@@ -10,6 +9,7 @@ use crate::adapter::Adapter;
 use crate::services::types::Interaction;
 use crate::user::AuthenticatedUser;
 use oidc_types::authorisation_code::AuthorisationCode;
+use crate::models::access_token::AccessToken;
 
 pub struct AdapterContainer {
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,

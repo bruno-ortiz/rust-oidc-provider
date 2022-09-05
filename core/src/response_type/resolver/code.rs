@@ -1,7 +1,5 @@
-use crate::adapter::Adapter;
 use anyhow::anyhow;
 use async_trait::async_trait;
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,17 +8,7 @@ use crate::error::OpenIdError;
 use crate::response_type::resolver::ResponseTypeResolver;
 use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
 
-pub(crate) struct CodeResolver {
-    adapter: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
-}
-
-impl CodeResolver {
-    pub fn new(
-        adapter: Arc<dyn Adapter<Item = AuthorisationCode, Id = String> + Send + Sync>,
-    ) -> Self {
-        Self { adapter }
-    }
-}
+pub(crate) struct CodeResolver;
 
 #[async_trait]
 impl ResponseTypeResolver for CodeResolver {
@@ -43,8 +31,10 @@ impl ResponseTypeResolver for CodeResolver {
             subject: context.user.sub().clone(),
             expires_in: OffsetDateTime::now_utc() + ttl.authorization_code,
         };
-        let code = self
-            .adapter
+        let code = context
+            .configuration
+            .adapters()
+            .code()
             .save(code)
             .await
             .map_err(|err| OpenIdError::server_error(err.into()))?;
@@ -55,7 +45,6 @@ impl ResponseTypeResolver for CodeResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::generic_adapter::InMemoryGenericAdapter;
     use crate::context::test_utils::setup_context;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
@@ -63,7 +52,7 @@ mod tests {
     #[tokio::test]
     async fn can_generate_authorisation_code() {
         let context = setup_context(response_type![ResponseTypeValue::Code], None, None);
-        let resolver = CodeResolver::new(Arc::new(InMemoryGenericAdapter::new()));
+        let resolver = CodeResolver;
 
         let code = resolver
             .resolve(&context)
@@ -85,15 +74,17 @@ mod tests {
     #[tokio::test]
     async fn can_find_authorisation_code() {
         let context = setup_context(response_type![ResponseTypeValue::Code], None, None);
-        let adapter = Arc::new(InMemoryGenericAdapter::new());
-        let resolver = CodeResolver::new(adapter.clone());
+        let resolver = CodeResolver;
 
         let code = resolver
             .resolve(&context)
             .await
             .expect("Expecting a auth code");
 
-        let saved_code = adapter
+        let saved_code = context
+            .configuration
+            .adapters()
+            .code()
             .find(&code.code)
             .await
             .expect("Expected authorisation code to be saved");
