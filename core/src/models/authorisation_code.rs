@@ -1,16 +1,18 @@
 use indexmap::IndexMap;
 use time::OffsetDateTime;
 
+use oidc_types::client::ClientID;
+use oidc_types::hash::Hashable;
 use url::Url;
 
-use crate::client::ClientID;
-use crate::hash::Hashable;
-use crate::identifiable::Identifiable;
-use crate::pkce::{CodeChallenge, CodeChallengeMethod};
-use crate::scopes::Scopes;
-use crate::subject::Subject;
+use oidc_types::identifiable::Identifiable;
+use oidc_types::nonce::Nonce;
+use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
+use oidc_types::scopes::Scopes;
+use oidc_types::state::State;
+use oidc_types::subject::Subject;
 
-use crate::url_encodable::UrlEncodable;
+use oidc_types::url_encodable::UrlEncodable;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CodeStatus {
@@ -29,6 +31,8 @@ pub struct AuthorisationCode {
     pub redirect_uri: Url,
     pub scope: Scopes,
     pub expires_in: OffsetDateTime,
+    pub nonce: Option<Nonce>,
+    pub state: Option<State>
 }
 
 impl AuthorisationCode {

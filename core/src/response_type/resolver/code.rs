@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
+use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
 use crate::response_type::resolver::ResponseTypeResolver;
-use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
 
 pub(crate) struct CodeResolver;
 
@@ -25,11 +25,13 @@ impl ResponseTypeResolver for CodeResolver {
             client_id: context.client.id,
             code_challenge: authorisation_request.code_challenge.clone(),
             code_challenge_method: authorisation_request.code_challenge_method,
-            scope: grant.scopes().clone(),
-            redirect_uri: authorisation_request.redirect_uri.clone(),
             status: CodeStatus::Awaiting,
-            subject: context.user.sub().clone(),
             expires_in: OffsetDateTime::now_utc() + ttl.authorization_code,
+            redirect_uri: authorisation_request.redirect_uri.clone(),
+            subject: context.user.sub().clone(),
+            scope: grant.scopes().clone(),
+            nonce: context.request.nonce.clone(),
+            state: context.request.state.clone(),
         };
         let code = context
             .configuration

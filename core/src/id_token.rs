@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use crate::error::OpenIdError;
 use crate::hash::TokenHasher;
 use crate::models::access_token::AccessToken;
-use oidc_types::authorisation_code::AuthorisationCode;
+use crate::models::authorisation_code::AuthorisationCode;
 use oidc_types::id_token::IdToken;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;

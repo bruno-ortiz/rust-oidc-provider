@@ -2,8 +2,8 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
 use crate::models::access_token::AccessToken;
+use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
 use async_trait::async_trait;
-use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
 use oidc_types::client::AuthenticatedClient;
 use oidc_types::pkce::{validate_pkce, CodeChallengeError};
 use oidc_types::token_request::AuthorisationCodeGrant;
@@ -26,7 +26,11 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         validate_authorization_code(&code, &client)?;
         validate_redirect_uri(&grant, &code)?;
-        validate_pkce(&grant, &code)?;
+        validate_pkce(
+            &grant,
+            code.code_challenge.as_ref(),
+            code.code_challenge_method,
+        )?;
 
         let ttl = configuration.ttl();
 

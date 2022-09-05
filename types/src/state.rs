@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
 pub struct State(String);
 
 impl State {

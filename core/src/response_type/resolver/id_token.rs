@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::{Duration, OffsetDateTime};
 
-use oidc_types::authorisation_code::AuthorisationCode;
+use crate::models::authorisation_code::AuthorisationCode;
 use oidc_types::id_token::IdToken;
 use oidc_types::response_type::Flow;
 

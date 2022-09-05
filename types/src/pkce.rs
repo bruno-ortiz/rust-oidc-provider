@@ -1,4 +1,3 @@
-use crate::authorisation_code::AuthorisationCode;
 use crate::token_request::AuthorisationCodeGrant;
 use encoding::all::ASCII;
 use encoding::{EncoderTrap, Encoding};
@@ -60,10 +59,10 @@ impl CodeChallenge {
 
 pub fn validate_pkce(
     grant: &AuthorisationCodeGrant,
-    code: &AuthorisationCode,
+    code_challenge: Option<&CodeChallenge>,
+    code_challenge_method: Option<CodeChallengeMethod>,
 ) -> Result<(), CodeChallengeError> {
-    if let (Some(ref challenge), Some(method)) = (&code.code_challenge, code.code_challenge_method)
-    {
+    if let (Some(challenge), Some(method)) = (code_challenge, code_challenge_method) {
         if let Some(ref verifier) = grant.code_verifier {
             let cc = CodeChallenge::calculate(verifier, method)?;
             if cc != *challenge {

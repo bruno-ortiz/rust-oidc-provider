@@ -50,7 +50,7 @@ mod tests {
     use oidc_types::subject::Subject;
 
     use crate::hash::TokenHasher;
-    use oidc_types::authorisation_code::{AuthorisationCode, CodeStatus};
+    use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
 
     #[test]
     fn test_can_hash() {

@@ -1,5 +1,5 @@
 use oidc_types::scopes::Scopes;
-use time::Duration;
+
 
 #[derive(Debug, Clone)]
 pub struct ClientCredentialConfiguration {
