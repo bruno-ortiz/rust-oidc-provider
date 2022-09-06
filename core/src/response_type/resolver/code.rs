@@ -1,7 +1,8 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
-use uuid::Uuid;
+
+use oidc_types::code::Code;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
@@ -12,7 +13,7 @@ pub(crate) struct CodeResolver;
 
 #[async_trait]
 impl ResponseTypeResolver for CodeResolver {
-    type Output = AuthorisationCode;
+    type Output = Code;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let authorisation_request = &context.request;
@@ -21,7 +22,7 @@ impl ResponseTypeResolver for CodeResolver {
         })?;
         let ttl = context.configuration.ttl();
         let code = AuthorisationCode {
-            code: Uuid::new_v4().to_string(),
+            code: Code::default(),
             client_id: context.client.id,
             code_challenge: authorisation_request.code_challenge.clone(),
             code_challenge_method: authorisation_request.code_challenge_method,
@@ -40,16 +41,18 @@ impl ResponseTypeResolver for CodeResolver {
             .save(code)
             .await
             .map_err(|err| OpenIdError::server_error(err.into()))?;
-        return Ok(code);
+        return Ok(code.code);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::context::test_utils::setup_context;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
+
+    use crate::context::test_utils::setup_context;
+
+    use super::*;
 
     #[tokio::test]
     async fn can_generate_authorisation_code() {
@@ -60,6 +63,14 @@ mod tests {
             .resolve(&context)
             .await
             .expect("Expecting a auth code");
+
+        let code = context
+            .configuration
+            .adapters()
+            .code()
+            .find(&code)
+            .await
+            .expect("saved code");
 
         assert_eq!(context.user.sub(), &code.subject);
         assert_eq!(context.request.code_challenge, code.code_challenge);
@@ -83,14 +94,12 @@ mod tests {
             .await
             .expect("Expecting a auth code");
 
-        let saved_code = context
+        context
             .configuration
             .adapters()
             .code()
-            .find(&code.code)
+            .find(&code)
             .await
             .expect("Expected authorisation code to be saved");
-
-        assert_eq!(code, saved_code)
     }
 }

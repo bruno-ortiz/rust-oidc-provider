@@ -4,14 +4,11 @@ use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::{Number, Value};
-use oidc_types::hash::Hashable;
 use thiserror::Error;
 use time::OffsetDateTime;
 
-use crate::error::OpenIdError;
-use crate::hash::TokenHasher;
-use crate::models::access_token::AccessToken;
-use crate::models::authorisation_code::AuthorisationCode;
+use oidc_types::code::Code;
+use oidc_types::hash::Hashable;
 use oidc_types::id_token::IdToken;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
@@ -20,6 +17,10 @@ use oidc_types::jose::JwsHeaderExt;
 use oidc_types::nonce::Nonce;
 use oidc_types::state::State;
 use oidc_types::subject::Subject;
+
+use crate::error::OpenIdError;
+use crate::hash::TokenHasher;
+use crate::models::access_token::AccessToken;
 
 #[derive(Error, Debug)]
 pub enum IdTokenError {
@@ -117,7 +118,7 @@ impl<'a> IdTokenBuilder<'a> {
         self
     }
 
-    pub fn with_c_hash(mut self, code: Option<&AuthorisationCode>) -> Result<Self, OpenIdError> {
+    pub fn with_c_hash(mut self, code: Option<&Code>) -> Result<Self, OpenIdError> {
         if let Some(code) = code {
             let c_hash = Self::build_hash(self.signing_key, code)?;
             self.c_hash = Some(c_hash);

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::{Duration, OffsetDateTime};
 
-use crate::models::authorisation_code::AuthorisationCode;
+use oidc_types::code::Code;
 use oidc_types::id_token::IdToken;
 use oidc_types::response_type::Flow;
 
@@ -13,12 +13,12 @@ use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub struct IDTokenResolver<'a> {
-    code: Option<&'a AuthorisationCode>,
+    code: Option<&'a Code>,
     token: Option<&'a AccessToken>,
 }
 
 impl<'a> IDTokenResolver<'a> {
-    pub fn new(code: Option<&'a AuthorisationCode>, token: Option<&'a AccessToken>) -> Self {
+    pub fn new(code: Option<&'a Code>, token: Option<&'a AccessToken>) -> Self {
         IDTokenResolver { code, token }
     }
 }

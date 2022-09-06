@@ -1,8 +1,10 @@
-use crate::grant_type::GrantType;
-use crate::scopes::Scopes;
 use derive_more::From;
 use serde::Deserialize;
 use url::Url;
+
+use crate::code::Code;
+use crate::grant_type::GrantType;
+use crate::scopes::Scopes;
 
 #[derive(Debug, Clone, Deserialize, From)]
 #[serde(tag = "grant_type")]
@@ -27,7 +29,7 @@ impl TokenRequestBody {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AuthorisationCodeGrant {
-    pub code: String,
+    pub code: Code,
     pub redirect_uri: Url,
     pub code_verifier: Option<String>,
 }

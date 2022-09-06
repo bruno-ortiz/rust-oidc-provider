@@ -1,5 +1,3 @@
-extern crate core;
-
 mod adapter;
 pub mod authorisation_request;
 pub mod client;

@@ -3,6 +3,7 @@ pub mod auth_method;
 pub mod claim_type;
 pub mod client;
 pub mod client_credentials;
+pub mod code;
 pub mod discovery;
 pub mod grant;
 pub mod grant_type;
