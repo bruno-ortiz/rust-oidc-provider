@@ -1,17 +1,21 @@
 use std::fmt::{Display, Formatter};
 
 use derive_builder::Builder;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::client::ClientID;
+use oidc_types::identifiable::Identifiable;
 use oidc_types::nonce::Nonce;
 use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 use oidc_types::subject::Subject;
+
+use crate::adapter::PersistenceError;
+use crate::configuration::OpenIDProviderConfiguration;
 
 #[derive(Debug, Clone, Eq, PartialEq, Builder)]
 #[builder(setter(into))]
@@ -27,6 +31,21 @@ pub struct RefreshToken {
     pub nonce: Option<Nonce>,
     pub state: Option<State>,
     pub amr: Option<Amr>,
+}
+
+impl RefreshToken {
+    pub async fn save(
+        self,
+        config: &OpenIDProviderConfiguration,
+    ) -> Result<RefreshToken, PersistenceError> {
+        config.adapters().refresh().save(self).await
+    }
+}
+
+impl Identifiable<String> for RefreshToken {
+    fn id(&self) -> String {
+        self.token.to_string()
+    }
 }
 
 impl Display for RefreshToken {

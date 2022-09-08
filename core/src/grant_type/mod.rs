@@ -7,6 +7,7 @@ use crate::error::OpenIdError;
 use crate::models::access_token::AccessToken;
 use async_trait::async_trait;
 use oidc_types::client::AuthenticatedClient;
+use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
 
 #[async_trait]
@@ -15,7 +16,7 @@ pub trait GrantTypeResolver {
         self,
         configuration: &OpenIDProviderConfiguration,
         client: AuthenticatedClient,
-    ) -> Result<AccessToken, OpenIdError>;
+    ) -> Result<TokenResponse, OpenIdError>;
 }
 
 #[async_trait]
@@ -24,7 +25,7 @@ impl GrantTypeResolver for TokenRequestBody {
         self,
         configuration: &OpenIDProviderConfiguration,
         client: AuthenticatedClient,
-    ) -> Result<AccessToken, OpenIdError> {
+    ) -> Result<TokenResponse, OpenIdError> {
         let grant_type = self.grant_type();
 
         if !configuration.grant_types_supported().contains(&grant_type) {

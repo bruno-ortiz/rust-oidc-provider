@@ -27,12 +27,13 @@ pub struct AuthorisationCode {
     pub code_challenge: Option<CodeChallenge>,
     pub code_challenge_method: Option<CodeChallengeMethod>,
     pub redirect_uri: Url,
-    pub scope: Scopes,
+    pub scopes: Scopes,
     pub expires_in: OffsetDateTime,
     pub nonce: Option<Nonce>,
     pub state: Option<State>,
     pub acr: Acr,
     pub amr: Option<Amr>,
+    pub auth_time: OffsetDateTime,
 }
 
 impl AuthorisationCode {

@@ -2,13 +2,15 @@ use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Add;
 
-use crate::scopes;
 use lazy_static::lazy_static;
 use regex::Regex;
+
+use crate::scopes;
 
 lazy_static! {
     static ref PARAMETERIZED_SCOPE_PATTERN: Regex =
         Regex::new("^\\w+:\\w+$").expect("Could no create Parameterized Scopes");
+    pub static ref OPEN_ID: Scope = Scope::simple("openid");
 }
 
 #[derive(Eq, Debug, Clone)]
@@ -18,6 +20,10 @@ pub enum Scope {
 }
 
 impl Scope {
+    pub fn simple<P: AsRef<str>>(scope: P) -> Self {
+        Self::Simple(scope.as_ref().to_owned())
+    }
+
     pub fn value(&self) -> String {
         match self {
             Scope::Simple(scope) => scope.to_lowercase(),

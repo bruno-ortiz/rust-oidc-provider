@@ -12,7 +12,7 @@ impl ResponseTypeResolver for TokenResolver {
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let ttl = context.configuration.ttl();
-        let at_ttl = ttl.access_token_ttl();
+        let at_ttl = ttl.access_token_ttl(context.client.as_ref());
         let token = AccessToken::bearer(at_ttl, Some(context.request.scope.clone()));
         let token = context
             .configuration

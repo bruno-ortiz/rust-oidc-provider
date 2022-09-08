@@ -1,11 +1,13 @@
-use indexmap::IndexMap;
-use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-use oidc_types::scopes::{Scope, Scopes};
+use indexmap::IndexMap;
+use serde::Serialize;
 use thiserror::Error;
 
+use oidc_types::scopes::{Scope, Scopes};
 use oidc_types::url_encodable::UrlEncodable;
+
+use crate::adapter::PersistenceError;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -107,5 +109,11 @@ impl UrlEncodable for OpenIdError {
         parameters.insert("error".to_owned(), self.error_type.to_string());
         parameters.insert("error_description".to_owned(), self.description);
         parameters
+    }
+}
+
+impl From<PersistenceError> for OpenIdError {
+    fn from(err: PersistenceError) -> Self {
+        OpenIdError::server_error(err.into())
     }
 }

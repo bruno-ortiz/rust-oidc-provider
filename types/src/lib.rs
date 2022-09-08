@@ -1,5 +1,5 @@
-pub mod access_token;
 pub mod acr;
+pub mod amr;
 pub mod auth_method;
 pub mod claim_type;
 pub mod client;
@@ -18,7 +18,6 @@ pub mod nonce;
 pub mod password_hasher;
 pub mod pkce;
 pub mod prompt;
-pub mod refresh_token;
 pub mod response_mode;
 #[allow(clippy::vec_init_then_push)]
 pub mod response_type;
@@ -26,7 +25,7 @@ pub mod scopes;
 pub mod state;
 pub mod subject;
 pub mod subject_type;
+pub mod token;
 pub mod token_request;
 pub mod url_encodable;
 mod utils;
-pub mod amr;

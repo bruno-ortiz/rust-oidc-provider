@@ -7,6 +7,8 @@ use josekit::{Number, Value};
 use thiserror::Error;
 use time::OffsetDateTime;
 
+use oidc_types::acr::Acr;
+use oidc_types::amr::Amr;
 use oidc_types::code::Code;
 use oidc_types::hash::Hashable;
 use oidc_types::id_token::IdToken;
@@ -42,9 +44,9 @@ pub struct IdTokenBuilder<'a> {
     expires_at: Option<OffsetDateTime>,
     issued_at: Option<OffsetDateTime>,
     auth_time: Option<OffsetDateTime>,
-    nonce: Option<Nonce>,
-    acr: Option<String>,
-    amr: Option<String>,
+    nonce: Option<&'a Nonce>,
+    acr: Option<&'a Acr>,
+    amr: Option<&'a Amr>,
     azp: Option<String>,
     s_hash: Option<String>,
     c_hash: Option<String>,
@@ -101,16 +103,16 @@ impl<'a> IdTokenBuilder<'a> {
         self
     }
 
-    pub fn with_nonce(mut self, nonce: Option<&Nonce>) -> Self {
-        self.nonce = nonce.cloned();
+    pub fn with_nonce(mut self, nonce: Option<&'a Nonce>) -> Self {
+        self.nonce = nonce;
         self
     }
-    pub fn with_acr(mut self, acr: &str) -> Self {
-        self.acr = Some(acr.to_owned());
+    pub fn with_acr(mut self, acr: &'a Acr) -> Self {
+        self.acr = Some(acr);
         self
     }
-    pub fn with_amr(mut self, amr: &str) -> Self {
-        self.amr = Some(amr.to_owned());
+    pub fn with_amr(mut self, amr: Option<&'a Amr>) -> Self {
+        self.amr = amr;
         self
     }
     pub fn with_azp(mut self, azp: &str) -> Self {
@@ -155,7 +157,7 @@ impl<'a> IdTokenBuilder<'a> {
         payload.set_issued_at(&self.issued_at.required("issued_at")?.into());
 
         payload.set_auth_time(self.auth_time);
-        payload.set_nonce(self.nonce);
+        payload.set_nonce(self.nonce.cloned());
         payload.set_acr(self.acr);
         payload.set_amr(self.amr);
         payload.set_azp(self.azp);
@@ -178,8 +180,8 @@ impl<'a> IdTokenBuilder<'a> {
 trait JwtPayloadExt {
     fn set_auth_time(&mut self, value: Option<OffsetDateTime>);
     fn set_nonce(&mut self, value: Option<Nonce>);
-    fn set_acr(&mut self, value: Option<String>);
-    fn set_amr(&mut self, value: Option<String>);
+    fn set_acr(&mut self, value: Option<&Acr>);
+    fn set_amr(&mut self, value: Option<&Amr>);
     fn set_azp(&mut self, value: Option<String>);
     fn set_s_hash(&mut self, value: Option<String>);
     fn set_c_hash(&mut self, value: Option<String>);
@@ -207,16 +209,16 @@ impl JwtPayloadExt for JwtPayload {
         }
     }
 
-    fn set_acr(&mut self, value: Option<String>) {
+    fn set_acr(&mut self, value: Option<&Acr>) {
         if let Some(acr) = value {
-            self.set_claim("acr", Some(Value::String(acr)))
+            self.set_claim("acr", Some(Value::String(acr.to_string())))
                 .expect("Cannot set acr on JWT");
         }
     }
 
-    fn set_amr(&mut self, value: Option<String>) {
+    fn set_amr(&mut self, value: Option<&Amr>) {
         if let Some(amr) = value {
-            self.set_claim("amr", Some(Value::String(amr)))
+            self.set_claim("amr", Some(Value::String(amr.to_string())))
                 .expect("Cannot set amr on JWT");
         }
     }

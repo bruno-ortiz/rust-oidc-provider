@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 use oidc_types::code::Code;
 use oidc_types::id_token::IdToken;
@@ -36,17 +36,20 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 "Hybrid flow must contain a nonce in the auth request",
             ));
         }
+        let ttl = context.configuration.ttl();
         let id_token = IdTokenBuilder::new(signing_key)
             .with_issuer(context.configuration.issuer())
             .with_sub(context.user.sub())
             .with_audience(vec![context.client.id.into()])
-            .with_exp(OffsetDateTime::now_utc() + Duration::hours(10)) //TODO: make duration configurable
+            .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
             .with_iat(OffsetDateTime::now_utc())
             .with_nonce(context.request.nonce.as_ref())
             .with_s_hash(context.request.state.as_ref())?
             .with_c_hash(self.code)?
             .with_at_hash(self.token)?
             .with_auth_time(context.user.auth_time())
+            .with_acr(context.user.acr())
+            .with_amr(context.user.amr())
             .build()
             .map_err(|err| OpenIdError::server_error(err.into()))?;
         Ok(id_token)

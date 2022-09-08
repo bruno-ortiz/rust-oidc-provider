@@ -1,11 +1,15 @@
 use indexmap::IndexMap;
+use serde::Serialize;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
 use oidc_types::hash::Hashable;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
-use serde::Serialize;
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
+
+use crate::adapter::PersistenceError;
+use crate::configuration::OpenIDProviderConfiguration;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
@@ -35,6 +39,13 @@ impl AccessToken {
 
     pub fn bearer(expires_in: Duration, scopes: Option<Scopes>) -> Self {
         Self::new(AccessToken::BEARER_TYPE, expires_in, scopes)
+    }
+
+    pub async fn save(
+        self,
+        config: &OpenIDProviderConfiguration,
+    ) -> Result<AccessToken, PersistenceError> {
+        config.adapters().token().save(self).await
     }
 }
 

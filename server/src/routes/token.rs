@@ -13,8 +13,8 @@ use oidc_core::client_auth::ClientAuthenticator;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::grant_type::GrantTypeResolver;
-use oidc_types::access_token::TokenResponse;
 use oidc_types::auth_method::AuthMethod;
+use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
@@ -50,15 +50,9 @@ pub async fn token(
         .authenticate(&configuration, client)
         .await
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
-    let access_token = request.body.execute(&configuration, client).await?;
+    let tokens = request.body.execute(&configuration, client).await?;
 
-    Ok(Json(TokenResponse::new(
-        access_token.token,
-        access_token.t_type,
-        access_token.expires_in,
-        None,
-        None,
-    )))
+    Ok(Json(tokens))
 }
 
 #[derive(Debug, Error)]

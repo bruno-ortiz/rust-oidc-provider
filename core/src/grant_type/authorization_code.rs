@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 use tracing::error;
@@ -5,11 +6,14 @@ use uuid::Uuid;
 
 use oidc_types::client::AuthenticatedClient;
 use oidc_types::pkce::{validate_pkce, CodeChallengeError};
+use oidc_types::scopes::OPEN_ID;
+use oidc_types::token::TokenResponse;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
+use crate::id_token::IdTokenBuilder;
 use crate::models::access_token::AccessToken;
 use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
 use crate::models::refresh_token::RefreshTokenBuilder;
@@ -20,7 +24,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         self,
         configuration: &OpenIDProviderConfiguration,
         client: AuthenticatedClient,
-    ) -> Result<AccessToken, OpenIdError> {
+    ) -> Result<TokenResponse, OpenIdError> {
         let grant = self;
         let code = configuration
             .adapters()
@@ -39,6 +43,37 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         let ttl = configuration.ttl();
 
+        let at_duration = ttl.access_token_ttl(client.as_ref());
+        let access_token = AccessToken::bearer(at_duration, Some(code.scopes.clone()))
+            .save(configuration)
+            .await
+            .map_err(|err| OpenIdError::server_error(err.into()))?;
+
+        let mut id_token = None;
+        if code.scopes.contains(&OPEN_ID) {
+            let signing_key = configuration
+                .signing_key()
+                .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
+            id_token = Some(
+                IdTokenBuilder::new(signing_key)
+                    .with_issuer(configuration.issuer())
+                    .with_sub(&code.subject)
+                    .with_audience(vec![client.id().into()])
+                    .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
+                    .with_iat(OffsetDateTime::now_utc())
+                    .with_nonce(code.nonce.as_ref())
+                    .with_s_hash(code.state.as_ref())?
+                    .with_c_hash(Some(&code.code))?
+                    .with_at_hash(Some(&access_token))?
+                    .with_acr(&code.acr)
+                    .with_amr(code.amr.as_ref())
+                    .with_auth_time(code.auth_time)
+                    .build()
+                    .map_err(|err| OpenIdError::server_error(err.into()))?,
+            );
+        }
+
+        let mut rt = None;
         if configuration.issue_refresh_token(&client).await {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
             let refresh_token = RefreshTokenBuilder::default()
@@ -46,7 +81,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .client_id(code.client_id)
                 .redirect_uri(code.redirect_uri)
                 .subject(code.subject)
-                .scope(code.scope)
+                .scope(code.scopes)
                 .state(code.state)
                 .amr(code.amr)
                 .acr(code.acr)
@@ -54,11 +89,19 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .expires_in(OffsetDateTime::now_utc() + rt_ttl)
                 .created(OffsetDateTime::now_utc())
                 .build()
-                .map_err(|err| OpenIdError::server_error(err.into()))?;
+                .map_err(|err| OpenIdError::server_error(err.into()))?
+                .save(configuration)
+                .await?;
+            rt = Some(refresh_token.token.to_string())
         }
 
-        // let access_token = AccessToken::bearer()
-        todo!("sld")
+        Ok(TokenResponse::new(
+            access_token.token,
+            access_token.t_type,
+            access_token.expires_in,
+            rt,
+            id_token,
+        ))
     }
 }
 

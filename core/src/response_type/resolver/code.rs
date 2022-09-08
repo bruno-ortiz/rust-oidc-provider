@@ -30,11 +30,12 @@ impl ResponseTypeResolver for CodeResolver {
             expires_in: OffsetDateTime::now_utc() + ttl.authorization_code,
             redirect_uri: authorisation_request.redirect_uri.clone(),
             subject: context.user.sub().clone(),
-            scope: grant.scopes().clone(),
+            scopes: grant.scopes().clone(),
             nonce: context.request.nonce.clone(),
             state: context.request.state.clone(),
             acr: context.user.acr().clone(),
             amr: context.user.amr().cloned(),
+            auth_time: context.user.auth_time(),
         };
         let code = context
             .configuration
@@ -81,7 +82,7 @@ mod tests {
             code.code_challenge_method.unwrap()
         );
         assert_eq!(context.client.id, code.client_id);
-        assert_eq!(context.request.scope, code.scope);
+        assert_eq!(context.request.scope, code.scopes);
         assert_eq!(CodeStatus::Awaiting, code.status);
         assert_eq!(context.request.redirect_uri, code.redirect_uri);
     }

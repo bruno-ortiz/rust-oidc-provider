@@ -1,7 +1,7 @@
-use derive_builder::Builder;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -96,8 +96,8 @@ impl AuthenticatedClient {
         Self(client)
     }
 
-    pub fn info(self) -> ClientInformation {
-        self.0
+    pub fn id(&self) -> ClientID {
+        self.0.id
     }
 
     pub fn allows_grant(&self, grant_type: GrantType) -> bool {

@@ -60,7 +60,7 @@ mod tests {
             code: Code::from("some-value"),
             client_id: ClientID::default(),
             subject: Subject::new("sub"),
-            scope: scopes!("openid accounts"),
+            scopes: scopes!("openid accounts"),
             redirect_uri: Url::parse("https://test.com/callback").unwrap(),
             code_challenge: None,
             code_challenge_method: None,
@@ -70,6 +70,7 @@ mod tests {
             state: None,
             acr: Acr::default(),
             amr: None,
+            auth_time: OffsetDateTime::now_utc(),
         };
         let rsa_key = Jwk::from_bytes(r#"
         {

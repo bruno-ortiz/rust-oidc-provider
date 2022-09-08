@@ -4,6 +4,7 @@ use crate::grant_type::GrantTypeResolver;
 use crate::models::access_token::AccessToken;
 use async_trait::async_trait;
 use oidc_types::client::AuthenticatedClient;
+use oidc_types::token::TokenResponse;
 use oidc_types::token_request::RefreshTokenGrant;
 
 #[async_trait]
@@ -12,7 +13,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
         self,
         configuration: &OpenIDProviderConfiguration,
         client: AuthenticatedClient,
-    ) -> Result<AccessToken, OpenIdError> {
+    ) -> Result<TokenResponse, OpenIdError> {
         todo!()
     }
 }
