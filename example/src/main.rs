@@ -20,6 +20,7 @@ use time::OffsetDateTime;
 use tower_http::services::ServeDir;
 
 use oidc_server::server::OidcServer;
+use oidc_types::acr::Acr;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientInformation, ClientMetadataBuilder};
 use oidc_types::hashed_secret::HashedSecret;
@@ -166,6 +167,8 @@ async fn login(
     let request = tonic::Request::new(CompleteLoginRequest {
         sub: "some-user-id".to_string(),
         interaction_id: req.interaction_id,
+        acr: Some(Acr::default().to_string()),
+        amr: None,
     });
     let res = interaction_client
         .complete_login(request)

@@ -1,8 +1,10 @@
-use serde::Deserialize;
 use std::str::FromStr;
+
+use serde::Deserialize;
 use tracing::error;
 use url::Url;
 
+use oidc_types::acr::Acr;
 use oidc_types::client::{ClientID, ClientInformation};
 use oidc_types::jose::jwt::JWT;
 use oidc_types::nonce::Nonce;
@@ -33,6 +35,7 @@ pub struct ValidatedAuthorisationRequest {
     pub request_uri: Option<Url>,
     pub request: Option<JWT>,
     pub prompt: Option<Vec<Prompt>>,
+    pub acr_values: Option<Acr>,
 }
 
 impl ValidatedAuthorisationRequest {
@@ -69,6 +72,7 @@ pub struct AuthorisationRequest {
     pub request_uri: Option<Url>,
     pub request: Option<JWT>,
     pub prompt: Option<String>,
+    pub acr_values: Option<Acr>,
 }
 
 impl AuthorisationRequest {
@@ -130,6 +134,7 @@ impl AuthorisationRequest {
             include_granted_scopes: self.include_granted_scopes,
             request_uri: self.request_uri,
             request: self.request,
+            acr_values: self.acr_values,
             prompt,
         })
     }

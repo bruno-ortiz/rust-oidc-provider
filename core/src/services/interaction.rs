@@ -1,13 +1,15 @@
-use format as f;
-use oidc_types::client::ClientID;
-use oidc_types::grant::Grant;
-use oidc_types::prompt::Prompt;
-use oidc_types::scopes::Scopes;
 use thiserror::Error;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use format as f;
+use oidc_types::acr::Acr;
+use oidc_types::amr::Amr;
+use oidc_types::client::ClientID;
+use oidc_types::grant::Grant;
+use oidc_types::prompt::Prompt;
+use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
@@ -49,6 +51,8 @@ pub async fn complete_login(
     configuration: &OpenIDProviderConfiguration,
     interaction_id: Uuid,
     subject: Subject,
+    acr: Option<Acr>,
+    amr: Option<Amr>,
 ) -> Result<Url, InteractionError> {
     match Interaction::find(configuration, interaction_id).await {
         Some(Interaction::Login {
@@ -59,6 +63,8 @@ pub async fn complete_login(
                 subject,
                 OffsetDateTime::now_utc(),
                 configuration.auth_max_age(),
+                acr,
+                amr,
             )
             .save(configuration)
             .await

@@ -42,10 +42,12 @@ where
 #[cfg(test)]
 mod tests {
     use josekit::jwk::Jwk;
-    use oidc_types::client::ClientID;
     use time::{Duration, OffsetDateTime};
     use url::Url;
 
+    use oidc_types::acr::Acr;
+    use oidc_types::client::ClientID;
+    use oidc_types::code::Code;
     use oidc_types::scopes;
     use oidc_types::subject::Subject;
 
@@ -55,7 +57,7 @@ mod tests {
     #[test]
     fn test_can_hash() {
         let code = AuthorisationCode {
-            code: String::from("some-value"),
+            code: Code::from("some-value"),
             client_id: ClientID::default(),
             subject: Subject::new("sub"),
             scope: scopes!("openid accounts"),
@@ -64,6 +66,10 @@ mod tests {
             code_challenge_method: None,
             status: CodeStatus::Awaiting,
             expires_in: OffsetDateTime::now_utc() + Duration::minutes(10),
+            nonce: None,
+            state: None,
+            acr: Acr::default(),
+            amr: None,
         };
         let rsa_key = Jwk::from_bytes(r#"
         {
@@ -83,7 +89,7 @@ mod tests {
         "#).expect("parsed jwk");
         assert_eq!(
             String::from("cA88WX2aDbX8LcxByNm2UA=="),
-            code.hash(&rsa_key).unwrap()
+            code.code.hash(&rsa_key).unwrap()
         );
     }
 }

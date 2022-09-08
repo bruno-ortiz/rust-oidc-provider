@@ -1,13 +1,18 @@
+use async_trait::async_trait;
+use time::OffsetDateTime;
+use tracing::error;
+use uuid::Uuid;
+
+use oidc_types::client::AuthenticatedClient;
+use oidc_types::pkce::{validate_pkce, CodeChallengeError};
+use oidc_types::token_request::AuthorisationCodeGrant;
+
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
 use crate::models::access_token::AccessToken;
 use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
-use async_trait::async_trait;
-use oidc_types::client::AuthenticatedClient;
-use oidc_types::pkce::{validate_pkce, CodeChallengeError};
-use oidc_types::token_request::AuthorisationCodeGrant;
-use tracing::error;
+use crate::models::refresh_token::RefreshTokenBuilder;
 
 #[async_trait]
 impl GrantTypeResolver for AuthorisationCodeGrant {
@@ -36,6 +41,20 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         if configuration.issue_refresh_token(&client).await {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
+            let refresh_token = RefreshTokenBuilder::default()
+                .token(Uuid::new_v4())
+                .client_id(code.client_id)
+                .redirect_uri(code.redirect_uri)
+                .subject(code.subject)
+                .scope(code.scope)
+                .state(code.state)
+                .amr(code.amr)
+                .acr(code.acr)
+                .nonce(code.nonce)
+                .expires_in(OffsetDateTime::now_utc() + rt_ttl)
+                .created(OffsetDateTime::now_utc())
+                .build()
+                .map_err(|err| OpenIdError::server_error(err.into()))?;
         }
 
         // let access_token = AccessToken::bearer()

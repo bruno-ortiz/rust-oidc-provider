@@ -36,14 +36,15 @@ impl OpenIDContext {
 
 #[cfg(test)]
 pub mod test_utils {
-    use crate::authorisation_request::ValidatedAuthorisationRequest;
-    use crate::configuration::OpenIDProviderConfigurationBuilder;
-    use crate::context::OpenIDContext;
-    use crate::session::SessionID;
-    use crate::user::AuthenticatedUser;
+    use std::sync::Arc;
+
     use josekit::jwk::alg::ec::EcCurve;
     use josekit::jwk::Jwk;
     use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
+    use time::OffsetDateTime;
+    use url::Url;
+    use uuid::Uuid;
+
     use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
     use oidc_types::grant::Grant;
     use oidc_types::hashed_secret::HashedSecret;
@@ -58,10 +59,12 @@ pub mod test_utils {
     use oidc_types::state::State;
     use oidc_types::subject::Subject;
     use oidc_types::{response_type, scopes};
-    use std::sync::Arc;
-    use time::OffsetDateTime;
-    use url::Url;
-    use uuid::Uuid;
+
+    use crate::authorisation_request::ValidatedAuthorisationRequest;
+    use crate::configuration::OpenIDProviderConfigurationBuilder;
+    use crate::context::OpenIDContext;
+    use crate::session::SessionID;
+    use crate::user::AuthenticatedUser;
 
     pub fn setup_context(
         response_type: ResponseType,
@@ -84,6 +87,7 @@ pub mod test_utils {
             request_uri: None,
             request: None,
             prompt: None,
+            acr_values: None,
         };
         let (hashed_secret, _) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let client = ClientInformation {
@@ -116,6 +120,8 @@ pub mod test_utils {
             Subject::new("some-id"),
             OffsetDateTime::now_utc(),
             120,
+            None,
+            None,
         )
         .with_grant(Grant::new(scopes!("openid", "test")));
 

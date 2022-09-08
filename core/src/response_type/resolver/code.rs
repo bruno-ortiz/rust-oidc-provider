@@ -22,7 +22,7 @@ impl ResponseTypeResolver for CodeResolver {
         })?;
         let ttl = context.configuration.ttl();
         let code = AuthorisationCode {
-            code: Code::default(),
+            code: Code::random(),
             client_id: context.client.id,
             code_challenge: authorisation_request.code_challenge.clone(),
             code_challenge_method: authorisation_request.code_challenge_method,
@@ -33,6 +33,8 @@ impl ResponseTypeResolver for CodeResolver {
             scope: grant.scopes().clone(),
             nonce: context.request.nonce.clone(),
             state: context.request.state.clone(),
+            acr: context.user.acr().clone(),
+            amr: context.user.amr().cloned(),
         };
         let code = context
             .configuration

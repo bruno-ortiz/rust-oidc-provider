@@ -1,6 +1,8 @@
 use time::OffsetDateTime;
 use url::Url;
 
+use oidc_types::acr::Acr;
+use oidc_types::amr::Amr;
 use oidc_types::client::ClientID;
 use oidc_types::code::Code;
 use oidc_types::identifiable::Identifiable;
@@ -29,6 +31,8 @@ pub struct AuthorisationCode {
     pub expires_in: OffsetDateTime,
     pub nonce: Option<Nonce>,
     pub state: Option<State>,
+    pub acr: Acr,
+    pub amr: Option<Amr>,
 }
 
 impl AuthorisationCode {

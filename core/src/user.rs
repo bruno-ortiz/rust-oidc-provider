@@ -1,10 +1,14 @@
-use crate::adapter::PersistenceError;
-use crate::configuration::OpenIDProviderConfiguration;
-use crate::session::SessionID;
+use time::OffsetDateTime;
+
+use oidc_types::acr::Acr;
+use oidc_types::amr::Amr;
 use oidc_types::grant::Grant;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::subject::Subject;
-use time::OffsetDateTime;
+
+use crate::adapter::PersistenceError;
+use crate::configuration::OpenIDProviderConfiguration;
+use crate::session::SessionID;
 
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
@@ -13,6 +17,8 @@ pub struct AuthenticatedUser {
     auth_time: OffsetDateTime,
     max_age: u64,
     grant: Option<Grant>,
+    acr: Acr,
+    amr: Option<Amr>,
 }
 
 impl AuthenticatedUser {
@@ -21,12 +27,16 @@ impl AuthenticatedUser {
         subject: Subject,
         auth_time: OffsetDateTime,
         max_age: u64,
+        acr: Option<Acr>,
+        amr: Option<Amr>,
     ) -> Self {
         Self {
             session,
             subject,
             auth_time,
             max_age,
+            amr,
+            acr: acr.unwrap_or_default(),
             grant: None,
         }
     }
@@ -42,6 +52,12 @@ impl AuthenticatedUser {
     }
     pub fn max_age(&self) -> u64 {
         self.max_age
+    }
+    pub fn acr(&self) -> &Acr {
+        &self.acr
+    }
+    pub fn amr(&self) -> Option<&Amr> {
+        self.amr.as_ref()
     }
 
     pub fn grant(&self) -> Option<&Grant> {

@@ -1,8 +1,9 @@
+use async_trait::async_trait;
+
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
-use async_trait::async_trait;
 
 pub struct TokenResolver;
 #[async_trait]
@@ -26,26 +27,28 @@ impl ResponseTypeResolver for TokenResolver {
 
 #[cfg(test)]
 mod tests {
-    use crate::adapter::generic_adapter::InMemoryGenericAdapter;
-    use crate::adapter::Adapter;
-    use crate::context::test_utils::setup_context;
-    use crate::response_type::resolver::token::TokenResolver;
-    use crate::response_type::resolver::ResponseTypeResolver;
     use oidc_types::identifiable::Identifiable;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
-    use std::sync::Arc;
+
+    use crate::context::test_utils::setup_context;
+    use crate::response_type::resolver::token::TokenResolver;
+    use crate::response_type::resolver::ResponseTypeResolver;
 
     #[tokio::test]
     async fn test_can_create_access_token() {
         let context = setup_context(response_type!(ResponseTypeValue::Token), None, None);
-        let adapter = Arc::new(InMemoryGenericAdapter::new());
 
         let resolver = TokenResolver;
 
         let token = resolver.resolve(&context).await.expect("Should be Ok()");
 
-        let new_token = adapter.find(&token.id()).await;
+        let new_token = context
+            .configuration
+            .adapters()
+            .token()
+            .find(&token.id())
+            .await;
 
         assert!(new_token.is_some());
         assert_eq!(token, new_token.unwrap());

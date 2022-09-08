@@ -4,6 +4,8 @@ use getset::{CopyGetters, Getters};
 use josekit::jwe::enc::{A128CBC_HS256, A128GCM, A256CBC_HS512, A256GCM};
 use josekit::jwe::{Dir, A128KW, A256KW, ECDH_ES, RSA_OAEP};
 use std::fmt::Debug;
+use std::future::Future;
+use std::pin::Pin;
 
 use josekit::jwk::Jwk;
 use josekit::jws::{EdDSA, ES256, PS256, RS256};

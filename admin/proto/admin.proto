@@ -74,6 +74,8 @@ message ClientInfo {
 message CompleteLoginRequest {
   string interactionId = 1;
   string sub = 2;
+  optional string acr = 3;
+  optional string amr = 4;
 }
 
 message CompleteLoginReply {

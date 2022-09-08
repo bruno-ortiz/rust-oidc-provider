@@ -8,15 +8,21 @@ use crate::url_encodable::UrlEncodable;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize)]
 pub struct Code(String);
 
+impl Code {
+    pub fn random() -> Self {
+        Code::default()
+    }
+}
+
 impl Hashable for Code {
     fn identifier(&self) -> &str {
         self.0.as_str()
     }
 }
 
-impl From<String> for Code {
-    fn from(c: String) -> Self {
-        Self(c)
+impl<T: AsRef<str>> From<T> for Code {
+    fn from(c: T) -> Self {
+        Self(c.as_ref().to_owned())
     }
 }
 

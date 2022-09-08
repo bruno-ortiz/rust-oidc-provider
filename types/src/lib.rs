@@ -1,4 +1,5 @@
 pub mod access_token;
+pub mod acr;
 pub mod auth_method;
 pub mod claim_type;
 pub mod client;
@@ -28,3 +29,4 @@ pub mod subject_type;
 pub mod token_request;
 pub mod url_encodable;
 mod utils;
+pub mod amr;

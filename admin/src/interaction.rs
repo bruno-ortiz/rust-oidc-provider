@@ -1,10 +1,10 @@
-use crate::oidc_admin::interaction_info_reply::InteractionType;
-use crate::oidc_admin::interaction_service_server::InteractionService;
-use crate::oidc_admin::{
-    AuthenticatedUserInfo, AuthorisationRequestInfo, ClientInfo, ClientInfoRequest,
-    CompleteLoginReply, CompleteLoginRequest, ConfirmConsentReply, ConfirmConsentRequest,
-    InteractionInfoReply, InteractionInfoRequest,
-};
+use std::borrow::Borrow;
+use std::str::FromStr;
+use std::sync::Arc;
+
+use tonic::{Request, Response, Status};
+use uuid::Uuid;
+
 use oidc_core::authorisation_request::ValidatedAuthorisationRequest;
 use oidc_core::client::retrieve_client_info;
 use oidc_core::configuration::OpenIDProviderConfiguration;
@@ -14,14 +14,19 @@ use oidc_core::services::authorisation::AuthorisationService;
 use oidc_core::services::interaction::{complete_login, confirm_consent, InteractionError};
 use oidc_core::services::types::Interaction;
 use oidc_core::user::AuthenticatedUser;
+use oidc_types::acr::Acr;
+use oidc_types::amr::Amr;
 use oidc_types::client::{ClientID, ClientInformation};
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
-use std::borrow::Borrow;
-use std::str::FromStr;
-use std::sync::Arc;
-use tonic::{Request, Response, Status};
-use uuid::Uuid;
+
+use crate::oidc_admin::interaction_info_reply::InteractionType;
+use crate::oidc_admin::interaction_service_server::InteractionService;
+use crate::oidc_admin::{
+    AuthenticatedUserInfo, AuthorisationRequestInfo, ClientInfo, ClientInfoRequest,
+    CompleteLoginReply, CompleteLoginRequest, ConfirmConsentReply, ConfirmConsentRequest,
+    InteractionInfoReply, InteractionInfoRequest,
+};
 
 pub struct InteractionServiceImpl {
     configuration: Arc<OpenIDProviderConfiguration>,
@@ -86,6 +91,8 @@ impl InteractionService for InteractionServiceImpl {
             &self.configuration,
             interaction_id,
             Subject::new(c_request.sub),
+            c_request.acr.map(Acr::from),
+            c_request.amr.map(Amr::from),
         )
         .await
         .map_err(convert_err)?;
