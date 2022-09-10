@@ -1,14 +1,13 @@
+use std::fmt::Debug;
+
 use derive_builder::Builder;
 use futures::future::BoxFuture;
 use getset::{CopyGetters, Getters};
 use josekit::jwe::enc::{A128CBC_HS256, A128GCM, A256CBC_HS512, A256GCM};
 use josekit::jwe::{Dir, A128KW, A256KW, ECDH_ES, RSA_OAEP};
-use std::fmt::Debug;
-use std::future::Future;
-use std::pin::Pin;
-
 use josekit::jwk::Jwk;
 use josekit::jws::{EdDSA, ES256, PS256, RS256};
+use time::Duration;
 use url::Url;
 
 use oidc_types::auth_method::AuthMethod;
@@ -33,12 +32,20 @@ use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::routes::Routes;
 use crate::configuration::ttl::TTL;
+use crate::error::OpenIdError;
+use crate::grant_type::RTContext;
 use crate::services::types::Interaction;
 
+const ONE_YEAR: Duration = Duration::days(365);
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
 const DEFAULT_LOGIN_PATH: &str = "/interaction/login/";
 const DEFAULT_CONSENT_PATH: &str = "/interaction/consent/";
 type IssueRTFunc = Box<dyn Fn(&AuthenticatedClient) -> BoxFuture<bool> + Send + Sync>;
+type RotateRefreshTokenFunc = Box<dyn Fn(RTContext<'_>) -> bool + Send + Sync>;
+type ValidateRefreshTokenFunc =
+    Box<dyn Fn(RTContext<'_>) -> BoxFuture<Result<(), OpenIdError>> + Send + Sync>;
+type InteractionUrlResolver =
+    Box<dyn Fn(Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>;
 
 #[derive(Builder, CopyGetters, Getters)]
 #[get = "pub"]
@@ -61,7 +68,7 @@ pub struct OpenIDProviderConfiguration {
     #[builder(setter(skip))]
     interaction_base_url: Box<dyn Fn(&Self) -> &Url + Send + Sync>,
     #[builder(setter(skip))]
-    interaction_url_resolver: Box<dyn Fn(Interaction, &Self) -> Url + Send + Sync>,
+    interaction_url_resolver: InteractionUrlResolver,
     subject_types_supported: Vec<SubjectType>, //TODO: create subject type resolvers
     #[getset(skip)]
     #[get_copy = "pub"]
@@ -106,6 +113,10 @@ pub struct OpenIDProviderConfiguration {
     ttl: TTL,
     #[getset(skip)]
     issue_refresh_token: IssueRTFunc,
+    #[getset(skip)]
+    validate_refresh_token: ValidateRefreshTokenFunc,
+    #[getset(skip)]
+    rotate_refresh_token: RotateRefreshTokenFunc,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -135,6 +146,16 @@ impl OpenIDProviderConfiguration {
         interaction_url_fn(self)
             .join(DEFAULT_CONSENT_PATH)
             .expect("Should return a valid url")
+    }
+
+    pub async fn validate_refresh_token(&self, ctx: RTContext<'_>) -> Result<(), OpenIdError> {
+        let func = &self.validate_refresh_token;
+        func(ctx).await
+    }
+
+    pub fn rotate_refresh_token(&self, ctx: RTContext<'_>) -> bool {
+        let func = &self.rotate_refresh_token;
+        func(ctx)
     }
 
     pub async fn issue_refresh_token(&self, client: &AuthenticatedClient) -> bool {
@@ -270,6 +291,17 @@ impl Default for OpenIDProviderConfiguration {
             issue_refresh_token: Box::new(|c| {
                 Box::pin(async { c.allows_grant(GrantType::RefreshToken) })
             }),
+            rotate_refresh_token: Box::new(|ctx| {
+                let RTContext { rt, client, .. } = ctx;
+                if rt.total_lifetime() >= ONE_YEAR {
+                    return false;
+                }
+                if client.auth_method() == AuthMethod::None {
+                    return true;
+                }
+                rt.ttl_elapsed() >= 70.0
+            }),
+            validate_refresh_token: Box::new(|_ctx| Box::pin(async { Ok(()) })),
             display_values_supported: None,
             claim_types_supported: None,
             service_documentation: None,

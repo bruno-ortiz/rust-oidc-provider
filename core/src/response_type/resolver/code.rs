@@ -6,7 +6,8 @@ use oidc_types::code::Code;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
-use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
+use crate::models::authorisation_code::AuthorisationCode;
+use crate::models::Status;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub(crate) struct CodeResolver;
@@ -26,7 +27,7 @@ impl ResponseTypeResolver for CodeResolver {
             client_id: context.client.id,
             code_challenge: authorisation_request.code_challenge.clone(),
             code_challenge_method: authorisation_request.code_challenge_method,
-            status: CodeStatus::Awaiting,
+            status: Status::Awaiting,
             expires_in: OffsetDateTime::now_utc() + ttl.authorization_code,
             redirect_uri: authorisation_request.redirect_uri.clone(),
             subject: context.user.sub().clone(),
@@ -54,6 +55,7 @@ mod tests {
     use oidc_types::response_type::ResponseTypeValue;
 
     use crate::context::test_utils::setup_context;
+    use crate::models::Status;
 
     use super::*;
 
@@ -83,7 +85,7 @@ mod tests {
         );
         assert_eq!(context.client.id, code.client_id);
         assert_eq!(context.request.scope, code.scopes);
-        assert_eq!(CodeStatus::Awaiting, code.status);
+        assert_eq!(Status::Awaiting, code.status);
         assert_eq!(context.request.redirect_uri, code.redirect_uri);
     }
 

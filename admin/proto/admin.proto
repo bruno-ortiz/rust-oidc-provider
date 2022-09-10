@@ -58,7 +58,7 @@ message ClientInfo {
   repeated string grant_types = 4;
   repeated string response_types = 5;
   repeated string contacts = 6;
-  optional string token_endpoint_auth_method = 7;
+  string token_endpoint_auth_method = 7;
   optional string client_name = 8;
   optional string client_uri = 9;
   optional string logo_uri = 10;

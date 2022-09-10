@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
@@ -24,5 +25,11 @@ impl Display for AuthMethod {
             AuthMethod::SelfSignedTlsClientAuth => write!(f, "self_signed_tls_client_auth"),
             AuthMethod::None => write!(f, "none"),
         }
+    }
+}
+
+impl Default for AuthMethod {
+    fn default() -> Self {
+        Self::ClientSecretBasic
     }
 }

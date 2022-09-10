@@ -225,10 +225,7 @@ impl From<ClientInformation> for ClientInfo {
                 .map(|it| it.to_string())
                 .collect(),
             contacts: client.metadata.contacts,
-            token_endpoint_auth_method: client
-                .metadata
-                .token_endpoint_auth_method
-                .map(|it| it.to_string()),
+            token_endpoint_auth_method: client.metadata.token_endpoint_auth_method.to_string(),
             client_name: client.metadata.client_name,
             client_uri: client.metadata.client_uri.map(|it| it.to_string()),
             logo_uri: client.metadata.logo_uri.map(|it| it.to_string()),

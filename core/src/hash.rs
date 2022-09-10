@@ -52,7 +52,7 @@ mod tests {
     use oidc_types::subject::Subject;
 
     use crate::hash::TokenHasher;
-    use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
+    use crate::models::authorisation_code::{AuthorisationCode, Status};
 
     #[test]
     fn test_can_hash() {
@@ -64,7 +64,7 @@ mod tests {
             redirect_uri: Url::parse("https://test.com/callback").unwrap(),
             code_challenge: None,
             code_challenge_method: None,
-            status: CodeStatus::Awaiting,
+            status: Status::Awaiting,
             expires_in: OffsetDateTime::now_utc() + Duration::minutes(10),
             nonce: None,
             state: None,

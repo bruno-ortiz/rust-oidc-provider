@@ -61,7 +61,7 @@ impl Default for ClientID {
 #[builder(setter(into, strip_option), default)]
 pub struct ClientMetadata {
     pub redirect_uris: Vec<Url>,
-    pub token_endpoint_auth_method: Option<AuthMethod>,
+    pub token_endpoint_auth_method: AuthMethod,
     pub grant_types: Vec<GrantType>,
     pub response_types: Vec<ResponseTypeValue>,
     pub scope: Scopes,
@@ -102,6 +102,9 @@ impl AuthenticatedClient {
 
     pub fn allows_grant(&self, grant_type: GrantType) -> bool {
         self.0.metadata.grant_types.contains(&grant_type)
+    }
+    pub fn auth_method(&self) -> AuthMethod {
+        self.0.metadata.token_endpoint_auth_method
     }
 }
 

@@ -143,7 +143,7 @@ impl AuthorisationRequest {
         let redirect_uri = self
             .redirect_uri
             .as_ref()
-            .ok_or(OpenIdError::invalid_request("Missing redirect_uri"))?;
+            .ok_or_else(|| OpenIdError::invalid_request("Missing redirect_uri"))?;
         if client.metadata.redirect_uris.contains(redirect_uri) {
             Ok(())
         } else {

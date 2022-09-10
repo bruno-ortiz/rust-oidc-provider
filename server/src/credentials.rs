@@ -1,7 +1,15 @@
+use std::collections::HashMap;
+use std::str::FromStr;
+
 use axum::body::Bytes;
 use axum::http::header::AUTHORIZATION;
 use axum::http::StatusCode;
 use hyper::HeaderMap;
+use serde::de::value::Error as SerdeError;
+use serde_urlencoded::from_bytes;
+use thiserror::Error;
+use tracing::error;
+
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_types::auth_method::AuthMethod;
@@ -15,12 +23,6 @@ use oidc_types::client_credentials::{
     JWTCredential, PrivateKeyJWTCredential, SelfSignedTLSClientAuthCredential,
     TLSClientAuthCredential,
 };
-use serde::de::value::Error as SerdeError;
-use serde_urlencoded::from_bytes;
-use std::collections::HashMap;
-use std::str::FromStr;
-use thiserror::Error;
-use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum CredentialsError {
@@ -48,14 +50,14 @@ impl Credentials {
     pub async fn parse_credentials(
         headers: &HeaderMap,
         body_bytes: &Bytes,
-        config: &OpenIDProviderConfiguration,
+        _config: &OpenIDProviderConfiguration, //TODO: config is here to allow access to future mTLS config
     ) -> Result<Credentials, CredentialsError> {
+        let mut credentials = HashMap::new();
         let params: HashMap<String, String> = from_bytes(body_bytes)?;
         let mut client_id = params
             .get("client_id")
             .ok_or(CredentialsError::MissingClientId)
             .and_then(|id| parse_client_id(id));
-        let mut credentials = HashMap::new();
 
         if let Ok(id) = client_id {
             let credential = TlsClientAuth(TLSClientAuthCredential::new(id));
@@ -87,6 +89,9 @@ impl Credentials {
             credentials.insert(AuthMethod::PrivateKeyJwt, PrivateKeyJwt(parsed_credential));
         }
 
+        if credentials.is_empty() {
+            credentials.insert(AuthMethod::None, ClientCredential::None);
+        }
         Ok(Credentials {
             credentials,
             client_id: client_id?,

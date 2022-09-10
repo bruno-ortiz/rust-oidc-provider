@@ -1,14 +1,19 @@
-mod authorization_code;
-mod client_credentials;
-mod refresh_token;
+use async_trait::async_trait;
+use time::Duration;
+
+use oidc_types::client::AuthenticatedClient;
+use oidc_types::scopes::Scopes;
+use oidc_types::token::TokenResponse;
+use oidc_types::token_request::TokenRequestBody;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::access_token::AccessToken;
-use async_trait::async_trait;
-use oidc_types::client::AuthenticatedClient;
-use oidc_types::token::TokenResponse;
-use oidc_types::token_request::TokenRequestBody;
+use crate::models::refresh_token::RefreshToken;
+
+mod authorization_code;
+mod client_credentials;
+mod refresh_token;
 
 #[async_trait]
 pub trait GrantTypeResolver {
@@ -50,4 +55,22 @@ impl GrantTypeResolver for TokenRequestBody {
             }
         }
     }
+}
+
+async fn create_access_token(
+    configuration: &OpenIDProviderConfiguration,
+    duration: Duration,
+    scopes: Scopes,
+) -> Result<AccessToken, OpenIdError> {
+    AccessToken::bearer(duration, Some(scopes))
+        .save(configuration)
+        .await
+        .map_err(|err| OpenIdError::server_error(err.into()))
+}
+
+#[derive(Copy, Clone)]
+pub struct RTContext<'a> {
+    pub config: &'a OpenIDProviderConfiguration,
+    pub rt: &'a RefreshToken,
+    pub client: &'a AuthenticatedClient,
 }

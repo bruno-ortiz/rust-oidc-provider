@@ -5,17 +5,15 @@ use tracing::error;
 use uuid::Uuid;
 
 use oidc_types::client::AuthenticatedClient;
-use oidc_types::pkce::{validate_pkce, CodeChallengeError};
+use oidc_types::pkce::CodeChallengeError;
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
-use crate::grant_type::GrantTypeResolver;
+use crate::grant_type::{create_access_token, GrantTypeResolver};
 use crate::id_token::IdTokenBuilder;
-use crate::models::access_token::AccessToken;
-use crate::models::authorisation_code::{AuthorisationCode, CodeStatus};
 use crate::models::refresh_token::RefreshTokenBuilder;
 
 #[async_trait]
@@ -31,23 +29,16 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             .code()
             .find(&grant.code)
             .await
-            .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?;
-
-        validate_authorization_code(&code, &client)?;
-        validate_redirect_uri(&grant, &code)?;
-        validate_pkce(
-            &grant,
-            code.code_challenge.as_ref(),
-            code.code_challenge_method,
-        )?;
+            .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
+            .validate(&client, &grant)?
+            .consume(configuration)
+            .await?;
 
         let ttl = configuration.ttl();
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token = AccessToken::bearer(at_duration, Some(code.scopes.clone()))
-            .save(configuration)
-            .await
-            .map_err(|err| OpenIdError::server_error(err.into()))?;
+        let access_token =
+            create_access_token(configuration, at_duration, code.scopes.clone()).await?;
 
         let mut id_token = None;
         if code.scopes.contains(&OPEN_ID) {
@@ -81,13 +72,14 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .client_id(code.client_id)
                 .redirect_uri(code.redirect_uri)
                 .subject(code.subject)
-                .scope(code.scopes)
+                .scopes(code.scopes)
                 .state(code.state)
                 .amr(code.amr)
                 .acr(code.acr)
                 .nonce(code.nonce)
                 .expires_in(OffsetDateTime::now_utc() + rt_ttl)
                 .created(OffsetDateTime::now_utc())
+                .auth_time(code.auth_time)
                 .build()
                 .map_err(|err| OpenIdError::server_error(err.into()))?
                 .save(configuration)
@@ -103,36 +95,6 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             id_token,
         ))
     }
-}
-
-fn validate_authorization_code(
-    code: &AuthorisationCode,
-    client: &AuthenticatedClient,
-) -> Result<(), OpenIdError> {
-    if code.status != CodeStatus::Awaiting {
-        return Err(OpenIdError::invalid_grant(
-            "Authorization code already consumed",
-        ));
-    }
-    if code.client_id != client.as_ref().id {
-        return Err(OpenIdError::invalid_grant(
-            "Client mismatch for authorization code",
-        ));
-    }
-    if code.is_expired() {
-        return Err(OpenIdError::invalid_grant("Authorization code is expired"));
-    }
-    Ok(())
-}
-
-fn validate_redirect_uri(
-    grant: &AuthorisationCodeGrant,
-    code: &AuthorisationCode,
-) -> Result<(), OpenIdError> {
-    if grant.redirect_uri != code.redirect_uri {
-        return Err(OpenIdError::invalid_grant("Redirect uri mismatch"));
-    }
-    Ok(())
 }
 
 impl From<CodeChallengeError> for OpenIdError {

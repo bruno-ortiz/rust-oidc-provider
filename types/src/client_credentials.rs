@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
+use serde::Deserialize;
+use thiserror::Error;
+
 use crate::client::{ClientID, ParseError};
 use crate::client_credentials::CredentialError::MissingParam;
 use crate::jose::error::JWTError;
 use crate::jose::jwt::JWT;
-use serde::Deserialize;
-use std::collections::HashMap;
-use thiserror::Error;
 
 const SECRET_KEY: &str = "client_secret";
 const ASSERTION_KEY: &str = "client_assertion";
@@ -30,6 +32,7 @@ pub enum ClientCredential {
     PrivateKeyJwt(PrivateKeyJWTCredential),
     TlsClientAuth(TLSClientAuthCredential),
     SelfSignedTlsClientAuth(SelfSignedTLSClientAuthCredential),
+    None,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -72,6 +75,10 @@ impl JWTCredential {
             .ok_or(CredentialError::MissingSub)?
             .parse()?;
         Ok(client_id)
+    }
+
+    pub fn assertion_type(&self) -> &str {
+        self.client_assertion_type.as_str()
     }
 }
 

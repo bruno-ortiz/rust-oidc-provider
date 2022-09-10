@@ -1,12 +1,14 @@
-use crate::configuration::OpenIDProviderConfiguration;
 use async_trait::async_trait;
+use thiserror::Error;
+
 use oidc_types::client::{AuthenticatedClient, ClientInformation};
 use oidc_types::client_credentials::{
     ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, PrivateKeyJWTCredential,
     SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
 };
-use thiserror::Error;
 use ClientCredential::*;
+
+use crate::configuration::OpenIDProviderConfiguration;
 
 #[derive(Debug, Error)]
 pub enum ClientAuthenticationError {
@@ -37,6 +39,7 @@ impl ClientAuthenticator for ClientCredential {
             PrivateKeyJwt(inner) => inner.authenticate(config, client).await,
             TlsClientAuth(inner) => inner.authenticate(config, client).await,
             SelfSignedTlsClientAuth(inner) => inner.authenticate(config, client).await,
+            None => Ok(AuthenticatedClient::new(client)),
         }
     }
 }
