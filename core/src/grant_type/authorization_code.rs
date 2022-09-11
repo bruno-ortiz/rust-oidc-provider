@@ -13,7 +13,7 @@ use oidc_types::token_request::AuthorisationCodeGrant;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver};
-use crate::id_token::IdTokenBuilder;
+use crate::id_token_builder::IdTokenBuilder;
 use crate::models::refresh_token::RefreshTokenBuilder;
 
 #[async_trait]

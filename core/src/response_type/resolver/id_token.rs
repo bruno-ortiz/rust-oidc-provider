@@ -8,7 +8,7 @@ use oidc_types::response_type::Flow;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
-use crate::id_token::IdTokenBuilder;
+use crate::id_token_builder::IdTokenBuilder;
 use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
 
