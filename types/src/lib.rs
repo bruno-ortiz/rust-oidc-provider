@@ -1,5 +1,6 @@
 pub mod acr;
 pub mod amr;
+pub mod application_type;
 pub mod auth_method;
 pub mod claim_type;
 pub mod client;

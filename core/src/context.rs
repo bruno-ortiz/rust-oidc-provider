@@ -41,10 +41,13 @@ pub mod test_utils {
     use josekit::jwk::alg::ec::EcCurve;
     use josekit::jwk::Jwk;
     use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
+    use josekit::jws::RS256;
     use time::OffsetDateTime;
     use url::Url;
     use uuid::Uuid;
 
+    use oidc_types::application_type::ApplicationType;
+    use oidc_types::auth_method::AuthMethod;
     use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
     use oidc_types::grant::Grant;
     use oidc_types::hashed_secret::HashedSecret;
@@ -58,6 +61,7 @@ pub mod test_utils {
     use oidc_types::response_type::ResponseTypeValue::Token;
     use oidc_types::state::State;
     use oidc_types::subject::Subject;
+    use oidc_types::subject_type::SubjectType;
     use oidc_types::{response_type, scopes};
 
     use crate::authorisation_request::ValidatedAuthorisationRequest;
@@ -97,7 +101,12 @@ pub mod test_utils {
             secret_expires_at: None,
             metadata: ClientMetadata {
                 redirect_uris: vec![],
-                token_endpoint_auth_method: None,
+                token_endpoint_auth_method: AuthMethod::None,
+                token_endpoint_auth_signing_alg: None,
+                default_max_age: None,
+                require_auth_time: false,
+                default_acr_values: None,
+                initiate_login_uri: None,
                 grant_types: vec![],
                 response_types: vec![],
                 scope: scopes!("openid", "test"),
@@ -109,9 +118,22 @@ pub mod test_utils {
                 contacts: vec![],
                 jwks_uri: None,
                 jwks: None,
+                sector_identifier_uri: None,
+                subject_type: SubjectType::Public,
+                id_token_signed_response_alg: RS256.into(),
+                id_token_encrypted_response_alg: None,
+                id_token_encrypted_response_enc: None,
+                userinfo_signed_response_alg: None,
+                userinfo_encrypted_response_alg: None,
+                userinfo_encrypted_response_enc: None,
+                request_object_signing_alg: None,
+                request_object_encryption_alg: None,
                 software_id: None,
                 software_version: None,
                 software_statement: None,
+                application_type: ApplicationType::Native,
+                request_object_encryption_enc: None,
+                request_uris: None,
             },
         };
 

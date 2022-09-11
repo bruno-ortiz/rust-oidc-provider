@@ -3,7 +3,7 @@ use crate::grant_type::GrantType;
 use crate::issuer::Issuer;
 use crate::jose::jwe::alg::EncryptionAlgorithm;
 use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
-use crate::jose::jws::Algorithm;
+use crate::jose::jws::SigningAlgorithm;
 use crate::pkce::CodeChallengeMethod;
 use crate::response_mode::ResponseMode;
 use crate::response_type::ResponseType;
@@ -25,13 +25,13 @@ pub struct OIDCProviderMetadata {
     code_challenge_methods_supported: Vec<CodeChallengeMethod>,
     grant_types_supported: Vec<GrantType>,
     response_modes_supported: Vec<ResponseMode>,
-    id_token_signing_alg_values_supported: Vec<Algorithm>,
+    id_token_signing_alg_values_supported: Vec<SigningAlgorithm>,
     id_token_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     id_token_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
-    request_object_signing_alg_values_supported: Vec<Algorithm>,
+    request_object_signing_alg_values_supported: Vec<SigningAlgorithm>,
     request_object_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     request_object_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
-    authorization_signing_alg_values_supported: Option<Vec<Algorithm>>,
+    authorization_signing_alg_values_supported: Option<Vec<SigningAlgorithm>>,
     authorization_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     authorization_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
     subject_types_supported: Vec<SubjectType>,

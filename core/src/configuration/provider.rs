@@ -18,7 +18,7 @@ use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwe::alg::EncryptionAlgorithm;
 use oidc_types::jose::jwe::enc::ContentEncryptionAlgorithm;
 use oidc_types::jose::jwk_set::JwkSet;
-use oidc_types::jose::jws::Algorithm;
+use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::password_hasher::HasherConfig;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::ResponseType;
@@ -74,20 +74,20 @@ pub struct OpenIDProviderConfiguration {
     #[get_copy = "pub"]
     auth_max_age: u64,
     acr_values_supported: Option<Vec<String>>,
-    authorization_signing_alg_values_supported: Option<Vec<Algorithm>>,
+    authorization_signing_alg_values_supported: Option<Vec<SigningAlgorithm>>,
     authorization_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     authorization_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
-    id_token_signing_alg_values_supported: Vec<Algorithm>,
+    id_token_signing_alg_values_supported: Vec<SigningAlgorithm>,
     id_token_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     id_token_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
-    userinfo_signing_alg_values_supported: Vec<Algorithm>,
+    userinfo_signing_alg_values_supported: Vec<SigningAlgorithm>,
     userinfo_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     userinfo_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
-    request_object_signing_alg_values_supported: Vec<Algorithm>,
+    request_object_signing_alg_values_supported: Vec<SigningAlgorithm>,
     request_object_encryption_alg_values_supported: Option<Vec<EncryptionAlgorithm>>,
     request_object_encryption_enc_values_supported: Option<Vec<ContentEncryptionAlgorithm>>,
     token_endpoint_auth_methods_supported: Vec<AuthMethod>,
-    token_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
+    token_endpoint_auth_signing_alg_values_supported: Vec<SigningAlgorithm>,
     display_values_supported: Option<Vec<String>>,
     claim_types_supported: Option<Vec<ClaimType>>,
     claims_supported: Vec<String>,
@@ -203,10 +203,10 @@ impl Default for OpenIDProviderConfiguration {
             claims_supported: vec![],
             acr_values_supported: None,
             authorization_signing_alg_values_supported: Some(vec![
-                Algorithm::from(RS256),
-                Algorithm::from(PS256),
-                Algorithm::from(ES256),
-                Algorithm::from(EdDSA),
+                SigningAlgorithm::from(RS256),
+                SigningAlgorithm::from(PS256),
+                SigningAlgorithm::from(ES256),
+                SigningAlgorithm::from(EdDSA),
             ]),
             authorization_encryption_alg_values_supported: Some(vec![
                 A128KW.into(),
@@ -222,10 +222,10 @@ impl Default for OpenIDProviderConfiguration {
                 A256GCM.into(),
             ]),
             id_token_signing_alg_values_supported: vec![
-                Algorithm::from(RS256),
-                Algorithm::from(PS256),
-                Algorithm::from(ES256),
-                Algorithm::from(EdDSA),
+                SigningAlgorithm::from(RS256),
+                SigningAlgorithm::from(PS256),
+                SigningAlgorithm::from(ES256),
+                SigningAlgorithm::from(EdDSA),
             ],
             id_token_encryption_alg_values_supported: Some(vec![
                 A128KW.into(),
@@ -241,10 +241,10 @@ impl Default for OpenIDProviderConfiguration {
                 A256GCM.into(),
             ]),
             userinfo_signing_alg_values_supported: vec![
-                Algorithm::from(RS256),
-                Algorithm::from(PS256),
-                Algorithm::from(ES256),
-                Algorithm::from(EdDSA),
+                SigningAlgorithm::from(RS256),
+                SigningAlgorithm::from(PS256),
+                SigningAlgorithm::from(ES256),
+                SigningAlgorithm::from(EdDSA),
             ],
             userinfo_encryption_alg_values_supported: Some(vec![
                 A128KW.into(),
@@ -260,10 +260,10 @@ impl Default for OpenIDProviderConfiguration {
                 A256GCM.into(),
             ]),
             request_object_signing_alg_values_supported: vec![
-                Algorithm::from(RS256),
-                Algorithm::from(PS256),
-                Algorithm::from(ES256),
-                Algorithm::from(EdDSA),
+                SigningAlgorithm::from(RS256),
+                SigningAlgorithm::from(PS256),
+                SigningAlgorithm::from(ES256),
+                SigningAlgorithm::from(EdDSA),
             ],
             request_object_encryption_alg_values_supported: Some(vec![
                 A128KW.into(),
@@ -280,10 +280,10 @@ impl Default for OpenIDProviderConfiguration {
             ]),
             token_endpoint_auth_methods_supported: vec![AuthMethod::ClientSecretBasic],
             token_endpoint_auth_signing_alg_values_supported: vec![
-                Algorithm::from(RS256),
-                Algorithm::from(PS256),
-                Algorithm::from(ES256),
-                Algorithm::from(EdDSA),
+                SigningAlgorithm::from(RS256),
+                SigningAlgorithm::from(PS256),
+                SigningAlgorithm::from(ES256),
+                SigningAlgorithm::from(EdDSA),
             ],
             secret_hasher: HasherConfig::Sha256,
             client_credentials: ClientCredentialConfiguration::default(),
