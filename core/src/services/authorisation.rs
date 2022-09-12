@@ -35,7 +35,6 @@ pub enum AuthorisationError {
 pub struct AuthorisationService<R, E> {
     resolver: R,
     encoder: E,
-    configuration: Arc<OpenIDProviderConfiguration>,
 }
 
 impl<R, E> AuthorisationService<R, E>
@@ -43,12 +42,8 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    pub fn new(resolver: R, encoder: E, configuration: Arc<OpenIDProviderConfiguration>) -> Self {
-        Self {
-            resolver,
-            encoder,
-            configuration,
-        }
+    pub fn new(resolver: R, encoder: E) -> Self {
+        Self { resolver, encoder }
     }
 
     pub async fn authorise(
@@ -57,11 +52,11 @@ where
         client: ClientInformation,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let interaction = begin_interaction(&self.configuration, session, request).await?;
+        let interaction = begin_interaction(session, request).await?;
         match interaction {
-            Interaction::Login { .. } | Interaction::Consent { .. } => Ok(
-                AuthorisationResponse::Redirect(interaction.uri(&self.configuration)),
-            ),
+            Interaction::Login { .. } | Interaction::Consent { .. } => {
+                Ok(AuthorisationResponse::Redirect(interaction.uri()))
+            }
             Interaction::None { request, user, .. } => {
                 Ok(self.do_authorise(user, client, request).await?)
             }
@@ -75,16 +70,16 @@ where
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
         let client = Arc::new(client);
-        let context = OpenIDContext::new(client.clone(), user, request, self.configuration.clone());
+        let context = OpenIDContext::new(client.clone(), user, request);
         let auth_result = self.resolver.resolve(&context).await;
 
+        let config = OpenIDProviderConfiguration::instance();
         let encoding_context = EncodingContext {
             client: &client,
-            configuration: &self.configuration,
             redirect_uri: &context.request.redirect_uri,
             response_mode: context
                 .request
-                .response_mode(self.configuration.jwt_secure_response_mode()),
+                .response_mode(config.jwt_secure_response_mode()),
         };
         let mut parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
         if let Some(state) = context.request.state {

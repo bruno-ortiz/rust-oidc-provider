@@ -1,8 +1,9 @@
-use crate::adapter::PersistenceError;
-use oidc_types::identifiable::Identifiable;
 use url::Url;
 use uuid::Uuid;
 
+use oidc_types::identifiable::Identifiable;
+
+use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::session::SessionID;
@@ -66,9 +67,10 @@ impl Interaction {
         }
     }
 
-    pub fn uri(self, config: &OpenIDProviderConfiguration) -> Url {
+    pub fn uri(self) -> Url {
         let id = self.id();
-        let mut url = config.interaction_url_resolver()(self, config);
+        let config = OpenIDProviderConfiguration::instance();
+        let mut url = config.interaction_url_resolver()(self);
         Self::add_id(&mut url, id);
         url
     }
@@ -78,15 +80,14 @@ impl Interaction {
             .append_pair("interaction_id", id.to_string().as_str());
     }
 
-    pub async fn save(
-        self,
-        config: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
+    pub async fn save(self) -> Result<Self, PersistenceError> {
+        let config = OpenIDProviderConfiguration::instance();
         config.adapters().interaction().save(self).await
     }
 
-    pub async fn find(config: &OpenIDProviderConfiguration, id: Uuid) -> Option<Interaction> {
-        config.adapters().interaction().find(&id).await
+    pub async fn find(id: Uuid) -> Option<Interaction> {
+        let configuration = OpenIDProviderConfiguration::instance();
+        configuration.adapters().interaction().find(&id).await
     }
 }
 

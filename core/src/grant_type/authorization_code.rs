@@ -20,9 +20,9 @@ use crate::models::refresh_token::RefreshTokenBuilder;
 impl GrantTypeResolver for AuthorisationCodeGrant {
     async fn execute(
         self,
-        configuration: &OpenIDProviderConfiguration,
         client: AuthenticatedClient,
     ) -> Result<TokenResponse, OpenIdError> {
+        let configuration = OpenIDProviderConfiguration::instance();
         let grant = self;
         let code = configuration
             .adapters()
@@ -31,14 +31,13 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             .await
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
             .validate(&client, &grant)?
-            .consume(configuration)
+            .consume()
             .await?;
 
         let ttl = configuration.ttl();
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token =
-            create_access_token(configuration, at_duration, code.scopes.clone()).await?;
+        let access_token = create_access_token(at_duration, code.scopes.clone()).await?;
 
         let mut id_token = None;
         if code.scopes.contains(&OPEN_ID) {
@@ -82,7 +81,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .auth_time(code.auth_time)
                 .build()
                 .map_err(|err| OpenIdError::server_error(err.into()))?
-                .save(configuration)
+                .save()
                 .await?;
             rt = Some(refresh_token.token.to_string())
         }

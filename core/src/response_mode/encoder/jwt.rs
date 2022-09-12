@@ -1,5 +1,4 @@
 use indexmap::IndexMap;
-
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::Value;
@@ -9,6 +8,7 @@ use oidc_types::jose::jwt::JWT;
 use oidc_types::jose::JwsHeaderExt;
 use oidc_types::response_mode::ResponseMode;
 
+use crate::configuration::OpenIDProviderConfiguration;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
@@ -25,12 +25,12 @@ impl ResponseModeEncoder for JwtEncoder {
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
-        let signing_key = context
-            .configuration
+        let configuration = OpenIDProviderConfiguration::instance();
+        let signing_key = configuration
             .signing_key()
             .ok_or(EncodingError::MissingSigningKey)?;
         let header = JwsHeader::from_key(signing_key);
-        let payload = self.build_payload(context, parameters);
+        let payload = self.build_payload(configuration, context, parameters);
         let jwt = JWT::encode_string(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
 
@@ -58,11 +58,12 @@ impl EncoderDecider for JwtEncoder {
 impl JwtEncoder {
     fn build_payload(
         &self,
+        configuration: &OpenIDProviderConfiguration,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
     ) -> JwtPayload {
         let mut payload = JwtPayload::new();
-        payload.set_issuer(context.configuration.issuer());
+        payload.set_issuer(configuration.issuer());
         payload.set_audience(vec![context.client.id.to_string()]);
         let exp = OffsetDateTime::now_utc() + Duration::minutes(EXP_IN_MINUTES);
         payload.set_expires_at(&exp.into());

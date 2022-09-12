@@ -13,20 +13,17 @@ pub struct RegisterClientError {
     source: PersistenceError,
 }
 
-pub async fn retrieve_client_info(
-    configuration: &OpenIDProviderConfiguration,
-    client_id: ClientID,
-) -> Option<ClientInformation> {
+pub async fn retrieve_client_info(client_id: ClientID) -> Option<ClientInformation> {
+    let configuration = OpenIDProviderConfiguration::instance();
     configuration.adapters().client().find(&client_id).await
 }
 
 pub async fn retrieve_client_info_by_unparsed(
-    configuration: &OpenIDProviderConfiguration,
     client_id: &str,
 ) -> Result<ClientInformation, AuthorisationError> {
     let client_id = ClientID::from_str(client_id)
         .map_err(|_| AuthorisationError::InvalidClient(client_id.to_owned()))?;
-    let client = retrieve_client_info(configuration, client_id)
+    let client = retrieve_client_info(client_id)
         .await
         .ok_or_else(|| AuthorisationError::InvalidClient(client_id.to_string()))?;
     Ok(client)
@@ -37,6 +34,5 @@ pub async fn register_client(
     client: ClientInformation,
 ) -> Result<(), RegisterClientError> {
     configuration.adapters().client().save(client).await?;
-
     Ok(())
 }

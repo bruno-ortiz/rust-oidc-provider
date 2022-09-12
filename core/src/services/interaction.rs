@@ -35,26 +35,25 @@ pub enum InteractionError {
 }
 
 pub async fn begin_interaction(
-    configuration: &OpenIDProviderConfiguration,
     session: SessionID,
     request: ValidatedAuthorisationRequest,
 ) -> Result<Interaction, AuthorisationError> {
-    let interaction = resolve_interaction(configuration, session, request)
+    let interaction = resolve_interaction(session, request)
         .await
-        .save(configuration)
+        .save()
         .await
         .map_err(AuthorisationError::InteractionErr)?;
     Ok(interaction)
 }
 
 pub async fn complete_login(
-    configuration: &OpenIDProviderConfiguration,
     interaction_id: Uuid,
     subject: Subject,
     acr: Option<Acr>,
     amr: Option<Amr>,
 ) -> Result<Url, InteractionError> {
-    match Interaction::find(configuration, interaction_id).await {
+    let configuration = OpenIDProviderConfiguration::instance();
+    match Interaction::find(interaction_id).await {
         Some(Interaction::Login {
             session, request, ..
         }) => {
@@ -66,21 +65,21 @@ pub async fn complete_login(
                 acr,
                 amr,
             )
-            .save(configuration)
+            .save()
             .await
             .map_err(|err| {
                 InteractionError::Internal(f!("Unexpected error authenticating user. Err: {err}"))
             })?;
 
             let interaction = Interaction::consent(session, request, user)
-                .save(configuration)
+                .save()
                 .await
                 .map_err(|err| {
                     InteractionError::Internal(f!(
                         "Unexpected error authenticating user. Err: {err}"
                     ))
                 })?;
-            Ok(interaction.uri(configuration))
+            Ok(interaction.uri())
         }
         None => Err(InteractionError::NotFound(interaction_id)),
         _ => Err(InteractionError::FailedPreCondition(
@@ -90,7 +89,6 @@ pub async fn complete_login(
 }
 
 pub async fn confirm_consent<R, E>(
-    configuration: &OpenIDProviderConfiguration,
     auth_service: &AuthorisationService<R, E>,
     interaction_id: Uuid,
     scopes: Scopes,
@@ -99,14 +97,14 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    match Interaction::find(configuration, interaction_id).await {
+    match Interaction::find(interaction_id).await {
         Some(Interaction::Consent { request, user, .. }) => {
             let user = user
                 .with_grant(Grant::new(scopes))
-                .save(configuration)
+                .save()
                 .await
                 .map_err(|err| InteractionError::Internal(err.to_string()))?;
-            let client = retrieve_client_info(configuration, request.client_id)
+            let client = retrieve_client_info(request.client_id)
                 .await
                 .ok_or(InteractionError::ClientNotFound(request.client_id))?;
             let res = auth_service
@@ -127,11 +125,10 @@ where
 }
 
 async fn resolve_interaction(
-    config: &OpenIDProviderConfiguration,
     session: SessionID,
     request: ValidatedAuthorisationRequest,
 ) -> Interaction {
-    let user = find_user_by_session(config, session).await;
+    let user = find_user_by_session(session).await;
 
     let prompt = request.prompt.as_ref();
     if user.is_none() || prompt.is_some() && prompt.unwrap().contains(&Prompt::Login) {

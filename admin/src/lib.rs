@@ -17,17 +17,12 @@ pub mod oidc_admin {
 #[error("Error running admin server: {}", .0)]
 pub struct AdminServerError(#[from] TonicError);
 
-pub struct AdminServer {
-    configuration: Arc<OpenIDProviderConfiguration>,
-}
+pub struct AdminServer;
 
 impl AdminServer {
-    pub fn new(configuration: Arc<OpenIDProviderConfiguration>) -> Self {
-        Self { configuration }
-    }
 
     pub async fn run(self, addr: SocketAddr) -> Result<(), AdminServerError> {
-        let service = InteractionServiceImpl::new(self.configuration.clone());
+        let service = InteractionServiceImpl::new();
 
         Server::builder()
             .add_service(InteractionServiceServer::new(service))

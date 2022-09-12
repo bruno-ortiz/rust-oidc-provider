@@ -34,7 +34,6 @@ pub enum ServerError {
 #[derive(Default)]
 pub struct OidcServer {
     custom_routes: Option<Router>,
-    configuration: Arc<OpenIDProviderConfiguration>,
 }
 
 impl OidcServer {
@@ -43,26 +42,23 @@ impl OidcServer {
     }
 
     pub fn with_configuration(configuration: OpenIDProviderConfiguration) -> Self {
+        OpenIDProviderConfiguration::set(configuration);
         Self {
-            configuration: Arc::new(configuration),
             custom_routes: None,
         }
     }
 
     pub fn with_router(self, router: Router) -> Self {
         Self {
-            configuration: self.configuration,
             custom_routes: Some(router),
         }
     }
 
     pub async fn run(self) -> Result<(), ServerError> {
-        let configuration = self.configuration.clone();
         tokio::spawn(async move {
             let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
             info!("Admin Server listening on {}", addr);
-            let admin_server = AdminServer::new(configuration);
-            admin_server.run(addr).await.map_err(ServerError::Admin)
+            AdminServer.run(addr).await.map_err(ServerError::Admin)
         });
         let oidc_router = self.oidc_router().await;
         let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -77,11 +73,11 @@ impl OidcServer {
     }
 
     async fn oidc_router(&self) -> Router {
-        let routes = self.configuration.routes();
+        let configuration = OpenIDProviderConfiguration::instance();
+        let routes = configuration.routes();
         let authorisation_service = Arc::new(AuthorisationService::new(
-            DynamicResponseTypeResolver::from(self.configuration.borrow()),
-            DynamicResponseModeEncoder::from(self.configuration.borrow()),
-            self.configuration.clone(),
+            DynamicResponseTypeResolver::from(configuration),
+            DynamicResponseModeEncoder::from(configuration),
         ));
         let mut router = Router::new()
             .route(DISCOVERY_ROUTE, get(discovery))
@@ -102,11 +98,9 @@ impl OidcServer {
                 .layer(TraceLayer::new_for_http())
                 .layer(CookieManagerLayer::new())
                 .layer(SessionManagerLayer::signed(&[0; 32])) //TODO: key configuration
-                .add_extension(Arc::new(DynamicResponseModeEncoder::from(
-                    self.configuration.borrow(),
-                )))
+                .add_extension(Arc::new(DynamicResponseModeEncoder::from(configuration)))
                 .add_extension(authorisation_service)
-                .add_extension(self.configuration.clone())
+                .add_extension(configuration)
                 .add_extension(interaction_client),
         )
     }

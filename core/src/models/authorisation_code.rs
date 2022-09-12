@@ -72,8 +72,8 @@ impl AuthorisationCode {
 
     pub async fn consume(
         mut self,
-        configuration: &OpenIDProviderConfiguration,
     ) -> Result<AuthorisationCode, OpenIdError> {
+        let configuration = OpenIDProviderConfiguration::instance();
         self.status = Status::Consumed;
         configuration
             .adapters()

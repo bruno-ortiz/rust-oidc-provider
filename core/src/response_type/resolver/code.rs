@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 
 use oidc_types::code::Code;
 
+use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::models::authorisation_code::AuthorisationCode;
@@ -21,7 +22,8 @@ impl ResponseTypeResolver for CodeResolver {
         let grant = context.user.grant().ok_or_else(|| {
             OpenIdError::server_error(anyhow!("Trying to authorise user with no grant"))
         })?;
-        let ttl = context.configuration.ttl();
+        let configuration = OpenIDProviderConfiguration::instance();
+        let ttl = configuration.ttl();
         let code = AuthorisationCode {
             code: Code::random(),
             client_id: context.client.id,
@@ -38,8 +40,7 @@ impl ResponseTypeResolver for CodeResolver {
             amr: context.user.amr().cloned(),
             auth_time: context.user.auth_time(),
         };
-        let code = context
-            .configuration
+        let code = configuration
             .adapters()
             .code()
             .save(code)
@@ -63,14 +64,13 @@ mod tests {
     async fn can_generate_authorisation_code() {
         let context = setup_context(response_type![ResponseTypeValue::Code], None, None);
         let resolver = CodeResolver;
-
+        let configuration = OpenIDProviderConfiguration::instance();
         let code = resolver
             .resolve(&context)
             .await
             .expect("Expecting a auth code");
 
-        let code = context
-            .configuration
+        let code = configuration
             .adapters()
             .code()
             .find(&code)
@@ -93,14 +93,13 @@ mod tests {
     async fn can_find_authorisation_code() {
         let context = setup_context(response_type![ResponseTypeValue::Code], None, None);
         let resolver = CodeResolver;
-
+        let configuration = OpenIDProviderConfiguration::instance();
         let code = resolver
             .resolve(&context)
             .await
             .expect("Expecting a auth code");
 
-        context
-            .configuration
+        configuration
             .adapters()
             .code()
             .find(&code)

@@ -7,7 +7,9 @@ use josekit::jwe::enc::{A128CBC_HS256, A128GCM, A256CBC_HS512, A256GCM};
 use josekit::jwe::{Dir, A128KW, A256KW, ECDH_ES, RSA_OAEP};
 use josekit::jwk::Jwk;
 use josekit::jws::{EdDSA, ES256, PS256, RS256};
+use once_cell::sync::OnceCell;
 use time::Duration;
+use tracing::warn;
 use url::Url;
 
 use oidc_types::auth_method::AuthMethod;
@@ -36,6 +38,8 @@ use crate::error::OpenIdError;
 use crate::grant_type::RTContext;
 use crate::services::types::Interaction;
 
+static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();
+
 const ONE_YEAR: Duration = Duration::days(365);
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
 const DEFAULT_LOGIN_PATH: &str = "/interaction/login/";
@@ -44,8 +48,7 @@ type IssueRTFunc = Box<dyn Fn(&AuthenticatedClient) -> BoxFuture<bool> + Send + 
 type RotateRefreshTokenFunc = Box<dyn Fn(RTContext<'_>) -> bool + Send + Sync>;
 type ValidateRefreshTokenFunc =
     Box<dyn Fn(RTContext<'_>) -> BoxFuture<Result<(), OpenIdError>> + Send + Sync>;
-type InteractionUrlResolver =
-    Box<dyn Fn(Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>;
+type InteractionUrlResolver = Box<dyn Fn(Interaction) -> Url + Send + Sync>;
 
 #[derive(Builder, CopyGetters, Getters)]
 #[get = "pub"]
@@ -134,6 +137,16 @@ impl OpenIDProviderConfigurationBuilder {
 }
 
 impl OpenIDProviderConfiguration {
+    pub fn set(config: OpenIDProviderConfiguration) {
+        if INSTANCE.set(config).is_err() {
+            warn!("OpenIDProviderConfiguration.set should only be called once")
+        };
+    }
+
+    pub fn instance() -> &'static OpenIDProviderConfiguration {
+        INSTANCE.get_or_init(OpenIDProviderConfiguration::default)
+    }
+
     pub fn interaction_login_url(&self) -> Url {
         let interaction_url_fn = &self.interaction_base_url;
         interaction_url_fn(self)
@@ -193,10 +206,15 @@ impl Default for OpenIDProviderConfiguration {
                 GrantType::RefreshToken,
             ],
             interaction_base_url: Box::new(|config| config.issuer.inner()),
-            interaction_url_resolver: Box::new(|interaction, config| match interaction {
-                Interaction::Login { .. } => config.interaction_login_url(),
-                Interaction::Consent { .. } => config.interaction_consent_url(),
-                Interaction::None { .. } => panic!("Should not be called when interaction is None"),
+            interaction_url_resolver: Box::new(|interaction| {
+                let configuration = OpenIDProviderConfiguration::instance();
+                match interaction {
+                    Interaction::Login { .. } => configuration.interaction_login_url(),
+                    Interaction::Consent { .. } => configuration.interaction_consent_url(),
+                    Interaction::None { .. } => {
+                        panic!("Should not be called when interaction is None")
+                    }
+                }
             }),
             auth_max_age: 3600,
             subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise],

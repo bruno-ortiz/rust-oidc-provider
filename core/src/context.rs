@@ -4,14 +4,12 @@ use oidc_types::client::ClientInformation;
 use oidc_types::response_type::Flow;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::user::AuthenticatedUser;
 
 pub struct OpenIDContext {
     pub client: Arc<ClientInformation>,
     pub user: AuthenticatedUser,
     pub request: ValidatedAuthorisationRequest,
-    pub configuration: Arc<OpenIDProviderConfiguration>,
 }
 
 impl OpenIDContext {
@@ -19,13 +17,11 @@ impl OpenIDContext {
         client: Arc<ClientInformation>,
         user: AuthenticatedUser,
         request: ValidatedAuthorisationRequest,
-        configuration: Arc<OpenIDProviderConfiguration>,
     ) -> Self {
         OpenIDContext {
             client,
             user,
             request,
-            configuration,
         }
     }
 
@@ -65,7 +61,7 @@ pub mod test_utils {
     use oidc_types::{response_type, scopes};
 
     use crate::authorisation_request::ValidatedAuthorisationRequest;
-    use crate::configuration::OpenIDProviderConfigurationBuilder;
+    use crate::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
     use crate::context::OpenIDContext;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
@@ -93,11 +89,11 @@ pub mod test_utils {
             prompt: None,
             acr_values: None,
         };
-        let (hashed_secret, _) = HashedSecret::random(HasherConfig::Sha256).unwrap();
+        let (_, plain) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let client = ClientInformation {
             id: client_id,
             issue_date: OffsetDateTime::now_utc(),
-            secret: hashed_secret,
+            secret: plain,
             secret_expires_at: None,
             metadata: ClientMetadata {
                 redirect_uris: vec![],
@@ -165,6 +161,7 @@ pub mod test_utils {
             ])
             .build()
             .unwrap();
-        OpenIDContext::new(Arc::new(client), user, request, Arc::new(config))
+        OpenIDProviderConfiguration::set(config);
+        OpenIDContext::new(Arc::new(client), user, request)
     }
 }

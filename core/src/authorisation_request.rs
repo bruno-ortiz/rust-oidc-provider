@@ -79,9 +79,8 @@ impl AuthorisationRequest {
     pub fn validate(
         self,
         client: &ClientInformation,
-        configuration: &OpenIDProviderConfiguration,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
-        if let Err(err) = self.validate_response_type(client, configuration) {
+        if let Err(err) = self.validate_response_type(client) {
             return Err((err, self));
         }
         if let Err(err) = self.validate_scopes(client) {
@@ -153,14 +152,11 @@ impl AuthorisationRequest {
         }
     }
 
-    fn validate_response_type(
-        &self,
-        client: &ClientInformation,
-        configuration: &OpenIDProviderConfiguration,
-    ) -> Result<(), OpenIdError> {
+    fn validate_response_type(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
         match self.response_type {
             None => Err(OpenIdError::invalid_request("Missing response type")),
             Some(ref rt) => {
+                let configuration = OpenIDProviderConfiguration::instance();
                 if !AuthorisationRequest::server_allows_response_type(configuration, rt) {
                     return Err(OpenIdError::unsupported_response_type(
                         "Unsupported response type",

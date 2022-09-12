@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 
+use crate::configuration::OpenIDProviderConfiguration;
 use oidc_types::code::Code;
 use oidc_types::id_token::IdToken;
 use oidc_types::response_type::Flow;
@@ -27,8 +28,8 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
     type Output = IdToken;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
-        let signing_key = context
-            .configuration
+        let configuration = OpenIDProviderConfiguration::instance();
+        let signing_key = configuration
             .signing_key()
             .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
         if context.flow_type() == Flow::Hybrid && context.request.nonce.is_none() {
@@ -36,9 +37,9 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 "Hybrid flow must contain a nonce in the auth request",
             ));
         }
-        let ttl = context.configuration.ttl();
+        let ttl = configuration.ttl();
         let id_token = IdTokenBuilder::new(signing_key)
-            .with_issuer(context.configuration.issuer())
+            .with_issuer(configuration.issuer())
             .with_sub(context.user.sub())
             .with_audience(vec![context.client.id.into()])
             .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
@@ -80,7 +81,8 @@ mod tests {
             Some(state.clone()),
             Some(nonce.clone()),
         );
-        let signing_key = context.configuration.signing_key().unwrap();
+        let configuration = OpenIDProviderConfiguration::instance();
+        let signing_key = configuration.signing_key().unwrap();
         let resolver = IDTokenResolver::new(None, None);
 
         let id_token = resolver
@@ -94,7 +96,7 @@ mod tests {
             &payload.subject().map(Subject::new).unwrap()
         );
         assert_eq!(
-            context.configuration.issuer(),
+            configuration.issuer(),
             &payload.issuer().map(Issuer::new).unwrap()
         );
         assert_eq!(

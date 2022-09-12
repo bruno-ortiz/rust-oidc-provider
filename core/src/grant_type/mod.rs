@@ -17,22 +17,14 @@ mod refresh_token;
 
 #[async_trait]
 pub trait GrantTypeResolver {
-    async fn execute(
-        self,
-        configuration: &OpenIDProviderConfiguration,
-        client: AuthenticatedClient,
-    ) -> Result<TokenResponse, OpenIdError>;
+    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError>;
 }
 
 #[async_trait]
 impl GrantTypeResolver for TokenRequestBody {
-    async fn execute(
-        self,
-        configuration: &OpenIDProviderConfiguration,
-        client: AuthenticatedClient,
-    ) -> Result<TokenResponse, OpenIdError> {
+    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let grant_type = self.grant_type();
-
+        let configuration = OpenIDProviderConfiguration::instance();
         if !configuration.grant_types_supported().contains(&grant_type) {
             return Err(OpenIdError::unsupported_grant_type(
                 "The grant type is not supported by the authorization server",
@@ -44,26 +36,19 @@ impl GrantTypeResolver for TokenRequestBody {
             ));
         }
         match self {
-            TokenRequestBody::AuthorisationCodeGrant(inner) => {
-                inner.execute(configuration, client).await
-            }
-            TokenRequestBody::RefreshTokenGrant(inner) => {
-                inner.execute(configuration, client).await
-            }
-            TokenRequestBody::ClientCredentialsGrant(inner) => {
-                inner.execute(configuration, client).await
-            }
+            TokenRequestBody::AuthorisationCodeGrant(inner) => inner.execute(client).await,
+            TokenRequestBody::RefreshTokenGrant(inner) => inner.execute(client).await,
+            TokenRequestBody::ClientCredentialsGrant(inner) => inner.execute(client).await,
         }
     }
 }
 
 async fn create_access_token(
-    configuration: &OpenIDProviderConfiguration,
     duration: Duration,
     scopes: Scopes,
 ) -> Result<AccessToken, OpenIdError> {
     AccessToken::bearer(duration, Some(scopes))
-        .save(configuration)
+        .save()
         .await
         .map_err(|err| OpenIdError::server_error(err.into()))
 }

@@ -77,11 +77,9 @@ impl AuthenticatedUser {
         self
     }
 
-    pub async fn save(
-        self,
-        config: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        config.adapters().user().save(self).await
+    pub async fn save(self) -> Result<Self, PersistenceError> {
+        let configuration = OpenIDProviderConfiguration::instance();
+        configuration.adapters().user().save(self).await
     }
 }
 
@@ -91,9 +89,7 @@ impl Identifiable<String> for AuthenticatedUser {
     }
 }
 
-pub async fn find_user_by_session(
-    config: &OpenIDProviderConfiguration,
-    session: SessionID,
-) -> Option<AuthenticatedUser> {
+pub async fn find_user_by_session(session: SessionID) -> Option<AuthenticatedUser> {
+    let config = OpenIDProviderConfiguration::instance();
     config.adapters().user().find(&session.to_string()).await
 }

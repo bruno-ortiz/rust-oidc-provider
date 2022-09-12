@@ -1,20 +1,20 @@
 use anyhow::anyhow;
-use async_trait::async_trait;
 use derive_builder::Builder;
 use josekit::jwk::Jwk;
 
 use oidc_types::auth_method::AuthMethod;
-use oidc_types::client::{ClientInformation, ClientMetadata};
+use oidc_types::client::ClientInformation;
 use oidc_types::jose::jwk_set::JwkSet;
-
 use crate::configuration::OpenIDProviderConfiguration;
 
 #[derive(Debug, Builder)]
-struct SelectOption {}
+struct SelectOption {
+    kid: Option<String>,
+    kty: Option<String>,
+}
 
-#[async_trait]
 trait KeyStore {
-    async fn select_for(option: SelectOption) -> Vec<Jwk>;
+    fn select_for(option: SelectOption) -> Vec<Jwk>;
 }
 
 pub struct SymmetricKeyStore {
@@ -22,7 +22,9 @@ pub struct SymmetricKeyStore {
 }
 
 impl SymmetricKeyStore {
-    pub fn new(config: &OpenIDProviderConfiguration, client: &ClientInformation) -> Self {
+    pub fn new(client: &ClientInformation) -> Self {
+        let config = OpenIDProviderConfiguration::instance();
+        
         let mut algorithms = vec![];
         if client.metadata.token_endpoint_auth_method == AuthMethod::ClientSecretJwt {
             if let Some(alg) = client.metadata.token_endpoint_auth_signing_alg.as_ref() {
@@ -86,12 +88,9 @@ pub struct ClientKeyStore {
 }
 
 impl ClientKeyStore {
-    pub async fn new(
-        config: &OpenIDProviderConfiguration,
-        client: &ClientInformation,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(client: &ClientInformation) -> anyhow::Result<Self> {
         Ok(Self {
-            symmetric: SymmetricKeyStore::new(config, client),
+            symmetric: SymmetricKeyStore::new(client),
             asymmetric: AsymmetricKeystore::new(client).await?,
         })
     }

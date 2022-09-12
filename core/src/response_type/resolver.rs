@@ -116,6 +116,7 @@ impl From<&OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
 
 #[cfg(test)]
 mod tests {
+    use crate::configuration::OpenIDProviderConfiguration;
     use crate::context::test_utils::setup_context;
     use crate::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
     use oidc_types::nonce::Nonce;
@@ -126,7 +127,8 @@ mod tests {
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code() {
         let context = setup_context(response_type!(Code), None, None);
-        let resolver = DynamicResponseTypeResolver::from(context.configuration.as_ref());
+        let configuration = OpenIDProviderConfiguration::instance();
+        let resolver = DynamicResponseTypeResolver::from(configuration);
         let result = ResponseTypeResolver::resolve(&resolver, &context)
             .await
             .expect("Expected Ok value");
@@ -141,7 +143,8 @@ mod tests {
             None,
             Some(Nonce::new("some-nonce")),
         );
-        let resolver = DynamicResponseTypeResolver::from(context.configuration.as_ref());
+        let configuration = OpenIDProviderConfiguration::instance();
+        let resolver = DynamicResponseTypeResolver::from(configuration);
         let result = ResponseTypeResolver::resolve(&resolver, &context)
             .await
             .expect("Expected Ok value");

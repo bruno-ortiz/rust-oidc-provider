@@ -41,11 +41,9 @@ impl AccessToken {
         Self::new(AccessToken::BEARER_TYPE, expires_in, scopes)
     }
 
-    pub async fn save(
-        self,
-        config: &OpenIDProviderConfiguration,
-    ) -> Result<AccessToken, PersistenceError> {
-        config.adapters().token().save(self).await
+    pub async fn save(self) -> Result<AccessToken, PersistenceError> {
+        let configuration = OpenIDProviderConfiguration::instance();
+        configuration.adapters().token().save(self).await
     }
 }
 

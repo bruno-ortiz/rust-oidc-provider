@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
@@ -29,20 +28,18 @@ use crate::oidc_admin::{
 };
 
 pub struct InteractionServiceImpl {
-    configuration: Arc<OpenIDProviderConfiguration>,
     authorisation_service:
         AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>,
 }
 
 impl InteractionServiceImpl {
-    pub fn new(configuration: Arc<OpenIDProviderConfiguration>) -> Self {
+    pub fn new() -> Self {
+        let config = OpenIDProviderConfiguration::instance();
         let authorisation_service = AuthorisationService::new(
-            DynamicResponseTypeResolver::from(configuration.borrow()),
-            DynamicResponseModeEncoder::from(configuration.borrow()),
-            configuration.clone(),
+            DynamicResponseTypeResolver::from(config),
+            DynamicResponseModeEncoder::from(config),
         );
         Self {
-            configuration,
             authorisation_service,
         }
     }
@@ -58,11 +55,9 @@ impl InteractionService for InteractionServiceImpl {
         let interaction_id = Uuid::try_parse(request.interaction_id.as_str()).map_err(|err| {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
-        let interaction = Interaction::find(&self.configuration, interaction_id)
-            .await
-            .ok_or_else(|| {
-                Status::not_found(format!("Interaction with id {interaction_id} not found"))
-            })?;
+        let interaction = Interaction::find(interaction_id).await.ok_or_else(|| {
+            Status::not_found(format!("Interaction with id {interaction_id} not found"))
+        })?;
         Ok(Response::new(interaction.into()))
     }
 
@@ -70,10 +65,11 @@ impl InteractionService for InteractionServiceImpl {
         &self,
         request: Request<ClientInfoRequest>,
     ) -> Result<Response<ClientInfo>, Status> {
+        let configuration = OpenIDProviderConfiguration::instance();
         let request = request.into_inner();
         let client_id = ClientID::from_str(request.client_id.as_str())
             .map_err(|err| Status::invalid_argument(format!("Failed to parse client id. {err}")))?;
-        let client = retrieve_client_info(&self.configuration, client_id)
+        let client = retrieve_client_info(client_id)
             .await
             .ok_or_else(|| Status::not_found(format!("Client with id {client_id} not found")))?;
         Ok(Response::new(client.into()))
@@ -88,7 +84,6 @@ impl InteractionService for InteractionServiceImpl {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
         let redirect_uri = complete_login(
-            &self.configuration,
             interaction_id,
             Subject::new(c_request.sub),
             c_request.acr.map(Acr::from),
@@ -110,14 +105,9 @@ impl InteractionService for InteractionServiceImpl {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
         let scopes = Scopes::from(request.scopes);
-        let redirect_uri = confirm_consent(
-            &self.configuration,
-            &self.authorisation_service,
-            interaction_id,
-            scopes,
-        )
-        .await
-        .map_err(convert_err)?;
+        let redirect_uri = confirm_consent(&self.authorisation_service, interaction_id, scopes)
+            .await
+            .map_err(convert_err)?;
         Ok(Response::new(ConfirmConsentReply {
             redirect_uri: redirect_uri.to_string(),
         }))

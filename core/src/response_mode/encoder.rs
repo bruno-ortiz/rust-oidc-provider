@@ -24,7 +24,6 @@ pub(crate) type Result<T> = std::result::Result<T, EncodingError>;
 
 pub struct EncodingContext<'a> {
     pub client: &'a ClientInformation,
-    pub configuration: &'a OpenIDProviderConfiguration,
     pub redirect_uri: &'a Url,
     pub response_mode: ResponseMode,
 }

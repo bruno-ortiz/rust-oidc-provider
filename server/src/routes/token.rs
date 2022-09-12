@@ -26,7 +26,7 @@ pub async fn token(
     Extension(configuration): Extension<Arc<OpenIDProviderConfiguration>>,
 ) -> axum::response::Result<Json<TokenResponse>, OpenIdErrorResponse> {
     let mut credentials = request.credentials;
-    let client = retrieve_client_info(&configuration, credentials.client_id)
+    let client = retrieve_client_info(credentials.client_id)
         .await
         .ok_or_else(|| OpenIdError::invalid_client("Unknown client"))?;
     let auth_method = client.metadata.token_endpoint_auth_method;
@@ -43,10 +43,10 @@ pub async fn token(
         OpenIdError::invalid_client("authentication method not allowed for client")
     })?;
     let client = auth_method
-        .authenticate(&configuration, client)
+        .authenticate(client)
         .await
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
-    let tokens = request.body.execute(&configuration, client).await?;
+    let tokens = request.body.execute(client).await?;
 
     Ok(Json(tokens))
 }
@@ -90,12 +90,11 @@ where
     type Rejection = TokenRequestError;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let Extension(config) = Extension::<Arc<OpenIDProviderConfiguration>>::from_request(req)
-            .await
-            .expect("Config should always be present");
+        let configuration = OpenIDProviderConfiguration::instance();
         let body_bytes = Bytes::from_request(req).await?;
         let headers = req.headers();
-        let credentials = Credentials::parse_credentials(headers, &body_bytes, &config).await?;
+        let credentials =
+            Credentials::parse_credentials(headers, &body_bytes, configuration).await?;
         let token_request = from_bytes::<TokenRequestBody>(&body_bytes)?;
         Ok(TokenRequest {
             credentials,

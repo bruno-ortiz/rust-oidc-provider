@@ -14,11 +14,8 @@ use crate::models::access_token::AccessToken;
 
 #[async_trait]
 impl GrantTypeResolver for ClientCredentialsGrant {
-    async fn execute(
-        self,
-        configuration: &OpenIDProviderConfiguration,
-        client: AuthenticatedClient,
-    ) -> Result<TokenResponse, OpenIdError> {
+    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
+        let configuration = OpenIDProviderConfiguration::instance();
         let cc_config = configuration.client_credentials();
         let ttl = configuration.ttl();
         let scopes = if let Some(requested_scope) = self.scope {
@@ -29,7 +26,7 @@ impl GrantTypeResolver for ClientCredentialsGrant {
         };
         let at_duration = ttl.client_credentials_ttl(client.as_ref());
         let access_token = AccessToken::bearer(at_duration, scopes)
-            .save(configuration)
+            .save()
             .await
             .map_err(|err| OpenIdError::server_error(err.into()))?;
         Ok(TokenResponse::new(

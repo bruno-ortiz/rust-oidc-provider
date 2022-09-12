@@ -15,11 +15,8 @@ use crate::models::refresh_token::RefreshToken;
 
 #[async_trait]
 impl GrantTypeResolver for RefreshTokenGrant {
-    async fn execute(
-        self,
-        configuration: &OpenIDProviderConfiguration,
-        client: AuthenticatedClient,
-    ) -> Result<TokenResponse, OpenIdError> {
+    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
+        let configuration = OpenIDProviderConfiguration::instance();
         let grant = self;
 
         let mut refresh_token = configuration
@@ -43,14 +40,13 @@ impl GrantTypeResolver for RefreshTokenGrant {
 
         let mut rt_token = None;
         if configuration.rotate_refresh_token(context) {
-            let old_rt = refresh_token.consume(configuration).await?;
-            refresh_token = RefreshToken::new_from(old_rt)?.save(configuration).await?;
+            let old_rt = refresh_token.consume().await?;
+            refresh_token = RefreshToken::new_from(old_rt)?.save().await?;
             rt_token = Some(refresh_token.token.to_string())
         }
         let at_duration = ttl.access_token_ttl(client.as_ref());
 
-        let access_token =
-            create_access_token(configuration, at_duration, refresh_token.scopes.clone()).await?;
+        let access_token = create_access_token(at_duration, refresh_token.scopes.clone()).await?;
 
         let mut id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
