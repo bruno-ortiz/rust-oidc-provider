@@ -14,6 +14,14 @@ impl SigningAlgorithm {
     pub fn new(jws_algorithm: Box<dyn JwsAlgorithm>) -> Self {
         SigningAlgorithm(jws_algorithm)
     }
+
+    pub fn is_symmetric(&self) -> bool {
+        self.0.name().starts_with("HS")
+    }
+
+    pub fn name(&self) -> &str {
+        self.0.name()
+    }
 }
 
 impl<A> From<A> for SigningAlgorithm

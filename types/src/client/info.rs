@@ -12,7 +12,6 @@ use uuid::Uuid;
 use crate::application_type::ApplicationType;
 use crate::auth_method::AuthMethod;
 use crate::grant_type::GrantType;
-use crate::hashed_secret::HashedSecret;
 use crate::identifiable::Identifiable;
 use crate::jose::jwe::alg::EncryptionAlgorithm;
 use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
@@ -21,6 +20,7 @@ use crate::jose::jws::SigningAlgorithm;
 use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
+use crate::secret::PlainTextSecret;
 use crate::subject_type::SubjectType;
 
 #[derive(Debug, Clone, Error)]
@@ -107,7 +107,7 @@ pub struct ClientMetadata {
 pub struct ClientInformation {
     pub id: ClientID,
     pub issue_date: OffsetDateTime,
-    pub secret: HashedSecret,
+    pub secret: PlainTextSecret,
     pub secret_expires_at: Option<OffsetDateTime>,
     pub metadata: ClientMetadata,
 }

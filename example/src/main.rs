@@ -9,26 +9,26 @@ use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, get_service, post, MethodRouter};
 use axum::{Extension, Form, Router};
 use lazy_static::lazy_static;
+use serde::Deserialize;
+use tera::{Context, Tera};
+use time::OffsetDateTime;
+use tower_http::services::ServeDir;
+use tracing::info;
+
 use oidc_admin::oidc_admin::{
     ClientInfoRequest, CompleteLoginRequest, ConfirmConsentRequest, InteractionInfoRequest,
 };
 use oidc_admin::InteractionServiceClient;
 use oidc_core::client::register_client;
 use oidc_core::configuration::OpenIDProviderConfigurationBuilder;
-use serde::Deserialize;
-use time::OffsetDateTime;
-use tower_http::services::ServeDir;
-
 use oidc_server::server::OidcServer;
 use oidc_types::acr::Acr;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientInformation, ClientMetadataBuilder};
-use oidc_types::hashed_secret::HashedSecret;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
-use tera::{Context, Tera};
-use tracing::info;
+use oidc_types::secret::PlainTextSecret;
 use ResponseTypeValue::Code;
 
 lazy_static! {
@@ -73,14 +73,13 @@ async fn main() {
         .build()
         .expect("Valid client metadata");
 
-    let (hashed, plain_text) = HashedSecret::random(config.secret_hasher()).unwrap();
+    let secret = PlainTextSecret::random();
 
-    info!("Use secret: {}", plain_text);
-
+    info!("Use secret: {}", secret);
     let client = ClientInformation {
         id: ClientID::from_str("1d8fca3b-a2f1-48c2-924d-843e5173a951").unwrap(),
         metadata: client_metadata,
-        secret: hashed,
+        secret,
         secret_expires_at: None,
         issue_date: OffsetDateTime::now_utc(),
     };

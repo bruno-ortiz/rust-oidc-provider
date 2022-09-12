@@ -1,25 +1,49 @@
+use std::fmt::{Display, Formatter};
+
 use rand::Rng;
+use tracing::error;
 
 use crate::password_hasher::{HashingError, PasswordHasher};
-use std::fmt::{Display, Formatter};
-use tracing::error;
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                          abcdefghijklmnopqrstuvwxyz\
                          0123456789)(*&^%$#@!~";
 const PASSWORD_LEN: usize = 20;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct PlainTextSecret(String);
+
+impl PlainTextSecret {
+    pub fn random() -> Self {
+        PlainTextSecret(random_pwd(CHARSET, PASSWORD_LEN))
+    }
+}
+
+impl AsRef<[u8]> for PlainTextSecret {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
+impl From<String> for PlainTextSecret {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl Display for PlainTextSecret {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct HashedSecret(String);
 
-#[derive(Debug, Clone)]
-pub struct PlainTextSecret(String);
-
 impl HashedSecret {
     pub fn random<H: PasswordHasher>(hasher: H) -> Result<(Self, PlainTextSecret), HashingError> {
-        let secret = random_pwd(CHARSET, PASSWORD_LEN);
-        let hashed_secret = Self(hasher.hash(secret.as_bytes())?);
-        let plain_secret = PlainTextSecret(secret);
+        let plain_secret = PlainTextSecret::random();
+        let hashed_secret = Self(hasher.hash(plain_secret.0.as_bytes())?);
         Ok((hashed_secret, plain_secret))
     }
 
@@ -34,12 +58,6 @@ impl HashedSecret {
 }
 
 impl Display for HashedSecret {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Display for PlainTextSecret {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -63,8 +81,8 @@ fn random_pwd(charset: &[u8], len: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::hashed_secret::HashedSecret;
     use crate::password_hasher::HasherConfig;
+    use crate::secret::HashedSecret;
 
     #[test]
     fn test_can_verify_pwd() {

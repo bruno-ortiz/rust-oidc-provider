@@ -10,7 +10,6 @@ pub mod discovery;
 pub mod grant;
 pub mod grant_type;
 pub mod hash;
-pub mod hashed_secret;
 pub mod id_token;
 pub mod identifiable;
 pub mod issuer;
@@ -23,6 +22,7 @@ pub mod response_mode;
 #[allow(clippy::vec_init_then_push)]
 pub mod response_type;
 pub mod scopes;
+pub mod secret;
 pub mod state;
 pub mod subject;
 pub mod subject_type;

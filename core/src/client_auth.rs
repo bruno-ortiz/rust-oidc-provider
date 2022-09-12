@@ -6,14 +6,15 @@ use oidc_types::client_credentials::{
     ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, PrivateKeyJWTCredential,
     SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
 };
+use oidc_types::secret::PlainTextSecret;
 use ClientCredential::*;
 
 use crate::configuration::OpenIDProviderConfiguration;
 
 #[derive(Debug, Error)]
 pub enum ClientAuthenticationError {
-    #[error("Invalid secret")]
-    InvalidSecret(String),
+    #[error("Invalid secret {}", .0)]
+    InvalidSecret(PlainTextSecret),
 }
 
 #[async_trait]
@@ -48,11 +49,11 @@ impl ClientAuthenticator for ClientCredential {
 impl ClientAuthenticator for ClientSecretCredential {
     async fn authenticate(
         self,
-        config: &OpenIDProviderConfiguration,
+        _config: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let secret = self.secret();
-        if client.secret.verify(config.secret_hasher(), &secret) {
+        let secret = PlainTextSecret::from(self.secret());
+        if client.secret == secret {
             Ok(AuthenticatedClient::new(client))
         } else {
             Err(ClientAuthenticationError::InvalidSecret(secret))

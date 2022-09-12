@@ -50,7 +50,6 @@ pub mod test_utils {
     use oidc_types::auth_method::AuthMethod;
     use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
     use oidc_types::grant::Grant;
-    use oidc_types::hashed_secret::HashedSecret;
     use oidc_types::jose::jwk_set::JwkSet;
     use oidc_types::nonce::Nonce;
     use oidc_types::password_hasher::HasherConfig;
@@ -59,6 +58,7 @@ pub mod test_utils {
     use oidc_types::response_type::ResponseTypeValue::Code;
     use oidc_types::response_type::ResponseTypeValue::IdToken;
     use oidc_types::response_type::ResponseTypeValue::Token;
+    use oidc_types::secret::HashedSecret;
     use oidc_types::state::State;
     use oidc_types::subject::Subject;
     use oidc_types::subject_type::SubjectType;
