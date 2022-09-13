@@ -143,7 +143,7 @@ impl AuthorisationRequest {
             .redirect_uri
             .as_ref()
             .ok_or_else(|| OpenIdError::invalid_request("Missing redirect_uri"))?;
-        if client.metadata.redirect_uris.contains(redirect_uri) {
+        if client.metadata().redirect_uris.contains(redirect_uri) {
             Ok(())
         } else {
             Err(OpenIdError::invalid_request(
@@ -164,7 +164,7 @@ impl AuthorisationRequest {
                 }
                 let response_type_allowed = rt
                     .iter()
-                    .all(|item| client.metadata.response_types.contains(item));
+                    .all(|item| client.metadata().response_types.contains(item));
                 if response_type_allowed {
                     Ok(())
                 } else {
@@ -182,7 +182,7 @@ impl AuthorisationRequest {
             Some(ref scopes) => {
                 let invalid_scope = scopes
                     .iter()
-                    .find(|&item| !client.metadata.scope.contains(item));
+                    .find(|&item| !client.metadata().scope.contains(item));
                 match invalid_scope {
                     None => Ok(()),
                     Some(scope) => Err(OpenIdError::invalid_scope(scope)),

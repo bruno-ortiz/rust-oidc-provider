@@ -2,10 +2,12 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use derive_builder::Builder;
+use getset::{CopyGetters, Getters};
 use josekit::jws::RS256;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
+use tracing::{metadata, Metadata};
 use url::Url;
 use uuid::Uuid;
 
@@ -103,13 +105,40 @@ pub struct ClientMetadata {
     pub software_statement: Option<JWT>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, CopyGetters, Getters)]
 pub struct ClientInformation {
-    pub id: ClientID,
-    pub issue_date: OffsetDateTime,
-    pub secret: PlainTextSecret,
-    pub secret_expires_at: Option<OffsetDateTime>,
-    pub metadata: ClientMetadata,
+    #[get_copy = "pub"]
+    id: ClientID,
+    #[get_copy = "pub"]
+    issue_date: OffsetDateTime,
+    #[get = "pub"]
+    secret: PlainTextSecret,
+    #[get_copy = "pub"]
+    secret_expires_at: Option<OffsetDateTime>,
+    #[get = "pub"]
+    metadata: ClientMetadata,
+}
+
+impl ClientInformation {
+    pub fn new(
+        id: ClientID,
+        issue_date: OffsetDateTime,
+        secret: PlainTextSecret,
+        secret_expires_at: Option<OffsetDateTime>,
+        metadata: ClientMetadata,
+    ) -> Self {
+        Self {
+            id,
+            issue_date,
+            secret,
+            secret_expires_at,
+            metadata,
+        }
+    }
+
+    pub fn consume_metadata(self) -> ClientMetadata {
+        self.metadata
+    }
 }
 
 #[derive(Debug, Clone)]

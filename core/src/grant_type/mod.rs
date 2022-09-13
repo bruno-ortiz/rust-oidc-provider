@@ -30,7 +30,7 @@ impl GrantTypeResolver for TokenRequestBody {
                 "The grant type is not supported by the authorization server",
             ));
         }
-        if !client.as_ref().metadata.grant_types.contains(&grant_type) {
+        if !client.as_ref().metadata().grant_types.contains(&grant_type) {
             return Err(OpenIdError::unauthorized_client(
                 "The authenticated client is not authorized to use this authorization grant type",
             ));

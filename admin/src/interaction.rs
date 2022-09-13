@@ -193,37 +193,36 @@ impl From<AuthenticatedUser> for AuthenticatedUserInfo {
 
 impl From<ClientInformation> for ClientInfo {
     fn from(client: ClientInformation) -> Self {
+        let id = client.id();
+        let metadata = client.consume_metadata();
         ClientInfo {
-            id: client.id.to_string(),
-            scope: client.metadata.scope.to_string(),
-            redirect_uris: client
-                .metadata
+            id: id.to_string(),
+            scope: metadata.scope.to_string(),
+            redirect_uris: metadata
                 .redirect_uris
                 .into_iter()
                 .map(|it| it.to_string())
                 .collect(),
-            grant_types: client
-                .metadata
+            grant_types: metadata
                 .grant_types
                 .into_iter()
                 .map(|it| it.to_string())
                 .collect(),
-            response_types: client
-                .metadata
+            response_types: metadata
                 .response_types
                 .into_iter()
                 .map(|it| it.to_string())
                 .collect(),
-            contacts: client.metadata.contacts,
-            token_endpoint_auth_method: client.metadata.token_endpoint_auth_method.to_string(),
-            client_name: client.metadata.client_name,
-            client_uri: client.metadata.client_uri.map(|it| it.to_string()),
-            logo_uri: client.metadata.logo_uri.map(|it| it.to_string()),
-            tos_uri: client.metadata.tos_uri.map(|it| it.to_string()),
-            policy_uri: client.metadata.policy_uri.map(|it| it.to_string()),
-            jwks_uri: client.metadata.jwks_uri.map(|it| it.to_string()),
-            software_id: client.metadata.software_id.map(|it| it.to_string()),
-            software_version: client.metadata.software_version,
+            contacts: metadata.contacts,
+            token_endpoint_auth_method: metadata.token_endpoint_auth_method.to_string(),
+            client_name: metadata.client_name,
+            client_uri: metadata.client_uri.map(|it| it.to_string()),
+            logo_uri: metadata.logo_uri.map(|it| it.to_string()),
+            tos_uri: metadata.tos_uri.map(|it| it.to_string()),
+            policy_uri: metadata.policy_uri.map(|it| it.to_string()),
+            jwks_uri: metadata.jwks_uri.map(|it| it.to_string()),
+            software_id: metadata.software_id.map(|it| it.to_string()),
+            software_version: metadata.software_version,
         }
     }
 }

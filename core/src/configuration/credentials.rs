@@ -1,6 +1,5 @@
 use oidc_types::scopes::Scopes;
 
-
 #[derive(Debug, Clone)]
 pub struct ClientCredentialConfiguration {
     pub allowed_scopes: Option<Scopes>,

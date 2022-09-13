@@ -26,7 +26,7 @@ impl ResponseTypeResolver for CodeResolver {
         let ttl = configuration.ttl();
         let code = AuthorisationCode {
             code: Code::random(),
-            client_id: context.client.id,
+            client_id: context.client.id(),
             code_challenge: authorisation_request.code_challenge.clone(),
             code_challenge_method: authorisation_request.code_challenge_method,
             status: Status::Awaiting,
@@ -83,7 +83,7 @@ mod tests {
             context.request.code_challenge_method.unwrap(),
             code.code_challenge_method.unwrap()
         );
-        assert_eq!(context.client.id, code.client_id);
+        assert_eq!(context.client.id(), code.client_id);
         assert_eq!(context.request.scope, code.scopes);
         assert_eq!(Status::Awaiting, code.status);
         assert_eq!(context.request.redirect_uri, code.redirect_uri);

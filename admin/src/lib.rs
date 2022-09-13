@@ -20,7 +20,6 @@ pub struct AdminServerError(#[from] TonicError);
 pub struct AdminServer;
 
 impl AdminServer {
-
     pub async fn run(self, addr: SocketAddr) -> Result<(), AdminServerError> {
         let service = InteractionServiceImpl::new();
 

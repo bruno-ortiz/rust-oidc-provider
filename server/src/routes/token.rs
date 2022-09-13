@@ -29,7 +29,7 @@ pub async fn token(
     let client = retrieve_client_info(credentials.client_id)
         .await
         .ok_or_else(|| OpenIdError::invalid_client("Unknown client"))?;
-    let auth_method = client.metadata.token_endpoint_auth_method;
+    let auth_method = client.metadata().token_endpoint_auth_method;
 
     if !configuration
         .token_endpoint_auth_methods_supported()

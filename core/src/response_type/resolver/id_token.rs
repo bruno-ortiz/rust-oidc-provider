@@ -41,7 +41,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let id_token = IdTokenBuilder::new(signing_key)
             .with_issuer(configuration.issuer())
             .with_sub(context.user.sub())
-            .with_audience(vec![context.client.id.into()])
+            .with_audience(vec![context.client.id().into()])
             .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
             .with_iat(OffsetDateTime::now_utc())
             .with_nonce(context.request.nonce.as_ref())
@@ -100,7 +100,7 @@ mod tests {
             &payload.issuer().map(Issuer::new).unwrap()
         );
         assert_eq!(
-            vec![context.client.id.to_string().as_str()],
+            vec![context.client.id().to_string().as_str()],
             payload.audience().unwrap()
         );
         assert_eq!(

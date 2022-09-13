@@ -84,7 +84,7 @@ impl RefreshToken {
             //TODO: invalidate entire token chain
             return Err(OpenIdError::invalid_grant("Refresh token already used"));
         }
-        if self.client_id != client.as_ref().id {
+        if self.client_id != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for refresh token",
             ));

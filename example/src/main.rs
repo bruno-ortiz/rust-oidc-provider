@@ -76,13 +76,13 @@ async fn main() {
     let secret = PlainTextSecret::random();
 
     info!("Use secret: {}", secret);
-    let client = ClientInformation {
-        id: ClientID::from_str("1d8fca3b-a2f1-48c2-924d-843e5173a951").unwrap(),
-        metadata: client_metadata,
+    let client = ClientInformation::new(
+        ClientID::from_str("1d8fca3b-a2f1-48c2-924d-843e5173a951").unwrap(),
+        OffsetDateTime::now_utc(),
         secret,
-        secret_expires_at: None,
-        issue_date: OffsetDateTime::now_utc(),
-    };
+        None,
+        client_metadata,
+    );
 
     register_client(&config, client)
         .await

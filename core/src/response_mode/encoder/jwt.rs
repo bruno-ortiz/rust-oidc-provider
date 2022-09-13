@@ -64,7 +64,7 @@ impl JwtEncoder {
     ) -> JwtPayload {
         let mut payload = JwtPayload::new();
         payload.set_issuer(configuration.issuer());
-        payload.set_audience(vec![context.client.id.to_string()]);
+        payload.set_audience(vec![context.client.id().to_string()]);
         let exp = OffsetDateTime::now_utc() + Duration::minutes(EXP_IN_MINUTES);
         payload.set_expires_at(&exp.into());
         for (key, value) in parameters {

@@ -18,10 +18,7 @@ use crate::models::refresh_token::RefreshTokenBuilder;
 
 #[async_trait]
 impl GrantTypeResolver for AuthorisationCodeGrant {
-    async fn execute(
-        self,
-        client: AuthenticatedClient,
-    ) -> Result<TokenResponse, OpenIdError> {
+    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
         let grant = self;
         let code = configuration

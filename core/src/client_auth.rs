@@ -48,7 +48,7 @@ impl ClientAuthenticator for ClientSecretCredential {
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         let secret = PlainTextSecret::from(self.secret());
-        if client.secret == secret {
+        if *client.secret() == secret {
             Ok(AuthenticatedClient::new(client))
         } else {
             Err(ClientAuthenticationError::InvalidSecret(secret))

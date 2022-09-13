@@ -51,7 +51,7 @@ impl AuthorisationCode {
                 "Authorization code already consumed",
             ));
         }
-        if self.client_id != client.as_ref().id {
+        if self.client_id != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for authorization code",
             ));
@@ -70,9 +70,7 @@ impl AuthorisationCode {
         Ok(self)
     }
 
-    pub async fn consume(
-        mut self,
-    ) -> Result<AuthorisationCode, OpenIdError> {
+    pub async fn consume(mut self) -> Result<AuthorisationCode, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
         self.status = Status::Consumed;
         configuration

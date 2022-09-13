@@ -54,7 +54,7 @@ fn validate_scopes(
         )));
     }
 
-    if !client_info.metadata.scope.contains_all(&requested_scope) {
+    if !client_info.metadata().scope.contains_all(&requested_scope) {
         return Err(OpenIdError::invalid_scopes(&requested_scope));
     }
     Ok(requested_scope)
