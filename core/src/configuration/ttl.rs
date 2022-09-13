@@ -1,7 +1,7 @@
 use futures::future::BoxFuture;
 use time::Duration;
 
-use oidc_types::client::{AuthenticatedClient, ClientInformation};
+use crate::models::client::{AuthenticatedClient, ClientInformation};
 
 //todo: allow generic params to be passed to this function
 // this can allow the duration to be parameterized with a consent duration for example;

@@ -4,7 +4,6 @@ use time::OffsetDateTime;
 use tracing::error;
 use uuid::Uuid;
 
-use oidc_types::client::AuthenticatedClient;
 use oidc_types::pkce::CodeChallengeError;
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;
@@ -14,6 +13,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver};
 use crate::id_token_builder::IdTokenBuilder;
+use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshTokenBuilder;
 
 #[async_trait]

@@ -2,7 +2,6 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 
-use oidc_types::client::AuthenticatedClient;
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::RefreshTokenGrant;
@@ -11,6 +10,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver, RTContext};
 use crate::id_token_builder::IdTokenBuilder;
+use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshToken;
 
 #[async_trait]

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use oidc_types::client::ClientInformation;
 use oidc_types::response_type::Flow;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
+use crate::models::client::ClientInformation;
 use crate::user::AuthenticatedUser;
 
 pub struct OpenIDContext {
@@ -44,7 +44,7 @@ pub mod test_utils {
 
     use oidc_types::application_type::ApplicationType;
     use oidc_types::auth_method::AuthMethod;
-    use oidc_types::client::{ClientID, ClientInformation, ClientMetadata};
+    use oidc_types::client::{ClientID, ClientMetadata};
     use oidc_types::grant::Grant;
     use oidc_types::jose::jwk_set::JwkSet;
     use oidc_types::nonce::Nonce;
@@ -63,6 +63,7 @@ pub mod test_utils {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
     use crate::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
     use crate::context::OpenIDContext;
+    use crate::models::client::ClientInformation;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
 

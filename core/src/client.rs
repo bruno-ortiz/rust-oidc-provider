@@ -1,9 +1,12 @@
-use crate::adapter::PersistenceError;
-use oidc_types::client::{ClientID, ClientInformation};
 use std::str::FromStr;
+
 use thiserror::Error;
 
+use oidc_types::client::ClientID;
+
+use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::models::client::ClientInformation;
 use crate::services::authorisation::AuthorisationError;
 
 #[derive(Error, Debug)]

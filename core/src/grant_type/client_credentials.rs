@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 
-use oidc_types::client::{AuthenticatedClient, ClientInformation};
 use oidc_types::scopes::Scopes;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::ClientCredentialsGrant;
@@ -11,6 +10,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
 use crate::models::access_token::AccessToken;
+use crate::models::client::{AuthenticatedClient, ClientInformation};
 
 #[async_trait]
 impl GrantTypeResolver for ClientCredentialsGrant {

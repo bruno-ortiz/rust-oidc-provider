@@ -5,7 +5,7 @@ use tracing::error;
 use url::Url;
 
 use oidc_types::acr::Acr;
-use oidc_types::client::{ClientID, ClientInformation};
+use oidc_types::client::ClientID;
 use oidc_types::jose::jwt::JWT;
 use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
@@ -17,6 +17,7 @@ use oidc_types::state::State;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
+use crate::models::client::ClientInformation;
 
 #[derive(Debug, Clone)]
 pub struct ValidatedAuthorisationRequest {

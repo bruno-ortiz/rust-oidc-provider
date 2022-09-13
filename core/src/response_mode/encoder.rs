@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use url::Url;
 
 use format as f;
-use oidc_types::client::ClientInformation;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
+use crate::models::client::ClientInformation;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::jwt::JwtEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;

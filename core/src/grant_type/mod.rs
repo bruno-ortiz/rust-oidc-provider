@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use time::Duration;
 
-use oidc_types::client::AuthenticatedClient;
 use oidc_types::scopes::Scopes;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
@@ -9,6 +8,7 @@ use oidc_types::token_request::TokenRequestBody;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::access_token::AccessToken;
+use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshToken;
 
 mod authorization_code;

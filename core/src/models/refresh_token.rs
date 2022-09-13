@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
-use oidc_types::client::{AuthenticatedClient, ClientID};
+use oidc_types::client::ClientID;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::nonce::Nonce;
 use oidc_types::scopes::Scopes;
@@ -17,6 +17,7 @@ use oidc_types::subject::Subject;
 use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
+use crate::models::client::AuthenticatedClient;
 use crate::models::Status;
 
 #[derive(Debug, Clone, Eq, PartialEq, Builder)]

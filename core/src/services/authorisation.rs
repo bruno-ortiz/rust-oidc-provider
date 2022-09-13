@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use thiserror::Error;
 
-use oidc_types::client::ClientInformation;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
+use crate::models::client::ClientInformation;
 use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };

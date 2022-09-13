@@ -14,7 +14,6 @@ use url::Url;
 
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::claim_type::ClaimType;
-use oidc_types::client::AuthenticatedClient;
 use oidc_types::grant_type::GrantType;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwe::alg::EncryptionAlgorithm;
@@ -36,6 +35,7 @@ use crate::configuration::routes::Routes;
 use crate::configuration::ttl::TTL;
 use crate::error::OpenIdError;
 use crate::grant_type::RTContext;
+use crate::models::client::AuthenticatedClient;
 use crate::services::types::Interaction;
 
 static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();

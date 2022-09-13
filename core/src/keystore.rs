@@ -3,7 +3,7 @@ use derive_builder::Builder;
 use josekit::jwk::Jwk;
 
 use oidc_types::auth_method::AuthMethod;
-use oidc_types::client::{ClientInformation, ClientMetadata};
+use oidc_types::client::ClientMetadata;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::secret::PlainTextSecret;
 

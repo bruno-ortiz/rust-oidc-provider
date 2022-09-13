@@ -2,19 +2,15 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use derive_builder::Builder;
-use getset::{CopyGetters, Getters};
 use josekit::jws::RS256;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use time::OffsetDateTime;
-use tracing::{metadata, Metadata};
 use url::Url;
 use uuid::Uuid;
 
 use crate::application_type::ApplicationType;
 use crate::auth_method::AuthMethod;
 use crate::grant_type::GrantType;
-use crate::identifiable::Identifiable;
 use crate::jose::jwe::alg::EncryptionAlgorithm;
 use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
 use crate::jose::jwk_set::JwkSet;
@@ -22,7 +18,6 @@ use crate::jose::jws::SigningAlgorithm;
 use crate::jose::jwt::JWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
-use crate::secret::PlainTextSecret;
 use crate::subject_type::SubjectType;
 
 #[derive(Debug, Clone, Error)]
@@ -103,74 +98,6 @@ pub struct ClientMetadata {
     pub software_id: Option<Uuid>,
     pub software_version: Option<String>,
     pub software_statement: Option<JWT>,
-}
-
-#[derive(Debug, Clone, CopyGetters, Getters)]
-pub struct ClientInformation {
-    #[get_copy = "pub"]
-    id: ClientID,
-    #[get_copy = "pub"]
-    issue_date: OffsetDateTime,
-    #[get = "pub"]
-    secret: PlainTextSecret,
-    #[get_copy = "pub"]
-    secret_expires_at: Option<OffsetDateTime>,
-    #[get = "pub"]
-    metadata: ClientMetadata,
-}
-
-impl ClientInformation {
-    pub fn new(
-        id: ClientID,
-        issue_date: OffsetDateTime,
-        secret: PlainTextSecret,
-        secret_expires_at: Option<OffsetDateTime>,
-        metadata: ClientMetadata,
-    ) -> Self {
-        Self {
-            id,
-            issue_date,
-            secret,
-            secret_expires_at,
-            metadata,
-        }
-    }
-
-    pub fn consume_metadata(self) -> ClientMetadata {
-        self.metadata
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AuthenticatedClient(ClientInformation);
-
-impl AuthenticatedClient {
-    pub fn new(client: ClientInformation) -> Self {
-        Self(client)
-    }
-
-    pub fn id(&self) -> ClientID {
-        self.0.id
-    }
-
-    pub fn allows_grant(&self, grant_type: GrantType) -> bool {
-        self.0.metadata.grant_types.contains(&grant_type)
-    }
-    pub fn auth_method(&self) -> AuthMethod {
-        self.0.metadata.token_endpoint_auth_method
-    }
-}
-
-impl AsRef<ClientInformation> for AuthenticatedClient {
-    fn as_ref(&self) -> &ClientInformation {
-        &self.0
-    }
-}
-
-impl Identifiable<ClientID> for ClientInformation {
-    fn id(&self) -> ClientID {
-        self.id
-    }
 }
 
 impl Default for ClientMetadata {

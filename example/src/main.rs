@@ -21,10 +21,11 @@ use oidc_admin::oidc_admin::{
 use oidc_admin::InteractionServiceClient;
 use oidc_core::client::register_client;
 use oidc_core::configuration::OpenIDProviderConfigurationBuilder;
+use oidc_core::models::client::ClientInformation;
 use oidc_server::server::OidcServer;
 use oidc_types::acr::Acr;
 use oidc_types::auth_method::AuthMethod;
-use oidc_types::client::{ClientID, ClientInformation, ClientMetadataBuilder};
+use oidc_types::client::{ClientID, ClientMetadataBuilder};
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};

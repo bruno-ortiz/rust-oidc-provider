@@ -1,5 +1,6 @@
 pub(crate) mod access_token;
-pub mod authorisation_code;
+pub(crate) mod authorisation_code;
+pub mod client;
 pub(crate) mod refresh_token;
 
 #[derive(Debug, Clone, Eq, PartialEq)]

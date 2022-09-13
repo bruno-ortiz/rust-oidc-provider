@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 
-use oidc_types::client::{ClientID, ClientInformation};
+use oidc_types::client::ClientID;
 use oidc_types::code::Code;
 
 use crate::adapter::generic_adapter::InMemoryGenericAdapter;
 use crate::adapter::Adapter;
 use crate::models::access_token::AccessToken;
 use crate::models::authorisation_code::AuthorisationCode;
+use crate::models::client::ClientInformation;
 use crate::models::refresh_token::RefreshToken;
 use crate::services::types::Interaction;
 use crate::user::AuthenticatedUser;
