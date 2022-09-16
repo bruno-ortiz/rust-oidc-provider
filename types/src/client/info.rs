@@ -87,6 +87,9 @@ pub struct ClientMetadata {
     pub request_object_signing_alg: Option<SigningAlgorithm>,
     pub request_object_encryption_alg: Option<EncryptionAlgorithm>,
     pub request_object_encryption_enc: Option<ContentEncryptionAlgorithm>,
+    pub authorization_signed_response_alg: SigningAlgorithm,
+    pub authorization_encrypted_response_alg: Option<EncryptionAlgorithm>,
+    pub authorization_encrypted_response_enc: Option<ContentEncryptionAlgorithm>,
     pub token_endpoint_auth_method: AuthMethod,
     pub token_endpoint_auth_signing_alg: Option<SigningAlgorithm>,
     pub default_max_age: Option<u64>,
@@ -118,7 +121,7 @@ impl Default for ClientMetadata {
             sector_identifier_uri: None,
             subject_type: SubjectType::Public,
             // For all "enc" values below:
-            //   Default when id_token_encrypted_response_alg is specified should be A128CBC-HS256
+            //   Default when {endpoint}_encrypted_response_alg is specified should be A128CBC-HS256
             id_token_signed_response_alg: RS256.into(),
             id_token_encrypted_response_alg: None,
             id_token_encrypted_response_enc: None,
@@ -128,6 +131,9 @@ impl Default for ClientMetadata {
             request_object_signing_alg: None,
             request_object_encryption_alg: None,
             request_object_encryption_enc: None,
+            authorization_signed_response_alg: RS256.into(),
+            authorization_encrypted_response_alg: None,
+            authorization_encrypted_response_enc: None,
             token_endpoint_auth_method: Default::default(),
             token_endpoint_auth_signing_alg: None,
             default_max_age: None,

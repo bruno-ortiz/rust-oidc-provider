@@ -63,6 +63,7 @@ pub mod test_utils {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
     use crate::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
     use crate::context::OpenIDContext;
+    use crate::keystore::KeyStore;
     use crate::models::client::ClientInformation;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
@@ -125,7 +126,10 @@ pub mod test_utils {
             software_statement: None,
             application_type: ApplicationType::Native,
             request_object_encryption_enc: None,
+            authorization_signed_response_alg: RS256.into(),
+            authorization_encrypted_response_alg: None,
             request_uris: None,
+            authorization_encrypted_response_enc: None,
         };
         let client =
             ClientInformation::new(client_id, OffsetDateTime::now_utc(), plain, None, metadata);
@@ -146,7 +150,7 @@ pub mod test_utils {
         jwk.set_key_use("sig");
         let config = OpenIDProviderConfigurationBuilder::default()
             .issuer("https://oidc.rs.com")
-            .jwks(JwkSet::new(vec![jwk]))
+            .keystore(KeyStore::new(JwkSet::new(vec![jwk])))
             .response_types_supported(vec![
                 response_type![Code],
                 response_type![IdToken],

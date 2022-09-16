@@ -9,6 +9,7 @@ use oidc_types::jose::JwsHeaderExt;
 use oidc_types::response_mode::ResponseMode;
 
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::keystore::KeyUse;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
@@ -26,8 +27,12 @@ impl ResponseModeEncoder for JwtEncoder {
         parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let configuration = OpenIDProviderConfiguration::instance();
-        let signing_key = configuration
-            .signing_key()
+        let alg = &context.client.metadata().authorization_signed_response_alg;
+        let keystore = context.client.server_keystore(alg);
+        let signing_key = keystore
+            .select(KeyUse::Sig)
+            .alg(alg.name())
+            .first()
             .ok_or(EncodingError::MissingSigningKey)?;
         let header = JwsHeader::from_key(signing_key);
         let payload = self.build_payload(configuration, context, parameters);

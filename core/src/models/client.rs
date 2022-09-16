@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use getset::{CopyGetters, Getters};
 use time::OffsetDateTime;
 
@@ -5,7 +7,12 @@ use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadata};
 use oidc_types::grant_type::GrantType;
 use oidc_types::identifiable::Identifiable;
+use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::secret::PlainTextSecret;
+
+use crate::configuration::OpenIDProviderConfiguration;
+use crate::keystore;
+use crate::keystore::KeyStore;
 
 #[derive(Debug, Clone, CopyGetters, Getters)]
 pub struct ClientInformation {
@@ -41,6 +48,23 @@ impl ClientInformation {
     pub fn consume_metadata(self) -> ClientMetadata {
         self.metadata
     }
+
+    pub fn server_keystore(&self, alg: &SigningAlgorithm) -> Arc<KeyStore> {
+        if alg.is_symmetric() {
+            self.symmetric_keystore()
+        } else {
+            let configuration = OpenIDProviderConfiguration::instance();
+            configuration.keystore()
+        }
+    }
+
+    pub fn symmetric_keystore(&self) -> Arc<KeyStore> {
+        keystore::create_symmetric(self)
+    }
+
+    pub async fn asymmetric_keystore(&self) -> anyhow::Result<Arc<KeyStore>> {
+        Ok(keystore::create_asymmetric(self).await?)
+    }
 }
 
 impl Identifiable<ClientID> for ClientInformation {
@@ -66,6 +90,9 @@ impl AuthenticatedClient {
     }
     pub fn auth_method(&self) -> AuthMethod {
         self.0.metadata.token_endpoint_auth_method
+    }
+    pub fn id_token_signing_alg(&self) -> &SigningAlgorithm {
+        &self.0.metadata.id_token_signed_response_alg
     }
 }
 

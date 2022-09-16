@@ -13,6 +13,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver};
 use crate::id_token_builder::IdTokenBuilder;
+use crate::keystore::KeyUse;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshTokenBuilder;
 
@@ -38,8 +39,12 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         let mut id_token = None;
         if code.scopes.contains(&OPEN_ID) {
-            let signing_key = configuration
-                .signing_key()
+            let alg = client.id_token_signing_alg();
+            let keystore = client.as_ref().server_keystore(alg);
+            let signing_key = keystore
+                .select(KeyUse::Sig)
+                .alg(alg.name())
+                .first()
                 .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
             id_token = Some(
                 IdTokenBuilder::new(signing_key)

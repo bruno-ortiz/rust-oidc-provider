@@ -10,6 +10,7 @@ use oidc_types::response_type::Flow;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::id_token_builder::IdTokenBuilder;
+use crate::keystore::KeyUse;
 use crate::models::access_token::AccessToken;
 use crate::response_type::resolver::ResponseTypeResolver;
 
@@ -29,8 +30,13 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        let signing_key = configuration
-            .signing_key()
+        let client = context.client.clone();
+        let alg = &client.metadata().id_token_signed_response_alg;
+        let keystore = client.server_keystore(alg);
+        let signing_key = keystore
+            .select(KeyUse::Sig)
+            .alg(alg.name())
+            .first()
             .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
         if context.flow_type() == Flow::Hybrid && context.request.nonce.is_none() {
             return Err(OpenIdError::invalid_request(
@@ -82,7 +88,8 @@ mod tests {
             Some(nonce.clone()),
         );
         let configuration = OpenIDProviderConfiguration::instance();
-        let signing_key = configuration.signing_key().unwrap();
+        let keystore = configuration.keystore();
+        let signing_key = keystore.select(KeyUse::Sig).first().unwrap();
         let resolver = IDTokenResolver::new(None, None);
 
         let id_token = resolver

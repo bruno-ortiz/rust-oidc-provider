@@ -1,11 +1,11 @@
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use derive_builder::Builder;
 use futures::future::BoxFuture;
 use getset::{CopyGetters, Getters};
 use josekit::jwe::enc::{A128CBC_HS256, A128GCM, A256CBC_HS512, A256GCM};
 use josekit::jwe::{Dir, A128KW, A256KW, ECDH_ES, RSA_OAEP};
-use josekit::jwk::Jwk;
 use josekit::jws::{EdDSA, ES256, PS256, RS256};
 use once_cell::sync::OnceCell;
 use time::Duration;
@@ -18,7 +18,6 @@ use oidc_types::grant_type::GrantType;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::jwe::alg::EncryptionAlgorithm;
 use oidc_types::jose::jwe::enc::ContentEncryptionAlgorithm;
-use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::password_hasher::HasherConfig;
 use oidc_types::response_mode::ResponseMode;
@@ -35,6 +34,7 @@ use crate::configuration::routes::Routes;
 use crate::configuration::ttl::TTL;
 use crate::error::OpenIdError;
 use crate::grant_type::RTContext;
+use crate::keystore::KeyStore;
 use crate::models::client::AuthenticatedClient;
 use crate::services::types::Interaction;
 
@@ -55,7 +55,8 @@ type InteractionUrlResolver = Box<dyn Fn(Interaction) -> Url + Send + Sync>;
 #[builder(pattern = "owned", setter(into, strip_option), default)]
 pub struct OpenIDProviderConfiguration {
     pkce: PKCE,
-    jwks: JwkSet,
+    #[getset(skip)]
+    keystore: Arc<KeyStore>,
     routes: Routes,
     adapters: AdapterContainer,
     response_types_supported: Vec<ResponseType>,
@@ -176,11 +177,8 @@ impl OpenIDProviderConfiguration {
         func(client).await
     }
 
-    pub fn signing_key(&self) -> Option<&Jwk> {
-        //todo: permit multiple signing keys, and let the resolver decide???
-        self.jwks
-            .iter()
-            .find(|key| key.algorithm().is_some() && key.key_use() == Some("sig"))
+    pub fn keystore(&self) -> Arc<KeyStore> {
+        self.keystore.clone()
     }
 }
 
@@ -188,7 +186,7 @@ impl Default for OpenIDProviderConfiguration {
     fn default() -> Self {
         OpenIDProviderConfiguration {
             pkce: PKCE::default(),
-            jwks: JwkSet::default(),
+            keystore: Arc::new(KeyStore::default()),
             routes: Routes::default(),
             adapters: AdapterContainer::default(),
             response_types_supported: vec![
