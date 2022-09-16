@@ -1,11 +1,11 @@
-use std::sync::Arc;
+
 
 use async_trait::async_trait;
 use axum::body::{Bytes, HttpBody};
 use axum::extract::rejection::BytesRejection;
 use axum::extract::{FromRequest, RequestParts};
 use axum::response::{IntoResponse, Response};
-use axum::{BoxError, Extension, Json};
+use axum::{BoxError, Json};
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
 use thiserror::Error;

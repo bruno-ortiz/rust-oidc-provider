@@ -65,7 +65,6 @@ impl InteractionService for InteractionServiceImpl {
         &self,
         request: Request<ClientInfoRequest>,
     ) -> Result<Response<ClientInfo>, Status> {
-        let configuration = OpenIDProviderConfiguration::instance();
         let request = request.into_inner();
         let client_id = ClientID::from_str(request.client_id.as_str())
             .map_err(|err| Status::invalid_argument(format!("Failed to parse client id. {err}")))?;
@@ -111,6 +110,12 @@ impl InteractionService for InteractionServiceImpl {
         Ok(Response::new(ConfirmConsentReply {
             redirect_uri: redirect_uri.to_string(),
         }))
+    }
+}
+
+impl Default for InteractionServiceImpl {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
