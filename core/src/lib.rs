@@ -15,3 +15,15 @@ pub mod response_type;
 pub mod services;
 pub mod session;
 pub mod user;
+
+mod macros {
+    macro_rules! true_or_return {
+        ($i:ident = $e:expr) => {
+            $i = $e;
+            if !$i {
+                return dbg!($i);
+            }
+        };
+    }
+    pub(crate) use true_or_return;
+}

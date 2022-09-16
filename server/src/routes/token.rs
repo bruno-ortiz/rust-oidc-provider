@@ -1,13 +1,16 @@
-use crate::credentials::{Credentials, CredentialsError};
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use axum::body::{Bytes, HttpBody};
 use axum::extract::rejection::BytesRejection;
 use axum::extract::{FromRequest, RequestParts};
 use axum::response::{IntoResponse, Response};
 use axum::{BoxError, Extension, Json};
-use std::sync::Arc;
+use serde::de::value::Error as SerdeError;
+use serde_urlencoded::from_bytes;
+use thiserror::Error;
+use tracing::error;
 
-use crate::routes::error::OpenIdErrorResponse;
 use oidc_core::client::retrieve_client_info;
 use oidc_core::client_auth::ClientAuthenticator;
 use oidc_core::configuration::OpenIDProviderConfiguration;
@@ -15,22 +18,20 @@ use oidc_core::error::OpenIdError;
 use oidc_core::grant_type::GrantTypeResolver;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
-use serde::de::value::Error as SerdeError;
-use serde_urlencoded::from_bytes;
-use thiserror::Error;
-use tracing::error;
+
+use crate::credentials::{Credentials, CredentialsError};
+use crate::routes::error::OpenIdErrorResponse;
 
 // #[axum_macros::debug_handler]
 pub async fn token(
     request: TokenRequest,
-    Extension(configuration): Extension<Arc<OpenIDProviderConfiguration>>,
 ) -> axum::response::Result<Json<TokenResponse>, OpenIdErrorResponse> {
     let mut credentials = request.credentials;
     let client = retrieve_client_info(credentials.client_id)
         .await
         .ok_or_else(|| OpenIdError::invalid_client("Unknown client"))?;
     let auth_method = client.metadata().token_endpoint_auth_method;
-
+    let configuration = OpenIDProviderConfiguration::instance();
     if !configuration
         .token_endpoint_auth_methods_supported()
         .contains(&auth_method)
@@ -57,12 +58,13 @@ pub enum TokenRequestError {
     ReadBody(#[from] BytesRejection),
     #[error(transparent)]
     Credentials(#[from] CredentialsError),
-    #[error("Error parsing body params, {}", .0)]
+    #[error("Error parsing body params, {:?}", .0)]
     ParseBody(#[from] SerdeError),
 }
 
 impl IntoResponse for TokenRequestError {
     fn into_response(self) -> Response {
+        error!("{:?}", self);
         let openid_error = match self {
             TokenRequestError::Credentials(err) => err.into(),
             TokenRequestError::ReadBody(err) => OpenIdError::server_error(err.into()),

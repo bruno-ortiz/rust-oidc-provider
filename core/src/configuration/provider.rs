@@ -294,7 +294,10 @@ impl Default for OpenIDProviderConfiguration {
                 A256CBC_HS512.into(),
                 A256GCM.into(),
             ]),
-            token_endpoint_auth_methods_supported: vec![AuthMethod::ClientSecretBasic],
+            token_endpoint_auth_methods_supported: vec![
+                AuthMethod::ClientSecretBasic,
+                AuthMethod::ClientSecretPost,
+            ],
             token_endpoint_auth_signing_alg_values_supported: vec![
                 SigningAlgorithm::from(RS256),
                 SigningAlgorithm::from(PS256),

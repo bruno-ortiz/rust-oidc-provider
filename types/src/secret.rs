@@ -8,7 +8,7 @@ use crate::password_hasher::{HashingError, PasswordHasher};
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                          abcdefghijklmnopqrstuvwxyz\
                          0123456789)(*&^%$#@!~";
-const PASSWORD_LEN: usize = 20;
+const PASSWORD_LEN: usize = 32;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PlainTextSecret(String);

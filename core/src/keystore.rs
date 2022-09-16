@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use cached::proc_macro::cached;
@@ -10,6 +11,7 @@ use oidc_types::client::ClientID;
 use oidc_types::jose::jwk_set::JwkSet;
 
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::macros::true_or_return;
 use crate::models::client::ClientInformation;
 
 #[derive(Debug, Copy, Clone)]
@@ -112,19 +114,27 @@ impl KeyStore {
 pub fn create_symmetric(client: &ClientInformation) -> Arc<KeyStore> {
     let config = OpenIDProviderConfiguration::instance();
 
-    let mut algorithms = vec![];
-    if client.metadata().token_endpoint_auth_method == AuthMethod::ClientSecretJwt {
-        if let Some(alg) = client.metadata().token_endpoint_auth_signing_alg.as_ref() {
-            algorithms.push(alg.clone());
+    let mut algorithms = HashSet::new();
+    let client_metadata = client.metadata();
+    if client_metadata.token_endpoint_auth_method == AuthMethod::ClientSecretJwt {
+        if let Some(alg) = client_metadata.token_endpoint_auth_signing_alg.as_ref() {
+            if alg.is_symmetric() {
+                algorithms.insert(alg.clone());
+            }
         } else {
-            let mut algs = config
+            let algs = config
                 .token_endpoint_auth_signing_alg_values_supported()
                 .iter()
                 .filter(|&it| it.is_symmetric())
                 .cloned()
-                .collect();
-            algorithms.append(&mut algs);
+                .collect::<Vec<_>>();
+            for alg in algs {
+                algorithms.insert(alg);
+            }
         }
+    }
+    if client_metadata.id_token_signed_response_alg.is_symmetric() {
+        algorithms.insert(client_metadata.id_token_signed_response_alg.clone());
     }
     let keys = algorithms
         .into_iter()
@@ -169,20 +179,24 @@ pub async fn create_asymmetric(client: &ClientInformation) -> Result<Arc<KeyStor
 fn select_predicate(key: &Jwk, option: &SelectOption) -> bool {
     let mut candidate = option.kty.is_some() && option.kty.as_ref().unwrap() == key.key_type();
     if let Some(kid) = &option.kid {
-        candidate = key.key_id().is_some() && key.key_id().as_ref().unwrap() == kid;
+        true_or_return!(
+            candidate = key.key_id().is_some() && key.key_id().as_ref().unwrap() == kid
+        );
     }
     if let Some(alg) = &option.alg {
-        candidate = key.algorithm().is_some() && key.algorithm().unwrap() == alg;
+        true_or_return!(candidate = key.algorithm().is_some() && key.algorithm().unwrap() == alg);
     }
     if let Some(u) = key.key_use() {
-        candidate = u == option.key_use;
+        true_or_return!(candidate = u == option.key_use);
     }
     if let Some(crv) = &option.crv {
-        candidate = key.curve().is_some() && key.curve().unwrap() == crv;
+        true_or_return!(candidate = key.curve().is_some() && key.curve().unwrap() == crv);
     }
     if let Some(operation) = &option.operation {
-        candidate =
-            key.key_operations().is_some() && key.key_operations().unwrap().contains(&&**operation);
+        true_or_return!(
+            candidate = key.key_operations().is_some()
+                && key.key_operations().unwrap().contains(&&**operation)
+        );
     }
     candidate
 }

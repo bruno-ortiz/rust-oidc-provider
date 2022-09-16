@@ -100,7 +100,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
 impl From<CodeChallengeError> for OpenIdError {
     fn from(err: CodeChallengeError) -> Self {
-        error!("Error creating code challenge, {}", err);
+        error!("Error creating code challenge, {:?}", err);
         OpenIdError::invalid_request(err.to_string())
     }
 }

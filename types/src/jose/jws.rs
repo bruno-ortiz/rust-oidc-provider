@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::prelude::v1::Result::Err;
 
 use josekit::jws::JwsAlgorithm;
@@ -21,6 +22,12 @@ impl SigningAlgorithm {
 
     pub fn name(&self) -> &str {
         self.0.name()
+    }
+}
+
+impl Hash for SigningAlgorithm {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.name().hash(state)
     }
 }
 

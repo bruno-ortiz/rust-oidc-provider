@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
+use tracing::error;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use oidc_types::code::Code;
@@ -58,7 +59,10 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             .with_acr(context.user.acr())
             .with_amr(context.user.amr())
             .build()
-            .map_err(|err| OpenIdError::server_error(err.into()))?;
+            .map_err(|err| {
+                error!("{:?}", err);
+                OpenIdError::server_error(err.into())
+            })?;
         Ok(id_token)
     }
 }

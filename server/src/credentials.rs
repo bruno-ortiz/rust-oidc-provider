@@ -36,7 +36,7 @@ pub enum CredentialsError {
     CredentialError(#[from] CredentialError),
     #[error("{}", .0)]
     MismatchedClientId(String),
-    #[error("Error parsing body params, {}", .0)]
+    #[error("Error parsing body params, {:?}", .0)]
     ParseBody(#[from] SerdeError),
 }
 

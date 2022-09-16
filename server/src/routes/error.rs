@@ -39,7 +39,7 @@ pub struct OpenIdErrorResponse(#[from] OpenIdError);
 impl IntoResponse for OpenIdErrorResponse {
     fn into_response(self) -> Response {
         let err = self.0;
-        error!("Request error, {}", err);
+        error!("Request error, {:?}", err);
         let status_code = if err.error_type() == OpenIdErrorType::InvalidClient {
             StatusCode::UNAUTHORIZED
         } else {

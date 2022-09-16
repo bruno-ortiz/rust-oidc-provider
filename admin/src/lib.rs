@@ -1,17 +1,19 @@
 use crate::interaction::InteractionServiceImpl;
 pub use crate::oidc_admin::interaction_service_client::InteractionServiceClient;
 use crate::oidc_admin::interaction_service_server::InteractionServiceServer;
-use oidc_core::configuration::OpenIDProviderConfiguration;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use thiserror::Error;
 use tonic::transport::{Error as TonicError, Server};
+pub use tonic::Request as GrpcRequest;
 
 pub mod interaction;
 
 pub mod oidc_admin {
     tonic::include_proto!("oidc.admin");
 }
+
+
+pub type InteractionClient = InteractionServiceClient<tonic::transport::Channel>;
 
 #[derive(Debug, Error)]
 #[error("Error running admin server: {}", .0)]

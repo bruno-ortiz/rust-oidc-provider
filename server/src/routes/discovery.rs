@@ -1,17 +1,16 @@
 use axum::http::StatusCode;
-use axum::{Extension, Json};
-use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_types::discovery::{OIDCProviderMetadata, OIDCProviderMetadataBuilder};
-use oidc_types::issuer::Issuer;
-use std::sync::Arc;
+use axum::Json;
 use tracing::error;
 use url::Url;
 
+use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_types::discovery::{OIDCProviderMetadata, OIDCProviderMetadataBuilder};
+use oidc_types::issuer::Issuer;
+
 pub const DISCOVERY_ROUTE: &str = "/.well-known/openid-configuration";
 
-pub async fn discovery(
-    Extension(configuration): Extension<Arc<OpenIDProviderConfiguration>>,
-) -> axum::response::Result<Json<OIDCProviderMetadata>> {
+pub async fn discovery() -> axum::response::Result<Json<OIDCProviderMetadata>> {
+    let configuration = OpenIDProviderConfiguration::instance();
     let issuer = configuration.issuer();
     let routes = configuration.routes();
     let metadata = OIDCProviderMetadataBuilder::default()

@@ -20,8 +20,8 @@ time = "0.3.11"
 tracing = "0.1.35"
 tracing-subscriber = "0.3.14"
 serde="1.0.139"
-tonic = "0.7.2"
 lazy_static = "1.4.0"
+urlencoding="2.1.2"
 
 [dev-dependencies]
 axum-macros = "0.2.3"

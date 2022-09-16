@@ -18,7 +18,7 @@ use tracing::info;
 use oidc_admin::oidc_admin::{
     ClientInfoRequest, CompleteLoginRequest, ConfirmConsentRequest, InteractionInfoRequest,
 };
-use oidc_admin::InteractionServiceClient;
+use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
 use oidc_core::configuration::OpenIDProviderConfigurationBuilder;
 use oidc_core::models::client::ClientInformation;
@@ -27,6 +27,7 @@ use oidc_types::acr::Acr;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadataBuilder};
 use oidc_types::jose::jwk_set::JwkSet;
+use oidc_types::jose::HS256;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use oidc_types::secret::PlainTextSecret;
@@ -69,6 +70,7 @@ async fn main() {
         .redirect_uris(vec![callback_url])
         .jwks(JwkSet::default())
         .token_endpoint_auth_method(AuthMethod::ClientSecretPost)
+        .id_token_signed_response_alg(HS256)
         .client_name("Test client")
         .response_types(vec![Code, IdToken, Token])
         .build()
@@ -76,7 +78,10 @@ async fn main() {
 
     let secret = PlainTextSecret::random();
 
-    info!("Use secret: {}", secret);
+    info!(
+        "Use secret: {}",
+        urlencoding::encode(secret.to_string().as_str())
+    );
     let client = ClientInformation::new(
         ClientID::from_str("1d8fca3b-a2f1-48c2-924d-843e5173a951").unwrap(),
         OffsetDateTime::now_utc(),
@@ -113,14 +118,12 @@ async fn login_page(Query(params): Query<HashMap<String, String>>) -> Html<Strin
 
 async fn consent_page(
     Query(params): Query<HashMap<String, String>>,
-    Extension(mut interaction_client): Extension<
-        InteractionServiceClient<tonic::transport::Channel>,
-    >,
+    Extension(mut interaction_client): Extension<InteractionClient>,
 ) -> Html<String> {
     let mut context: Context = Context::new();
     let interaction_id = params.get("interaction_id").unwrap();
 
-    let request = tonic::Request::new(InteractionInfoRequest {
+    let request = GrpcRequest::new(InteractionInfoRequest {
         interaction_id: interaction_id.to_owned(),
     });
     let interaction_info = interaction_client
@@ -130,7 +133,7 @@ async fn consent_page(
         .into_inner();
 
     let auth_request = interaction_info.request.unwrap();
-    let request = tonic::Request::new(ClientInfoRequest {
+    let request = GrpcRequest::new(ClientInfoRequest {
         client_id: auth_request.client_id,
     });
 
@@ -156,15 +159,13 @@ struct LoginRequest {
 // #[axum_macros::debug_handler]
 async fn login(
     Form(req): Form<LoginRequest>,
-    Extension(mut interaction_client): Extension<
-        InteractionServiceClient<tonic::transport::Channel>,
-    >,
+    Extension(mut interaction_client): Extension<InteractionClient>,
 ) -> Response {
     if req.username != "xoze" || req.password != "1234" {
         return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
     }
 
-    let request = tonic::Request::new(CompleteLoginRequest {
+    let request = GrpcRequest::new(CompleteLoginRequest {
         sub: "some-user-id".to_string(),
         interaction_id: req.interaction_id,
         acr: Some(Acr::default().to_string()),
@@ -186,11 +187,9 @@ struct ConsentRequest {
 
 async fn consent(
     Form(req): Form<ConsentRequest>,
-    Extension(mut interaction_client): Extension<
-        InteractionServiceClient<tonic::transport::Channel>,
-    >,
+    Extension(mut interaction_client): Extension<InteractionClient>,
 ) -> impl IntoResponse {
-    let request = tonic::Request::new(ConfirmConsentRequest {
+    let request = GrpcRequest::new(ConfirmConsentRequest {
         interaction_id: req.interaction_id,
         scopes: vec!["openid".to_owned()],
     });
