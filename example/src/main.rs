@@ -26,6 +26,7 @@ use oidc_server::server::OidcServer;
 use oidc_types::acr::Acr;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadataBuilder};
+use oidc_types::grant_type::GrantType;
 use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::jose::HS256;
 use oidc_types::response_type::ResponseTypeValue;
@@ -73,6 +74,7 @@ async fn main() {
         .id_token_signed_response_alg(HS256)
         .client_name("Test client")
         .response_types(vec![Code, IdToken, Token])
+        .grant_types(vec![GrantType::AuthorizationCode, GrantType::RefreshToken])
         .build()
         .expect("Valid client metadata");
 

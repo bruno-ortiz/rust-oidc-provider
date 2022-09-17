@@ -134,7 +134,7 @@ async fn resolve_interaction(
     if user.is_none() || prompt.is_some() && prompt.unwrap().contains(&Prompt::Login) {
         Interaction::login(session, request)
     } else if let Some(user) = user {
-        if !user.has_requested_grant(Grant::new(request.scope.clone()))
+        if !user.has_requested_grant(&request.scope)
             || prompt.is_some() && prompt.unwrap().contains(&Prompt::Consent)
         {
             Interaction::consent(session, request, user)

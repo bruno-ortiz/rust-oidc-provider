@@ -4,6 +4,7 @@ use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::grant::Grant;
 use oidc_types::identifiable::Identifiable;
+use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
 use crate::adapter::PersistenceError;
@@ -64,9 +65,9 @@ impl AuthenticatedUser {
         self.grant.as_ref() //TODO: create a GrantedUser?
     }
 
-    pub fn has_requested_grant(&self, requested: Grant) -> bool {
+    pub fn has_requested_grant(&self, requested: &Scopes) -> bool {
         if let Some(ref grant) = self.grant {
-            *grant == requested
+            grant.scopes().contains_all(requested)
         } else {
             false
         }
