@@ -1,4 +1,5 @@
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
@@ -18,6 +19,7 @@ pub struct AuthenticatedUser {
     auth_time: OffsetDateTime,
     max_age: u64,
     grant: Option<Grant>,
+    interaction_id: Uuid,
     acr: Acr,
     amr: Option<Amr>,
 }
@@ -28,6 +30,7 @@ impl AuthenticatedUser {
         subject: Subject,
         auth_time: OffsetDateTime,
         max_age: u64,
+        interaction_id: Uuid,
         acr: Option<Acr>,
         amr: Option<Amr>,
     ) -> Self {
@@ -36,6 +39,7 @@ impl AuthenticatedUser {
             subject,
             auth_time,
             max_age,
+            interaction_id,
             amr,
             acr: acr.unwrap_or_default(),
             grant: None,
@@ -59,6 +63,9 @@ impl AuthenticatedUser {
     }
     pub fn amr(&self) -> Option<&Amr> {
         self.amr.as_ref()
+    }
+    pub fn interaction_id(&self) -> Uuid {
+        self.interaction_id
     }
 
     pub fn grant(&self) -> Option<&Grant> {

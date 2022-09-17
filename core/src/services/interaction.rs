@@ -1,9 +1,9 @@
+use anyhow::anyhow;
 use thiserror::Error;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use format as f;
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::client::ClientID;
@@ -12,6 +12,7 @@ use oidc_types::prompt::Prompt;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
+use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::client::retrieve_client_info;
 use crate::configuration::OpenIDProviderConfiguration;
@@ -30,8 +31,12 @@ pub enum InteractionError {
     NotFound(Uuid),
     #[error("Client not found for id {}", .0)]
     ClientNotFound(ClientID),
-    #[error("{}",.0)]
-    Internal(String),
+    #[error("Unexpected error saving interaction")]
+    Persistence(#[from] PersistenceError),
+    #[error("Unexpected error authorizing user")]
+    Authorization(#[from] AuthorisationError),
+    #[error("Unexpected error resolving user interaction")]
+    Internal(#[from] anyhow::Error),
 }
 
 pub async fn begin_interaction(
@@ -62,23 +67,14 @@ pub async fn complete_login(
                 subject,
                 OffsetDateTime::now_utc(),
                 configuration.auth_max_age(),
+                interaction_id,
                 acr,
                 amr,
             )
             .save()
-            .await
-            .map_err(|err| {
-                InteractionError::Internal(f!("Unexpected error authenticating user. Err: {err}"))
-            })?;
+            .await?;
 
-            let interaction = Interaction::consent(session, request, user)
-                .save()
-                .await
-                .map_err(|err| {
-                    InteractionError::Internal(f!(
-                        "Unexpected error authenticating user. Err: {err}"
-                    ))
-                })?;
+            let interaction = Interaction::consent(request, user).save().await?;
             Ok(interaction.uri())
         }
         None => Err(InteractionError::NotFound(interaction_id)),
@@ -99,22 +95,17 @@ where
 {
     match Interaction::find(interaction_id).await {
         Some(Interaction::Consent { request, user, .. }) => {
-            let user = user
-                .with_grant(Grant::new(scopes))
-                .save()
-                .await
-                .map_err(|err| InteractionError::Internal(err.to_string()))?;
+            let user = user.with_grant(Grant::new(scopes)).save().await?;
             let client = retrieve_client_info(request.client_id)
                 .await
                 .ok_or(InteractionError::ClientNotFound(request.client_id))?;
-            let res = auth_service
-                .do_authorise(user, client, request)
-                .await
-                .map_err(|err| InteractionError::Internal(err.to_string()))?;
+
+            let (user, request) = finalize_interaction(request, user).await?;
+            let res = auth_service.do_authorise(user, client, request).await?;
             if let AuthorisationResponse::Redirect(url) = res {
                 Ok(url)
             } else {
-                Err(InteractionError::Internal("Not supported".to_owned()))
+                Err(InteractionError::Internal(anyhow!("Not supported")))
             }
         }
         None => Err(InteractionError::NotFound(interaction_id)),
@@ -137,15 +128,22 @@ async fn resolve_interaction(
         if !user.has_requested_grant(&request.scope)
             || prompt.is_some() && prompt.unwrap().contains(&Prompt::Consent)
         {
-            Interaction::consent(session, request, user)
+            Interaction::consent(request, user)
         } else {
-            Interaction::none(session, request, user)
+            Interaction::none(request, user)
         }
     } else {
-        Interaction::none(
-            session,
-            request,
-            user.expect("User should be authenticated"),
-        )
+        panic!("unreachable")
     }
+}
+
+async fn finalize_interaction(
+    request: ValidatedAuthorisationRequest,
+    user: AuthenticatedUser,
+) -> Result<(AuthenticatedUser, ValidatedAuthorisationRequest), InteractionError> {
+    Interaction::none(request, user)
+        .save()
+        .await?
+        .consume()
+        .ok_or_else(|| InteractionError::Internal(anyhow!("Unable to consume this interaction")))
 }

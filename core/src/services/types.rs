@@ -40,28 +40,21 @@ impl Interaction {
         }
     }
 
-    pub fn consent(
-        session: SessionID,
-        request: ValidatedAuthorisationRequest,
-        user: AuthenticatedUser,
-    ) -> Self {
-        let id = Uuid::new_v4();
+    // pub fn advance(self, )
+
+    pub fn consent(request: ValidatedAuthorisationRequest, user: AuthenticatedUser) -> Self {
         Self::Consent {
-            id,
-            session,
+            id: user.interaction_id(),
+            session: user.session(),
             request,
             user,
         }
     }
 
-    pub fn none(
-        session: SessionID,
-        request: ValidatedAuthorisationRequest,
-        user: AuthenticatedUser,
-    ) -> Self {
+    pub fn none(request: ValidatedAuthorisationRequest, user: AuthenticatedUser) -> Self {
         Self::None {
-            id: Uuid::new_v4(),
-            session,
+            id: user.interaction_id(),
+            session: user.session(),
             request,
             user,
         }
@@ -73,6 +66,14 @@ impl Interaction {
         let mut url = config.interaction_url_resolver()(self);
         Self::add_id(&mut url, id);
         url
+    }
+
+    pub fn consume(self) -> Option<(AuthenticatedUser, ValidatedAuthorisationRequest)> {
+        match self {
+            Interaction::Login { .. } => None,
+            Interaction::Consent { user, request, .. } => Some((user, request)),
+            Interaction::None { user, request, .. } => Some((user, request)),
+        }
     }
 
     fn add_id(url: &mut Url, id: Uuid) {

@@ -236,7 +236,9 @@ fn convert_err(err: InteractionError) -> Status {
     match err {
         InteractionError::FailedPreCondition(_) => Status::failed_precondition(err.to_string()),
         InteractionError::NotFound(_) => Status::not_found(err.to_string()),
-        InteractionError::Internal(_) => Status::internal(err.to_string()),
         InteractionError::ClientNotFound(_) => Status::invalid_argument(err.to_string()),
+        InteractionError::Internal(_) => Status::internal(err.to_string()),
+        InteractionError::Persistence(_) => Status::internal(err.to_string()),
+        InteractionError::Authorization(_) => Status::internal(err.to_string()),
     }
 }

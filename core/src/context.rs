@@ -139,6 +139,7 @@ pub mod test_utils {
             Subject::new("some-id"),
             OffsetDateTime::now_utc(),
             120,
+            Uuid::new_v4(),
             None,
             None,
         )
