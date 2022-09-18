@@ -9,78 +9,75 @@ use oidc_types::issuer::Issuer;
 
 pub const DISCOVERY_ROUTE: &str = "/.well-known/openid-configuration";
 
-pub async fn discovery() -> axum::response::Result<Json<OIDCProviderMetadata>> {
+pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata<'a>>> {
     let configuration = OpenIDProviderConfiguration::instance();
     let issuer = configuration.issuer();
     let routes = configuration.routes();
     let metadata = OIDCProviderMetadataBuilder::default()
-        .issuer(issuer.clone())
+        .issuer(issuer)
         .authorization_endpoint(url(issuer, routes.authorisation))
-        .jwks_uri(url(issuer, routes.jwks))
-        .response_types_supported(configuration.response_types_supported().clone())
-        .response_modes_supported(configuration.response_modes_supported().clone())
-        .grant_types_supported(configuration.grant_types_supported().clone())
-        .scopes_supported(
-            configuration
-                .scopes_supported()
-                .iter()
-                .cloned()
-                .collect::<Vec<_>>(),
+        .token_endpoint(url(issuer, routes.token))
+        .token_endpoint_auth_methods_supported(
+            configuration.token_endpoint_auth_methods_supported(),
         )
-        .claims_supported(configuration.claims_supported().clone())
-        .claim_types_supported(configuration.claim_types_supported().clone())
+        .token_endpoint_auth_signing_alg_values_supported(
+            configuration.token_endpoint_auth_signing_alg_values_supported(),
+        )
+        .jwks_uri(url(issuer, routes.jwks))
+        .response_types_supported(configuration.response_types_supported())
+        .response_modes_supported(configuration.response_modes_supported())
+        .grant_types_supported(configuration.grant_types_supported())
+        .scopes_supported(configuration.scopes_supported().inner())
+        .claims_supported(configuration.claims_supported())
+        .claim_types_supported(configuration.claim_types_supported().as_ref())
         .claims_parameter_supported(configuration.claims_parameter_supported())
         .tls_client_certificate_bound_access_tokens(false) //todo: implement mtls
         .request_parameter_supported(configuration.request_parameter_supported())
         .request_uri_parameter_supported(configuration.request_uri_parameter_supported())
         .require_request_uri_registration(configuration.require_request_uri_registration())
         .request_object_signing_alg_values_supported(
-            configuration
-                .request_object_signing_alg_values_supported()
-                .clone(),
+            configuration.request_object_signing_alg_values_supported(),
         )
         .request_object_encryption_alg_values_supported(
             configuration
                 .request_object_encryption_alg_values_supported()
-                .clone(),
+                .as_ref(),
         )
         .request_object_encryption_enc_values_supported(
             configuration
                 .request_object_encryption_enc_values_supported()
-                .clone(),
+                .as_ref(),
         )
         .id_token_signing_alg_values_supported(
-            configuration
-                .id_token_signing_alg_values_supported()
-                .clone(),
+            configuration.id_token_signing_alg_values_supported(),
         )
         .id_token_encryption_alg_values_supported(
             configuration
                 .id_token_encryption_alg_values_supported()
-                .clone(),
+                .as_ref(),
         )
         .id_token_encryption_enc_values_supported(
             configuration
                 .id_token_encryption_enc_values_supported()
-                .clone(),
+                .as_ref(),
         )
         .authorization_signing_alg_values_supported(
             configuration
                 .authorization_signing_alg_values_supported()
-                .clone(),
+                .as_ref(),
         )
         .authorization_encryption_alg_values_supported(
             configuration
                 .authorization_encryption_alg_values_supported()
-                .clone(),
+                .as_ref(),
         )
         .authorization_encryption_enc_values_supported(
             configuration
                 .authorization_encryption_enc_values_supported()
-                .clone(),
+                .as_ref(),
         )
-        .subject_types_supported(configuration.subject_types_supported().clone())
-        .code_challenge_methods_supported(configuration.pkce().methods_supported().clone())
+        .subject_types_supported(configuration.subject_types_supported())
+        .code_challenge_methods_supported(configuration.pkce().methods_supported())
         .build()
         .map_err(|err| {
             error!("Error builder oidc metadata {}", err);

@@ -77,6 +77,10 @@ impl Scopes {
     pub fn iter(&self) -> impl Iterator<Item = &Scope> {
         self.0.iter()
     }
+
+    pub fn inner(&self) -> &Vec<Scope> {
+        &self.0
+    }
 }
 
 impl Display for Scopes {
