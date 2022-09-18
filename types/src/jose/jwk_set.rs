@@ -131,6 +131,25 @@ impl<'de> Deserialize<'de> for JwkSet {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct PublicJwkSet(JwkSet);
+
+impl PublicJwkSet {
+    pub fn new(jwks: &JwkSet) -> Self {
+        let public_keys: Vec<_> = jwks
+            .iter()
+            .map(|it| {
+                let mut new_key = it.to_public_key().expect("Expected valid jwkset");
+                if let Some(kid) = it.key_id() {
+                    new_key.set_key_id(kid)
+                }
+                new_key
+            })
+            .collect();
+        Self(JwkSet::new(public_keys))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use josekit::jwk::alg::ec::EcCurve;

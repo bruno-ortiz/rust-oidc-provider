@@ -20,7 +20,7 @@ use oidc_admin::oidc_admin::{
 };
 use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
-use oidc_core::configuration::OpenIDProviderConfigurationBuilder;
+use oidc_core::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_core::models::client::ClientInformation;
 use oidc_server::server::OidcServer;
 use oidc_types::acr::Acr;
@@ -60,10 +60,33 @@ async fn main() {
         .nest("/assets", serve_dir("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("http://localhost:3000")
+        .issuer("https://766c-2804-431-c7c6-24e4-200c-3f6f-2dfc-553e.sa.ngrok.io")
         .build()
         .expect("Expected valid configuration");
 
+    create_client(
+        &config,
+        "Test client 1",
+        "1d8fca3b-a2f1-48c2-924d-843e5173a951",
+        "1fCW^$)*(I#tll2EH#!MfsHFQ$*6&gEx",
+    )
+    .await;
+    create_client(
+        &config,
+        "Test client 2",
+        "e9f6fa6b-4fb2-4a85-85c0-14d13521a377",
+        "T*8XnO6JRqI8rrPh^5dUzE0BNQR0u5Hy",
+    )
+    .await;
+
+    OidcServer::with_configuration(config)
+        .with_router(app)
+        .run()
+        .await
+        .unwrap()
+}
+
+async fn create_client(config: &OpenIDProviderConfiguration, name: &str, id: &str, secret: &str) {
     let callback_url = "http://localhost:8000/callback"
         .try_into()
         .expect("expect valid url");
@@ -72,35 +95,23 @@ async fn main() {
         .jwks(JwkSet::default())
         .token_endpoint_auth_method(AuthMethod::ClientSecretPost)
         .id_token_signed_response_alg(HS256)
-        .client_name("Test client")
+        .client_name(name)
         .response_types(vec![Code, IdToken, Token])
         .grant_types(vec![GrantType::AuthorizationCode, GrantType::RefreshToken])
         .build()
         .expect("Valid client metadata");
 
-    let secret = PlainTextSecret::random();
-
-    info!(
-        "Use secret: {}",
-        urlencoding::encode(secret.to_string().as_str())
-    );
     let client = ClientInformation::new(
-        ClientID::from_str("1d8fca3b-a2f1-48c2-924d-843e5173a951").unwrap(),
+        ClientID::from_str(id).unwrap(),
         OffsetDateTime::now_utc(),
-        secret,
+        secret.to_owned().into(),
         None,
         client_metadata,
     );
 
-    register_client(&config, client)
+    register_client(config, client)
         .await
         .expect("Expected successful client registration");
-
-    OidcServer::with_configuration(config)
-        .with_router(app)
-        .run()
-        .await
-        .unwrap()
 }
 
 fn serve_dir<P: AsRef<Path>>(path: P) -> MethodRouter {

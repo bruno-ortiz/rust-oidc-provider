@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::ClientID;
-use oidc_types::jose::jwk_set::JwkSet;
+use oidc_types::jose::jwk_set::{JwkSet, PublicJwkSet};
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::macros::true_or_return;
@@ -100,8 +100,8 @@ impl KeyStore {
         }
     }
 
-    pub fn inner(&self) -> &JwkSet {
-        &self.jwks
+    pub fn public(&self) -> PublicJwkSet {
+        PublicJwkSet::new(&self.jwks)
     }
 }
 
