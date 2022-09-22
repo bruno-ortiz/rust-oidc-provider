@@ -10,8 +10,8 @@ pub enum PersistenceError {}
 
 #[async_trait]
 pub trait Adapter {
-    type Item: Send + Sync;
-    type Id: Sized;
+    type Id;
+    type Item;
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item>;
 

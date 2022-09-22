@@ -37,7 +37,10 @@ impl<'de> Deserialize<'de> for Scopes {
             where
                 E: Error,
             {
-                Ok(v.split(' ').collect::<Vec<&str>>().into())
+                Ok(v.split(' ')
+                    .map(|it| it.to_lowercase())
+                    .collect::<Vec<String>>()
+                    .into())
             }
         }
         deserializer.deserialize_str(ScopesVisitor)
@@ -62,7 +65,7 @@ impl<'de> Deserialize<'de> for Scope {
             where
                 E: Error,
             {
-                Ok(v.into())
+                Ok(v.to_lowercase().into())
             }
         }
         deserializer.deserialize_str(ScopeVisitor)

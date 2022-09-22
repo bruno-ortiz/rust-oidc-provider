@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 
+use crate::claims::get_id_token_claims;
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::RefreshTokenGrant;
@@ -13,6 +14,7 @@ use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshToken;
+use crate::profile::ProfileData;
 
 #[async_trait]
 impl GrantTypeResolver for RefreshTokenGrant {
@@ -51,6 +53,11 @@ impl GrantTypeResolver for RefreshTokenGrant {
 
         let mut id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
+            let profile = ProfileData::get(&refresh_token)
+                .await
+                .map_err(OpenIdError::server_error)?;
+            let claims = get_id_token_claims(&profile, &refresh_token)?;
+
             let alg = client.id_token_signing_alg();
             let keystore = client.as_ref().server_keystore(alg);
             let signing_key = keystore
@@ -68,11 +75,9 @@ impl GrantTypeResolver for RefreshTokenGrant {
                     .with_nonce(refresh_token.nonce.as_ref())
                     .with_s_hash(refresh_token.state.as_ref())?
                     .with_at_hash(Some(&access_token))?
-                    .with_acr(&refresh_token.acr)
-                    .with_amr(refresh_token.amr.as_ref())
-                    .with_auth_time(refresh_token.auth_time)
+                    .with_custom_claims(claims)
                     .build()
-                    .map_err(|err| OpenIdError::server_error(err.into()))?,
+                    .map_err(OpenIdError::server_error)?,
             );
         }
         Ok(TokenResponse::new(

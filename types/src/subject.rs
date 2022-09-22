@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 pub struct Subject(String);
@@ -18,5 +19,11 @@ impl From<&Subject> for String {
 impl AsRef<str> for Subject {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl Display for Subject {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

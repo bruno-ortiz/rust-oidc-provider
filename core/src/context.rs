@@ -1,9 +1,17 @@
+use oidc_types::acr::Acr;
+use oidc_types::amr::Amr;
+use oidc_types::claims::Claims;
+use oidc_types::grant::Grant;
+use oidc_types::nonce::Nonce;
 use std::sync::Arc;
 
 use oidc_types::response_type::Flow;
+use oidc_types::scopes::Scopes;
+use oidc_types::subject::Subject;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::models::client::ClientInformation;
+use crate::models::Token;
 use crate::user::AuthenticatedUser;
 
 pub struct OpenIDContext {
@@ -27,6 +35,39 @@ impl OpenIDContext {
 
     pub fn flow_type(&self) -> Flow {
         self.request.response_type.flow()
+    }
+}
+
+impl Token for OpenIDContext {
+    fn subject(&self) -> &Subject {
+        self.user.sub()
+    }
+
+    fn auth_time(&self) -> u64 {
+        self.user.auth_time().unix_timestamp() as u64
+    }
+
+    fn acr(&self) -> &Acr {
+        self.user.acr()
+    }
+
+    fn amr(&self) -> Option<&Amr> {
+        self.user.amr()
+    }
+
+    fn scopes(&self) -> &Scopes {
+        self.user
+            .grant()
+            .expect("This should not be called when user has no grants")
+            .scopes()
+    }
+
+    fn claims(&self) -> Option<&Claims> {
+        self.request.claims.as_ref()
+    }
+
+    fn nonce(&self) -> Option<&Nonce> {
+        self.request.nonce.as_ref()
     }
 }
 
@@ -90,6 +131,8 @@ pub mod test_utils {
             request: None,
             prompt: None,
             acr_values: None,
+            claims: None,
+            max_age: None,
         };
         let (_, plain) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let metadata = ClientMetadata {

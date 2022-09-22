@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 use tracing::error;
 use uuid::Uuid;
 
+use crate::claims::get_id_token_claims;
 use oidc_types::pkce::CodeChallengeError;
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;
@@ -16,6 +17,7 @@ use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshTokenBuilder;
+use crate::profile::ProfileData;
 
 #[async_trait]
 impl GrantTypeResolver for AuthorisationCodeGrant {
@@ -39,6 +41,11 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         let mut id_token = None;
         if code.scopes.contains(&OPEN_ID) {
+            let profile = ProfileData::get(&code)
+                .await
+                .map_err(OpenIdError::server_error)?;
+            let claims = get_id_token_claims(&profile, &code)?;
+
             let alg = client.id_token_signing_alg();
             let keystore = client.as_ref().server_keystore(alg);
             let signing_key = keystore
@@ -57,11 +64,9 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                     .with_s_hash(code.state.as_ref())?
                     .with_c_hash(Some(&code.code))?
                     .with_at_hash(Some(&access_token))?
-                    .with_acr(&code.acr)
-                    .with_amr(code.amr.as_ref())
-                    .with_auth_time(code.auth_time)
+                    .with_custom_claims(claims)
                     .build()
-                    .map_err(|err| OpenIdError::server_error(err.into()))?,
+                    .map_err(OpenIdError::server_error)?,
             );
         }
 
@@ -69,20 +74,22 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         if configuration.issue_refresh_token(&client).await {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
             let refresh_token = RefreshTokenBuilder::default()
-                .token(Uuid::new_v4())
+                .token(Uuid::new_v4().to_string())
                 .client_id(code.client_id)
                 .redirect_uri(code.redirect_uri)
                 .subject(code.subject)
                 .scopes(code.scopes)
                 .state(code.state)
-                .amr(code.amr)
-                .acr(code.acr)
                 .nonce(code.nonce)
                 .expires_in(OffsetDateTime::now_utc() + rt_ttl)
                 .created(OffsetDateTime::now_utc())
+                .acr(code.acr)
+                .amr(code.amr)
+                .claims(code.claims)
+                .max_age(code.max_age)
                 .auth_time(code.auth_time)
                 .build()
-                .map_err(|err| OpenIdError::server_error(err.into()))?
+                .map_err(OpenIdError::server_error)?
                 .save()
                 .await?;
             rt = Some(refresh_token.token.to_string())

@@ -1,3 +1,5 @@
+mod profile;
+
 use std::collections::HashMap;
 use std::io;
 use std::path::Path;
@@ -13,7 +15,6 @@ use serde::Deserialize;
 use tera::{Context, Tera};
 use time::OffsetDateTime;
 use tower_http::services::ServeDir;
-use tracing::info;
 
 use oidc_admin::oidc_admin::{
     ClientInfoRequest, CompleteLoginRequest, ConfirmConsentRequest, InteractionInfoRequest,
@@ -31,7 +32,6 @@ use oidc_types::jose::jwk_set::JwkSet;
 use oidc_types::jose::HS256;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
-use oidc_types::secret::PlainTextSecret;
 use ResponseTypeValue::Code;
 
 lazy_static! {

@@ -3,6 +3,7 @@ pub struct Routes {
     pub authorisation: &'static str,
     pub token: &'static str,
     pub jwks: &'static str,
+    pub userinfo: &'static str,
 }
 
 impl Default for Routes {
@@ -11,6 +12,7 @@ impl Default for Routes {
             authorisation: "/authorise",
             token: "/token",
             jwks: "/jwks.json",
+            userinfo: "/userinfo",
         }
     }
 }

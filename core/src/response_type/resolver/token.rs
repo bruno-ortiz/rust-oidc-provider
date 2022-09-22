@@ -21,7 +21,7 @@ impl ResponseTypeResolver for TokenResolver {
             .token()
             .save(token)
             .await
-            .map_err(|err| OpenIdError::server_error(err.into()))?;
+            .map_err(OpenIdError::server_error)?;
         Ok(token)
     }
 }

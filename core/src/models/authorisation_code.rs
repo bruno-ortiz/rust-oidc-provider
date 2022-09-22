@@ -3,6 +3,7 @@ use url::Url;
 
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
+use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::code::Code;
 use oidc_types::identifiable::Identifiable;
@@ -16,9 +17,9 @@ use oidc_types::token_request::AuthorisationCodeGrant;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::client::AuthenticatedClient;
-use crate::models::Status;
+use crate::models::{Status, Token};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct AuthorisationCode {
     pub code: Code,
     pub client_id: ClientID,
@@ -34,6 +35,8 @@ pub struct AuthorisationCode {
     pub acr: Acr,
     pub amr: Option<Amr>,
     pub auth_time: OffsetDateTime,
+    pub max_age: Option<u64>,
+    pub claims: Option<Claims>,
 }
 
 impl AuthorisationCode {
@@ -79,12 +82,42 @@ impl AuthorisationCode {
             .code()
             .save(self)
             .await
-            .map_err(|err| OpenIdError::server_error(err.into()))
+            .map_err(OpenIdError::server_error)
     }
 }
 
 impl Identifiable<Code> for AuthorisationCode {
     fn id(&self) -> Code {
         self.code.clone()
+    }
+}
+
+impl Token for AuthorisationCode {
+    fn subject(&self) -> &Subject {
+        &self.subject
+    }
+
+    fn auth_time(&self) -> u64 {
+        self.auth_time.unix_timestamp() as u64
+    }
+
+    fn acr(&self) -> &Acr {
+        &self.acr
+    }
+
+    fn amr(&self) -> Option<&Amr> {
+        self.amr.as_ref()
+    }
+
+    fn scopes(&self) -> &Scopes {
+        &self.scopes
+    }
+
+    fn claims(&self) -> Option<&Claims> {
+        self.claims.as_ref()
+    }
+
+    fn nonce(&self) -> Option<&Nonce> {
+        self.nonce.as_ref()
     }
 }

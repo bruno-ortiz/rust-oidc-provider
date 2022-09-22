@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use time::OffsetDateTime;
 use tracing::error;
 
+use crate::claims::get_id_token_claims;
 use crate::configuration::OpenIDProviderConfiguration;
 use oidc_types::code::Code;
 use oidc_types::id_token::IdToken;
@@ -13,6 +14,7 @@ use crate::error::OpenIdError;
 use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
 use crate::models::access_token::AccessToken;
+use crate::profile::ProfileData;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub struct IDTokenResolver<'a> {
@@ -44,6 +46,12 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 "Hybrid flow must contain a nonce in the auth request",
             ));
         }
+
+        let profile = ProfileData::get(context)
+            .await
+            .map_err(OpenIdError::server_error)?;
+        let claims = get_id_token_claims(&profile, context)?;
+
         let ttl = configuration.ttl();
         let id_token = IdTokenBuilder::new(signing_key)
             .with_issuer(configuration.issuer())
@@ -55,13 +63,11 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             .with_s_hash(context.request.state.as_ref())?
             .with_c_hash(self.code)?
             .with_at_hash(self.token)?
-            .with_auth_time(context.user.auth_time())
-            .with_acr(context.user.acr())
-            .with_amr(context.user.amr())
+            .with_custom_claims(claims)
             .build()
             .map_err(|err| {
                 error!("{:?}", err);
-                OpenIdError::server_error(err.into())
+                OpenIdError::server_error(err)
             })?;
         Ok(id_token)
     }

@@ -24,7 +24,7 @@ impl IdToken {
 impl UrlEncodable for IdToken {
     fn params(self) -> IndexMap<String, String> {
         let mut map = IndexMap::new();
-        map.insert("id_token".to_owned(), self.0.serialize_owned());
+        map.insert("id_token".to_owned(), self.serialized());
         map
     }
 }

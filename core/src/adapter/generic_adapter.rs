@@ -25,8 +25,8 @@ where
     ID: Eq + Hash + Send + Sync,
     IT: Identifiable<ID> + Send + Sync + Clone,
 {
-    type Item = IT;
     type Id = ID;
+    type Item = IT;
 
     async fn find(&self, id: &Self::Id) -> Option<Self::Item> {
         let storage = self.storage.read().unwrap();

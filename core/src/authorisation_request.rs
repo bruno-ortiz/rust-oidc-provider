@@ -5,6 +5,7 @@ use tracing::error;
 use url::Url;
 
 use oidc_types::acr::Acr;
+use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::jose::jwt::JWT;
 use oidc_types::nonce::Nonce;
@@ -30,6 +31,7 @@ pub struct ValidatedAuthorisationRequest {
     pub response_mode: Option<ResponseMode>,
     pub code_challenge: Option<CodeChallenge>,
     pub code_challenge_method: Option<CodeChallengeMethod>,
+    pub max_age: Option<u64>,
     pub resource: Option<Url>,
     //rfc8707
     pub include_granted_scopes: Option<bool>,
@@ -37,6 +39,7 @@ pub struct ValidatedAuthorisationRequest {
     pub request: Option<JWT>,
     pub prompt: Option<Vec<Prompt>>,
     pub acr_values: Option<Acr>,
+    pub claims: Option<Claims>,
 }
 
 impl ValidatedAuthorisationRequest {
@@ -67,6 +70,7 @@ pub struct AuthorisationRequest {
     pub response_mode: Option<ResponseMode>,
     pub code_challenge: Option<String>,
     pub code_challenge_method: Option<CodeChallengeMethod>,
+    pub max_age: Option<u64>,
     pub resource: Option<Url>,
     //rfc8707
     pub include_granted_scopes: Option<bool>,
@@ -74,6 +78,7 @@ pub struct AuthorisationRequest {
     pub request: Option<JWT>,
     pub prompt: Option<String>,
     pub acr_values: Option<Acr>,
+    pub claims: Option<String>,
 }
 
 impl AuthorisationRequest {
@@ -81,30 +86,31 @@ impl AuthorisationRequest {
         self,
         client: &ClientInformation,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
-        if let Err(err) = self.validate_response_type(client) {
-            return Err((err, self));
+        let this = self;
+        if let Err(err) = this.validate_response_type(client) {
+            return Err((err, this));
         }
-        if let Err(err) = self.validate_scopes(client) {
-            return Err((err, self));
+        if let Err(err) = this.validate_scopes(client) {
+            return Err((err, this));
         }
-        if self.client_id.is_none() {
-            return Err((OpenIdError::invalid_request("Missing client_id"), self));
+        if this.client_id.is_none() {
+            return Err((OpenIdError::invalid_request("Missing client_id"), this));
         }
-        if let Err(err) = self.validate_redirect_uri(client) {
-            return Err((err, self));
+        if let Err(err) = this.validate_redirect_uri(client) {
+            return Err((err, this));
         }
 
         const MIN_ENTROPY: usize = 43;
-        if let Some(ref challenge) = self.code_challenge {
+        if let Some(ref challenge) = this.code_challenge {
             if challenge.len() < MIN_ENTROPY {
                 return Err((
                     OpenIdError::invalid_request("Code challenge must have a minimum length of 43"),
-                    self,
+                    this,
                 ));
             }
         }
 
-        let prompt = self
+        let prompt = this
             .prompt
             .as_ref()
             .map(|p| p.split(' ').map(Prompt::try_from).collect::<Vec<_>>());
@@ -112,30 +118,37 @@ impl AuthorisationRequest {
         if let Some(ref prompt) = prompt {
             if let Some(Err(err)) = prompt.iter().find(|&it| it.is_err()) {
                 error!("Err parsing prompt {}", err);
-                return Err((OpenIdError::invalid_request("Invalid prompt"), self));
+                return Err((OpenIdError::invalid_request("Invalid prompt"), this));
             }
         }
         let prompt = prompt.map(|it| it.into_iter().map(Result::unwrap).collect());
 
+        let claims = match parse_claims(&this) {
+            Ok(c) => c,
+            Err(err) => return Err((err, this)),
+        };
+
         Ok(ValidatedAuthorisationRequest {
-            response_type: self.response_type.expect("Response type not found"),
-            client_id: self
+            response_type: this.response_type.expect("Response type not found"),
+            client_id: this
                 .client_id
                 .map(|cid| ClientID::from_str(&cid).expect("Invalid ClientID"))
                 .expect("ClientId not found"),
-            redirect_uri: self.redirect_uri.expect("Redirect URI not found"),
-            scope: self.scope.expect("Scope not found"),
-            state: self.state,
-            nonce: self.nonce,
-            response_mode: self.response_mode,
-            code_challenge: self.code_challenge.map(CodeChallenge::new),
-            code_challenge_method: self.code_challenge_method,
-            resource: self.resource,
-            include_granted_scopes: self.include_granted_scopes,
-            request_uri: self.request_uri,
-            request: self.request,
-            acr_values: self.acr_values,
+            redirect_uri: this.redirect_uri.expect("Redirect URI not found"),
+            scope: this.scope.expect("Scope not found"),
+            state: this.state,
+            nonce: this.nonce,
+            response_mode: this.response_mode,
+            code_challenge: this.code_challenge.map(CodeChallenge::new),
+            code_challenge_method: this.code_challenge_method,
+            resource: this.resource,
+            include_granted_scopes: this.include_granted_scopes,
+            request_uri: this.request_uri,
+            request: this.request,
+            acr_values: this.acr_values,
+            max_age: this.max_age,
             prompt,
+            claims,
         })
     }
 
@@ -200,4 +213,25 @@ impl AuthorisationRequest {
             .response_types_supported()
             .contains(response_type)
     }
+}
+
+fn parse_claims(this: &AuthorisationRequest) -> Result<Option<Claims>, OpenIdError> {
+    let claims = if let Some(ref c) = this.claims {
+        let config = OpenIDProviderConfiguration::instance();
+        if !config.claims_parameter_supported() {
+            return Err(OpenIdError::invalid_request(
+                "Claims parameter not supported in authorization request",
+            ));
+        }
+        match serde_json::from_str::<Claims>(c) {
+            Ok(claims) => Some(claims),
+            Err(err) => {
+                error!("Error parsing claims request {:?}", err);
+                return Err(OpenIdError::invalid_request("Invalid claims parameter"));
+            }
+        }
+    } else {
+        None
+    };
+    Ok(claims)
 }

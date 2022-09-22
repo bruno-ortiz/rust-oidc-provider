@@ -72,6 +72,8 @@ mod tests {
             acr: Acr::default(),
             amr: None,
             auth_time: OffsetDateTime::now_utc(),
+            claims: None,
+            max_age: None,
         };
         let rsa_key = Jwk::from_bytes(r#"
         {

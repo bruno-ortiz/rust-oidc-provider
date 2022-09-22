@@ -39,6 +39,7 @@ message AuthorisationRequestInfo{
   optional bool include_granted_scopes = 11;
   optional string request_uri = 12;
   optional string prompt = 13;
+  optional string requested_acr = 14;
 }
 
 message AuthenticatedUserInfo {

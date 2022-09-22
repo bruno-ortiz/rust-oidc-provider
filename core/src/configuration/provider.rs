@@ -26,16 +26,19 @@ use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
 use oidc_types::scopes::Scopes;
 use oidc_types::subject_type::SubjectType;
 use oidc_types::{response_type, scopes};
+use ClaimConfiguration::{Scoped, Standalone};
 
 use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::pkce::PKCE;
+use crate::configuration::profile::ClaimConfiguration;
 use crate::configuration::routes::Routes;
 use crate::configuration::ttl::TTL;
 use crate::error::OpenIdError;
 use crate::grant_type::RTContext;
 use crate::keystore::KeyStore;
 use crate::models::client::AuthenticatedClient;
+use crate::profile::{NoOpProfileResolver, ProfileResolver};
 use crate::services::types::Interaction;
 
 static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();
@@ -94,7 +97,7 @@ pub struct OpenIDProviderConfiguration {
     token_endpoint_auth_signing_alg_values_supported: Vec<SigningAlgorithm>,
     display_values_supported: Option<Vec<String>>,
     claim_types_supported: Option<Vec<ClaimType>>,
-    claims_supported: Vec<String>,
+    claims_supported: Vec<ClaimConfiguration>,
     service_documentation: Option<String>,
     claims_locales_supported: Option<Vec<String>>,
     ui_locales_supported: Option<Vec<String>>,
@@ -121,6 +124,10 @@ pub struct OpenIDProviderConfiguration {
     validate_refresh_token: ValidateRefreshTokenFunc,
     #[getset(skip)]
     rotate_refresh_token: RotateRefreshTokenFunc,
+    profile_resolver: Box<dyn ProfileResolver + Send + Sync>,
+    #[getset(skip)]
+    #[get_copy = "pub"]
+    enable_userinfo: bool,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -216,7 +223,13 @@ impl Default for OpenIDProviderConfiguration {
             }),
             auth_max_age: 3600,
             subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise],
-            claims_supported: vec![],
+            claims_supported: vec![
+                Standalone("acr"),
+                Standalone("auth_time"),
+                Standalone("iss"),
+                Standalone("sid"),
+                Scoped("openid", vec!["sub"]),
+            ],
             acr_values_supported: None,
             authorization_signing_alg_values_supported: Some(vec![
                 SigningAlgorithm::from(RS256),
@@ -330,6 +343,8 @@ impl Default for OpenIDProviderConfiguration {
             request_parameter_supported: false,
             request_uri_parameter_supported: true,
             require_request_uri_registration: false,
+            profile_resolver: Box::new(NoOpProfileResolver),
+            enable_userinfo: false,
         }
     }
 }

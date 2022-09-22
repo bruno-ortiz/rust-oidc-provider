@@ -91,13 +91,13 @@ impl AuthenticatedUser {
     }
 }
 
-impl Identifiable<String> for AuthenticatedUser {
-    fn id(&self) -> String {
-        self.session.to_string()
+impl Identifiable<SessionID> for AuthenticatedUser {
+    fn id(&self) -> SessionID {
+        self.session
     }
 }
 
 pub async fn find_user_by_session(session: SessionID) -> Option<AuthenticatedUser> {
     let config = OpenIDProviderConfiguration::instance();
-    config.adapters().user().find(&session.to_string()).await
+    config.adapters().user().find(&session).await
 }

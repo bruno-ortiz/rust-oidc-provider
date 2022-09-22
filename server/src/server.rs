@@ -21,6 +21,7 @@ use crate::routes::authorisation::authorise;
 use crate::routes::discovery::{discovery, DISCOVERY_ROUTE};
 use crate::routes::jwks::jwks;
 use crate::routes::token::token;
+use crate::routes::userinfo::userinfo;
 
 #[derive(Debug, Error)]
 pub enum ServerError {
@@ -85,7 +86,8 @@ impl OidcServer {
                 get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
             )
             .route(routes.jwks, get(jwks))
-            .route(routes.token, post(token));
+            .route(routes.token, post(token))
+            .route(routes.userinfo, get(userinfo).post(userinfo));
         if let Some(custom_routes) = self.custom_routes.as_ref().cloned() {
             router = router.nest("/", custom_routes);
         }
@@ -99,7 +101,6 @@ impl OidcServer {
                 .layer(SessionManagerLayer::signed(&[0; 32])) //TODO: key configuration
                 .add_extension(Arc::new(DynamicResponseModeEncoder::from(configuration)))
                 .add_extension(authorisation_service)
-                .add_extension(configuration)
                 .add_extension(interaction_client),
         )
     }

@@ -21,14 +21,21 @@ pub enum Scope {
 
 impl Scope {
     pub fn simple<P: AsRef<str>>(scope: P) -> Self {
-        Self::Simple(scope.as_ref().to_owned())
+        Self::Simple(scope.as_ref().to_lowercase())
+    }
+
+    pub fn value_ref(&self) -> &str {
+        match self {
+            Scope::Simple(scope) => scope.as_str(),
+            Scope::Parameterized(scope, _) => scope.as_str(),
+        }
     }
 
     pub fn value(&self) -> String {
         match self {
-            Scope::Simple(scope) => scope.to_lowercase(),
+            Scope::Simple(scope) => scope.to_owned(),
             Scope::Parameterized(scope, param) => {
-                format!("{}:{}", scope.to_lowercase(), param)
+                format!("{}:{}", scope, param)
             }
         }
     }
@@ -60,6 +67,10 @@ impl Scopes {
 
     pub fn from_vec(values: Vec<Scope>) -> Self {
         Scopes(values)
+    }
+
+    pub fn empty() -> Self {
+        Scopes(vec![])
     }
 
     pub fn get(&self, idx: usize) -> Option<&Scope> {

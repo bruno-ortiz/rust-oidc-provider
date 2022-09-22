@@ -65,7 +65,7 @@ impl IntoResponse for TokenRequestError {
         error!("{:?}", self);
         let openid_error = match self {
             TokenRequestError::Credentials(err) => err.into(),
-            TokenRequestError::ReadBody(err) => OpenIdError::server_error(err.into()),
+            TokenRequestError::ReadBody(err) => OpenIdError::server_error(err),
             TokenRequestError::ParseBody(_) => {
                 OpenIdError::invalid_request("Error parsing body params")
             }

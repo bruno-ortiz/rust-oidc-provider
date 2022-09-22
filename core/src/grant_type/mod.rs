@@ -50,7 +50,7 @@ async fn create_access_token(
     AccessToken::bearer(duration, Some(scopes))
         .save()
         .await
-        .map_err(|err| OpenIdError::server_error(err.into()))
+        .map_err(OpenIdError::server_error)
 }
 
 #[derive(Copy, Clone)]

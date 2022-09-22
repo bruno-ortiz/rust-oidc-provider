@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 
+use oidc_types::claims::{ClaimOptions, Claims};
 use oidc_types::code::Code;
 
 use crate::configuration::OpenIDProviderConfiguration;
@@ -9,6 +10,7 @@ use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::models::authorisation_code::AuthorisationCode;
 use crate::models::Status;
+use crate::prepare_claims;
 use crate::response_type::resolver::ResponseTypeResolver;
 
 pub(crate) struct CodeResolver;
@@ -22,6 +24,7 @@ impl ResponseTypeResolver for CodeResolver {
         let grant = context.user.grant().ok_or_else(|| {
             OpenIdError::server_error(anyhow!("Trying to authorise user with no grant"))
         })?;
+
         let configuration = OpenIDProviderConfiguration::instance();
         let ttl = configuration.ttl();
         let code = AuthorisationCode {
@@ -36,17 +39,50 @@ impl ResponseTypeResolver for CodeResolver {
             scopes: grant.scopes().clone(),
             nonce: context.request.nonce.clone(),
             state: context.request.state.clone(),
+            max_age: context.request.max_age,
             acr: context.user.acr().clone(),
             amr: context.user.amr().cloned(),
             auth_time: context.user.auth_time(),
+            claims: prepare_claims!(context, (acr_values, "acr"), (max_age, "auth_time")),
         };
         let code = configuration
             .adapters()
             .code()
             .save(code)
             .await
-            .map_err(|err| OpenIdError::server_error(err.into()))?;
+            .map_err(OpenIdError::server_error)?;
         return Ok(code.code);
+    }
+}
+
+mod macros {
+    #[macro_export]
+    macro_rules! prepare_claims {
+        ($ctx:ident, ($opt:ident, $claim:expr)$(,($opt2:ident, $claim2:expr))* ) => {
+            {
+                let request = &$ctx.request;
+                if request.$opt.is_some() $(|| request.$opt2.is_some())*  {
+                    let mut c = if let Some(claims) = &request.claims {
+                        claims.clone()
+                    } else {
+                        Claims::default()
+                    };
+                    if request.$opt.is_some() {
+                        c.id_token.insert($claim.to_owned(), ClaimOptions::voluntary());
+                        c.userinfo.insert($claim.to_owned(), ClaimOptions::voluntary());
+                    }
+                    $(
+                      if request.$opt2.is_some() {
+                        c.id_token.insert($claim2.to_owned(), ClaimOptions::voluntary());
+                        c.userinfo.insert($claim2.to_owned(), ClaimOptions::voluntary());
+                      }
+                    )*
+                    Some(c)
+                } else {
+                    request.claims.clone()
+                }
+            }
+        };
     }
 }
 

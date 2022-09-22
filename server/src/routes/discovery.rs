@@ -28,7 +28,14 @@ pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata
         .response_modes_supported(configuration.response_modes_supported())
         .grant_types_supported(configuration.grant_types_supported())
         .scopes_supported(configuration.scopes_supported().inner())
-        .claims_supported(configuration.claims_supported())
+        .claims_supported(
+            configuration
+                .claims_supported()
+                .iter()
+                .flat_map(|it| it.claims())
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>(),
+        )
         .claim_types_supported(configuration.claim_types_supported().as_ref())
         .claims_parameter_supported(configuration.claims_parameter_supported())
         .tls_client_certificate_bound_access_tokens(false) //todo: implement mtls

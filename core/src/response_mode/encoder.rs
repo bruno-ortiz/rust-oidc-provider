@@ -99,7 +99,7 @@ pub fn encode_response<E: ResponseModeEncoder, P: UrlEncodable>(
 ) -> std::result::Result<AuthorisationResponse, AuthorisationError> {
     let result = encoder
         .encode(&context, parameters.params())
-        .map_err(|err| OpenIdError::server_error(err.into()));
+        .map_err(OpenIdError::server_error);
     match result {
         Ok(res) => Ok(res),
         Err(err) => encode_err(&context, err),

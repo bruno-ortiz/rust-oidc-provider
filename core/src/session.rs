@@ -4,7 +4,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use uuid::{Error as UuidError, Uuid};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct SessionID(Uuid);
 
 impl SessionID {

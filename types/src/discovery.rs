@@ -40,7 +40,7 @@ pub struct OIDCProviderMetadata<'a> {
     authorization_encryption_alg_values_supported: Option<&'a Vec<EncryptionAlgorithm>>,
     authorization_encryption_enc_values_supported: Option<&'a Vec<ContentEncryptionAlgorithm>>,
     subject_types_supported: &'a Vec<SubjectType>,
-    claims_supported: &'a Vec<String>,
+    claims_supported: Vec<String>,
     claim_types_supported: Option<&'a Vec<ClaimType>>,
     claims_parameter_supported: bool,
     request_parameter_supported: bool,

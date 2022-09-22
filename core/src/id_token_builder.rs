@@ -1,9 +1,11 @@
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::time::SystemTime;
 
 use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
-use josekit::{Number, Value};
+use josekit::{JoseError, Number, Value};
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -33,6 +35,8 @@ pub enum IdTokenError {
     },
     #[error("Required id_token claim {} not found", .0)]
     MissingRequiredClaim(String),
+    #[error("Failed to set claim")]
+    SetClaimFailure(#[from] JoseError),
 }
 
 #[derive(Debug)]
@@ -43,14 +47,12 @@ pub struct IdTokenBuilder<'a> {
     audience: Vec<String>,
     expires_at: Option<OffsetDateTime>,
     issued_at: Option<OffsetDateTime>,
-    auth_time: Option<OffsetDateTime>,
     nonce: Option<&'a Nonce>,
-    acr: Option<&'a Acr>,
-    amr: Option<&'a Amr>,
     azp: Option<String>,
     s_hash: Option<String>,
     c_hash: Option<String>,
     at_hash: Option<String>,
+    custom_claims: HashMap<&'a str, Cow<'a, Value>>,
 }
 
 impl<'a> IdTokenBuilder<'a> {
@@ -62,14 +64,12 @@ impl<'a> IdTokenBuilder<'a> {
             audience: Vec::new(),
             expires_at: None,
             issued_at: None,
-            auth_time: None,
             nonce: None,
-            acr: None,
-            amr: None,
             azp: None,
             s_hash: None,
             c_hash: None,
             at_hash: None,
+            custom_claims: HashMap::new(),
         }
     }
 
@@ -98,25 +98,23 @@ impl<'a> IdTokenBuilder<'a> {
         self
     }
 
-    pub fn with_auth_time(mut self, auth_time: OffsetDateTime) -> Self {
-        self.auth_time = Some(auth_time);
-        self
-    }
-
     pub fn with_nonce(mut self, nonce: Option<&'a Nonce>) -> Self {
         self.nonce = nonce;
         self
     }
-    pub fn with_acr(mut self, acr: &'a Acr) -> Self {
-        self.acr = Some(acr);
-        self
-    }
-    pub fn with_amr(mut self, amr: Option<&'a Amr>) -> Self {
-        self.amr = amr;
-        self
-    }
     pub fn with_azp(mut self, azp: &str) -> Self {
         self.azp = Some(azp.to_owned());
+        self
+    }
+
+    pub fn with_claim<T: Into<Value>>(mut self, key: &'a str, value: T) -> Self {
+        self.custom_claims.insert(key, Cow::Owned(value.into()));
+        self
+    }
+
+    pub fn with_custom_claims(mut self, claims: HashMap<&'a str, &'a Value>) -> Self {
+        self.custom_claims
+            .extend(claims.iter().map(|(&k, &v)| (k, Cow::Borrowed(v))));
         self
     }
 
@@ -156,14 +154,16 @@ impl<'a> IdTokenBuilder<'a> {
         payload.set_expires_at(&self.expires_at.required("expires_at")?.into());
         payload.set_issued_at(&self.issued_at.required("issued_at")?.into());
 
-        payload.set_auth_time(self.auth_time);
         payload.set_nonce(self.nonce.cloned());
-        payload.set_acr(self.acr);
-        payload.set_amr(self.amr);
         payload.set_azp(self.azp);
         payload.set_s_hash(self.s_hash);
         payload.set_c_hash(self.c_hash);
         payload.set_at_hash(self.at_hash);
+
+        for (claim, value) in self.custom_claims {
+            payload.set_claim(claim, Some(value.into_owned()))?;
+        }
+
         let jwt = JWT::new(header, payload, self.signing_key)
             .map_err(|err| IdTokenError::EncodingErr { source: err })?;
         Ok(IdToken::new(jwt))
@@ -172,7 +172,7 @@ impl<'a> IdTokenBuilder<'a> {
     fn build_hash<H: Hashable>(signing_key: &Jwk, hashable: &H) -> Result<String, OpenIdError> {
         let hash = hashable
             .hash(signing_key)
-            .map_err(|source| OpenIdError::server_error(source.into()))?;
+            .map_err(OpenIdError::server_error)?;
         Ok(hash)
     }
 }

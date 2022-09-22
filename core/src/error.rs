@@ -94,7 +94,7 @@ impl OpenIdError {
         Self::new(OpenIdErrorType::UnauthorizedClient, description)
     }
 
-    pub fn server_error(source: anyhow::Error) -> Self {
+    pub fn server_error<T: Display>(source: T) -> Self {
         Self::new(OpenIdErrorType::ServerError, source.to_string())
     }
 
@@ -114,6 +114,6 @@ impl UrlEncodable for OpenIdError {
 
 impl From<PersistenceError> for OpenIdError {
     fn from(err: PersistenceError) -> Self {
-        OpenIdError::server_error(err.into())
+        OpenIdError::server_error(err)
     }
 }

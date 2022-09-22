@@ -28,7 +28,7 @@ impl GrantTypeResolver for ClientCredentialsGrant {
         let access_token = AccessToken::bearer(at_duration, scopes)
             .save()
             .await
-            .map_err(|err| OpenIdError::server_error(err.into()))?;
+            .map_err(OpenIdError::server_error)?;
         Ok(TokenResponse::new(
             access_token.token,
             access_token.t_type,

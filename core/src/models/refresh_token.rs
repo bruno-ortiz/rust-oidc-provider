@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
+use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::nonce::Nonce;
@@ -18,12 +19,12 @@ use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::client::AuthenticatedClient;
-use crate::models::Status;
+use crate::models::{Status, Token};
 
 #[derive(Debug, Clone, Eq, PartialEq, Builder)]
 #[builder(setter(into))]
 pub struct RefreshToken {
-    pub token: Uuid,
+    pub token: String,
     pub client_id: ClientID,
     #[builder(default)]
     pub status: Status,
@@ -37,12 +38,14 @@ pub struct RefreshToken {
     pub state: Option<State>,
     pub amr: Option<Amr>,
     pub auth_time: OffsetDateTime,
+    pub claims: Option<Claims>,
+    pub max_age: Option<u64>,
 }
 
 impl RefreshToken {
     pub fn new_from(old_rt: RefreshToken) -> Result<Self, OpenIdError> {
         RefreshTokenBuilder::default()
-            .token(Uuid::new_v4())
+            .token(Uuid::new_v4().to_string())
             .status(Status::Awaiting)
             .redirect_uri(old_rt.redirect_uri)
             .client_id(old_rt.client_id)
@@ -55,8 +58,10 @@ impl RefreshToken {
             .expires_in(old_rt.expires_in)
             .created(old_rt.created)
             .auth_time(old_rt.auth_time)
+            .claims(old_rt.claims)
+            .max_age(old_rt.max_age)
             .build()
-            .map_err(|err| OpenIdError::server_error(err.into()))
+            .map_err(OpenIdError::server_error)
     }
 
     pub async fn save(self) -> Result<RefreshToken, PersistenceError> {
@@ -77,7 +82,7 @@ impl RefreshToken {
             .refresh()
             .save(self)
             .await
-            .map_err(|err| OpenIdError::server_error(err.into()))
+            .map_err(OpenIdError::server_error)
     }
 
     pub async fn validate(self, client: &AuthenticatedClient) -> Result<Self, OpenIdError> {
@@ -112,12 +117,42 @@ impl RefreshToken {
 
 impl Identifiable<String> for RefreshToken {
     fn id(&self) -> String {
-        self.token.to_string()
+        self.token.clone()
     }
 }
 
 impl Display for RefreshToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.token)
+    }
+}
+
+impl Token for RefreshToken {
+    fn subject(&self) -> &Subject {
+        &self.subject
+    }
+
+    fn auth_time(&self) -> u64 {
+        self.auth_time.unix_timestamp() as u64
+    }
+
+    fn acr(&self) -> &Acr {
+        &self.acr
+    }
+
+    fn amr(&self) -> Option<&Amr> {
+        self.amr.as_ref()
+    }
+
+    fn scopes(&self) -> &Scopes {
+        &self.scopes
+    }
+
+    fn claims(&self) -> Option<&Claims> {
+        self.claims.as_ref()
+    }
+
+    fn nonce(&self) -> Option<&Nonce> {
+        self.nonce.as_ref()
     }
 }

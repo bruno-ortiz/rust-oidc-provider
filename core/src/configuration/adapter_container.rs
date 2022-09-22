@@ -12,6 +12,7 @@ use crate::models::authorisation_code::AuthorisationCode;
 use crate::models::client::ClientInformation;
 use crate::models::refresh_token::RefreshToken;
 use crate::services::types::Interaction;
+use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
 
 pub struct AdapterContainer {
@@ -19,7 +20,7 @@ pub struct AdapterContainer {
     token: Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync>,
     refresh: Arc<dyn Adapter<Item = RefreshToken, Id = String> + Send + Sync>,
     client: Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>,
-    user: Arc<dyn Adapter<Item = AuthenticatedUser, Id = String> + Send + Sync>,
+    user: Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync>,
     interaction: Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>,
 }
 
@@ -42,7 +43,7 @@ impl AdapterContainer {
         self.client.clone()
     }
 
-    pub fn user(&self) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = String> + Send + Sync> {
+    pub fn user(&self) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync> {
         self.user.clone()
     }
 

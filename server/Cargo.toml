@@ -14,9 +14,9 @@ uuid = { version = "1.1.2", features = ["v4", "serde"] }
 serde = { version = "1.0.139", features = ["derive"] }
 serde_urlencoded = "0.7.1"
 serde_with = "2.0.0"
-axum = { version = "0.5.12", features = ["headers", "form"] }
+axum = { version = "0.5.16", features = ["headers", "form"] }
 hyper = { version = "0.14.20", features = ["full"] }
-tokio = { version = "1.20.0", features = ["full"] }
+tokio = { version = "1.21.1", features = ["full"] }
 tower-http = { version = "0.3.4", features = ["fs", "add-extension", "util", "trace"] }
 tower = "0.4.13"
 tower-cookies = { version = "0.7.0", features = ["signed"] }
