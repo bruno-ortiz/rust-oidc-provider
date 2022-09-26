@@ -8,11 +8,12 @@ use url::Url;
 use oidc_types::acr::Acr;
 use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
+use oidc_types::grant_type::GrantType;
 use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
-use oidc_types::response_type::ResponseType;
+use oidc_types::response_type::{Flow, ResponseType};
 use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 
@@ -183,6 +184,14 @@ impl AuthorisationRequest {
                 if !AuthorisationRequest::server_allows_response_type(configuration, rt) {
                     return Err(OpenIdError::unsupported_response_type(
                         "Unsupported response type",
+                    ));
+                }
+                let flow_type = rt.flow();
+                if flow_type == Flow::Implicit
+                    && client.metadata().grant_types.contains(&GrantType::Implicit)
+                {
+                    return Err(OpenIdError::invalid_request(
+                        "Client not allowed to execute a implicit flow",
                     ));
                 }
                 let response_type_allowed = rt
