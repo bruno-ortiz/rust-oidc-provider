@@ -3,12 +3,12 @@ use async_trait::async_trait;
 use time::OffsetDateTime;
 use tracing::error;
 
+use oidc_types::code::Code;
+use oidc_types::response_type::Flow;
+use oidc_types::simple_id_token::SimpleIdToken;
+
 use crate::claims::get_id_token_claims;
 use crate::configuration::OpenIDProviderConfiguration;
-use oidc_types::code::Code;
-use oidc_types::id_token::IdToken;
-use oidc_types::response_type::Flow;
-
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::id_token_builder::IdTokenBuilder;
@@ -29,7 +29,7 @@ impl<'a> IDTokenResolver<'a> {
 }
 #[async_trait]
 impl ResponseTypeResolver for IDTokenResolver<'_> {
-    type Output = IdToken;
+    type Output = SimpleIdToken;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
@@ -69,7 +69,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 error!("{:?}", err);
                 OpenIdError::server_error(err)
             })?;
-        Ok(id_token)
+        Ok(SimpleIdToken::new(id_token.serialized()))
     }
 }
 

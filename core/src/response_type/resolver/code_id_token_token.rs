@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use oidc_types::code::Code;
 
-use oidc_types::id_token::IdToken;
+use oidc_types::code::Code;
+use oidc_types::simple_id_token::SimpleIdToken;
 
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
@@ -15,7 +15,7 @@ pub struct CodeIdTokenTokenResolver;
 
 #[async_trait]
 impl ResponseTypeResolver for CodeIdTokenTokenResolver {
-    type Output = (Code, IdToken, AccessToken);
+    type Output = (Code, SimpleIdToken, AccessToken);
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let code = CodeResolver.resolve(context);

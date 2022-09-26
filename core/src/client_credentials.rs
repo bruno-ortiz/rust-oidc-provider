@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::client::{ClientID, ParseError};
+use oidc_types::client::{ClientID, ParseError};
+use oidc_types::jose::error::JWTError;
+use oidc_types::jose::jwt2::{SignedJWT, JWT};
+
 use crate::client_credentials::CredentialError::MissingParam;
-use crate::jose::error::JWTError;
-use crate::jose::jwt::JWT;
 
 const SECRET_KEY: &str = "client_secret";
 const ASSERTION_KEY: &str = "client_assertion";
@@ -61,15 +62,19 @@ impl TryFrom<&HashMap<String, String>> for ClientSecretCredential {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ClientAssertion(SignedJWT);
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct JWTCredential {
     client_assertion_type: String,
-    client_assertion: JWT,
+    client_assertion: ClientAssertion,
 }
 
 impl JWTCredential {
     pub fn client_id(&self) -> Result<ClientID, CredentialError> {
         let client_id = self
             .client_assertion
+            .0
             .payload()
             .subject()
             .ok_or(CredentialError::MissingSub)?
@@ -88,14 +93,15 @@ impl TryFrom<&HashMap<String, String>> for JWTCredential {
     fn try_from(value: &HashMap<String, String>) -> Result<Self, Self::Error> {
         let client_assertion = value
             .get(ASSERTION_KEY)
-            .ok_or(MissingParam(ASSERTION_KEY))?
-            .parse()?;
+            .ok_or(MissingParam(ASSERTION_KEY))?;
         let client_assertion_type = value
             .get(ASSERTION_TYPE_KEY)
             .ok_or(MissingParam(ASSERTION_TYPE_KEY))
             .cloned()?;
+
+        let client_assertion = SignedJWT::decode_no_verify(client_assertion)?;
         Ok(Self {
-            client_assertion,
+            client_assertion: ClientAssertion(client_assertion),
             client_assertion_type,
         })
     }

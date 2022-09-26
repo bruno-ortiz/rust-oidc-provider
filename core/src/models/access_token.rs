@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use oidc_types::client::ClientID;
 use serde::Serialize;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -16,6 +17,7 @@ pub struct AccessToken {
     pub token: String,
     pub t_type: String,
     pub expires_in: Duration,
+    client_id: ClientID,
     created: OffsetDateTime,
     scopes: Option<Scopes>,
 }
@@ -27,6 +29,7 @@ impl AccessToken {
         token_type: TT,
         expires_in: Duration,
         scopes: Option<Scopes>,
+        client_id: ClientID,
     ) -> Self {
         Self {
             token: Uuid::new_v4().to_string(),
@@ -34,11 +37,12 @@ impl AccessToken {
             created: OffsetDateTime::now_utc(),
             expires_in,
             scopes,
+            client_id,
         }
     }
 
-    pub fn bearer(expires_in: Duration, scopes: Option<Scopes>) -> Self {
-        Self::new(AccessToken::BEARER_TYPE, expires_in, scopes)
+    pub fn bearer(client_id: ClientID, expires_in: Duration, scopes: Option<Scopes>) -> Self {
+        Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, client_id)
     }
 
     pub async fn find(id: &str) -> Option<AccessToken> {

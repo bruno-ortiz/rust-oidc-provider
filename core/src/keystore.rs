@@ -27,7 +27,7 @@ pub struct SelectOption<'a> {
     keystore: &'a KeyStore,
     #[builder(setter(custom))]
     key_use: String,
-    #[builder(default)]
+    #[builder(default, setter(strip_option = false))]
     kid: Option<String>,
     #[builder(default)]
     kty: Option<String>,

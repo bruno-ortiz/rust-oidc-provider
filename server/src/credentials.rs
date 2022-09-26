@@ -10,19 +10,19 @@ use serde_urlencoded::from_bytes;
 use thiserror::Error;
 use tracing::error;
 
-use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_core::error::OpenIdError;
-use oidc_types::auth_method::AuthMethod;
-use oidc_types::client::ClientID;
-use oidc_types::client_credentials::ClientCredential::{
+use oidc_core::client_credentials::ClientCredential::{
     ClientSecretBasic, ClientSecretJwt, ClientSecretPost, PrivateKeyJwt, SelfSignedTlsClientAuth,
     TlsClientAuth,
 };
-use oidc_types::client_credentials::{
+use oidc_core::client_credentials::{
     ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, CredentialError,
     JWTCredential, PrivateKeyJWTCredential, SelfSignedTLSClientAuthCredential,
     TLSClientAuthCredential,
 };
+use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_core::error::OpenIdError;
+use oidc_types::auth_method::AuthMethod;
+use oidc_types::client::ClientID;
 
 #[derive(Debug, Error)]
 pub enum CredentialsError {

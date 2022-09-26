@@ -121,7 +121,6 @@ impl ResponseType {
         } else if *self == *CODE_ID_TOKEN_FLOW
             || *self == *CODE_TOKEN_FLOW
             || *self == *CODE_ID_TOKEN_TOKEN_FLOW
-            || *self == *ID_TOKEN_TOKEN_FLOW
         {
             Flow::Hybrid
         } else {

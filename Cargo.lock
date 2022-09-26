@@ -1360,6 +1360,7 @@ dependencies = [
 name = "oidc-types"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "base64",
  "derive_builder",
  "derive_more",

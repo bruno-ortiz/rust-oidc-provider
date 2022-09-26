@@ -32,6 +32,7 @@ use crate::configuration::adapter_container::AdapterContainer;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::profile::ClaimConfiguration;
+use crate::configuration::request_object::RequestObjectConfiguration;
 use crate::configuration::routes::Routes;
 use crate::configuration::ttl::TTL;
 use crate::error::OpenIdError;
@@ -128,6 +129,7 @@ pub struct OpenIDProviderConfiguration {
     #[getset(skip)]
     #[get_copy = "pub"]
     enable_userinfo: bool,
+    request_object: RequestObjectConfiguration,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -345,6 +347,7 @@ impl Default for OpenIDProviderConfiguration {
             require_request_uri_registration: false,
             profile_resolver: Box::new(NoOpProfileResolver),
             enable_userinfo: false,
+            request_object: Default::default(),
         }
     }
 }

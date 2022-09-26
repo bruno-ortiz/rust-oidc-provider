@@ -15,7 +15,11 @@ impl ResponseTypeResolver for TokenResolver {
         let configuration = OpenIDProviderConfiguration::instance();
         let ttl = configuration.ttl();
         let at_ttl = ttl.access_token_ttl(context.client.as_ref());
-        let token = AccessToken::bearer(at_ttl, Some(context.request.scope.clone()));
+        let token = AccessToken::bearer(
+            context.client.id(),
+            at_ttl,
+            Some(context.request.scope.clone()),
+        );
         let token = configuration
             .adapters()
             .token()

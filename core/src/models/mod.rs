@@ -5,7 +5,7 @@ use oidc_types::nonce::Nonce;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
-pub(crate) mod access_token;
+pub mod access_token;
 pub(crate) mod authorisation_code;
 pub mod client;
 pub(crate) mod refresh_token;

@@ -1,4 +1,4 @@
-use crate::id_token::IdToken;
+use crate::simple_id_token::SimpleIdToken;
 use serde::{Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use time::Duration;
@@ -11,7 +11,7 @@ pub struct TokenResponse {
     #[serde(serialize_with = "serialize_duration")]
     expires_in: Duration,
     refresh_token: Option<String>,
-    id_token: Option<IdToken>,
+    id_token: Option<SimpleIdToken>,
 }
 
 impl TokenResponse {
@@ -20,7 +20,7 @@ impl TokenResponse {
         token_type: String,
         expires_in: Duration,
         refresh_token: Option<String>,
-        id_token: Option<IdToken>,
+        id_token: Option<SimpleIdToken>,
     ) -> Self {
         Self {
             token,

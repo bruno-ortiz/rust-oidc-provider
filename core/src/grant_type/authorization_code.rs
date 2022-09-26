@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::claims::get_id_token_claims;
 use oidc_types::pkce::CodeChallengeError;
 use oidc_types::scopes::OPEN_ID;
+use oidc_types::simple_id_token::SimpleIdToken;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
@@ -37,7 +38,8 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let ttl = configuration.ttl();
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token = create_access_token(at_duration, code.scopes.clone()).await?;
+        let access_token =
+            create_access_token(client.id(), at_duration, code.scopes.clone()).await?;
 
         let mut id_token = None;
         if code.scopes.contains(&OPEN_ID) {
@@ -92,7 +94,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .map_err(OpenIdError::server_error)?
                 .save()
                 .await?;
-            rt = Some(refresh_token.token.to_string())
+            rt = Some(refresh_token.token)
         }
 
         Ok(TokenResponse::new(
@@ -100,7 +102,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             access_token.t_type,
             access_token.expires_in,
             rt,
-            id_token,
+            id_token.map(|it| SimpleIdToken::new(it.serialized())),
         ))
     }
 }

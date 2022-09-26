@@ -16,9 +16,10 @@ pub use josekit::jws::*;
 
 pub mod error;
 pub mod jwe;
+pub mod jwk_ext;
 pub mod jwk_set;
 pub mod jws;
-pub mod jwt;
+pub mod jwt2;
 
 pub trait JwsHeaderExt {
     fn from_key(key: &Jwk) -> Self;

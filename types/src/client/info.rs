@@ -15,7 +15,7 @@ use crate::jose::jwe::alg::EncryptionAlgorithm;
 use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
 use crate::jose::jwk_set::JwkSet;
 use crate::jose::jws::SigningAlgorithm;
-use crate::jose::jwt::JWT;
+use crate::jose::jwt2::SignedJWT;
 use crate::response_type::ResponseTypeValue;
 use crate::scopes::Scopes;
 use crate::subject_type::SubjectType;
@@ -60,7 +60,7 @@ impl Default for ClientID {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Builder)]
+#[derive(Serialize, Debug, Clone, Builder)]
 #[builder(setter(into, strip_option), default)]
 pub struct ClientMetadata {
     pub redirect_uris: Vec<Url>,
@@ -100,7 +100,7 @@ pub struct ClientMetadata {
     pub scope: Scopes,
     pub software_id: Option<Uuid>,
     pub software_version: Option<String>,
-    pub software_statement: Option<JWT>,
+    pub software_statement: Option<SignedJWT>,
 }
 
 impl Default for ClientMetadata {

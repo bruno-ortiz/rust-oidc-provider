@@ -4,7 +4,7 @@ use josekit::jwt::JwtPayload;
 use josekit::Value;
 use time::{Duration, OffsetDateTime};
 
-use oidc_types::jose::jwt::JWT;
+use oidc_types::jose::jwt2::{SignedJWT, JWT};
 use oidc_types::jose::JwsHeaderExt;
 use oidc_types::response_mode::ResponseMode;
 
@@ -36,11 +36,11 @@ impl ResponseModeEncoder for JwtEncoder {
             .ok_or(EncodingError::MissingSigningKey)?;
         let header = JwsHeader::from_key(signing_key);
         let payload = self.build_payload(configuration, context, parameters);
-        let jwt = JWT::encode_string(header, payload, signing_key)
+        let jwt = SignedJWT::new(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
 
         let mut params = IndexMap::new();
-        params.insert("response".to_owned(), jwt);
+        params.insert("response".to_owned(), jwt.serialized_owned());
 
         match context.response_mode {
             ResponseMode::QueryJwt => QueryEncoder.encode(context, params),

@@ -25,7 +25,7 @@ impl GrantTypeResolver for ClientCredentialsGrant {
             None
         };
         let at_duration = ttl.client_credentials_ttl(client.as_ref());
-        let access_token = AccessToken::bearer(at_duration, scopes)
+        let access_token = AccessToken::bearer(client.id(), at_duration, scopes)
             .save()
             .await
             .map_err(OpenIdError::server_error)?;

@@ -30,7 +30,7 @@ where
     E: ResponseModeEncoder,
 {
     let client = get_client(&request).await?;
-    match request.0.validate(&client) {
+    match request.0.validate(&client).await {
         Ok(req) => {
             let res = auth_service
                 .authorise(session.session_id(), client, req)

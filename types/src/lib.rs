@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod acr;
 pub mod amr;
 pub mod application_type;
@@ -5,13 +7,11 @@ pub mod auth_method;
 pub mod claim_type;
 pub mod claims;
 pub mod client;
-pub mod client_credentials;
 pub mod code;
 pub mod discovery;
 pub mod grant;
 pub mod grant_type;
 pub mod hash;
-pub mod id_token;
 pub mod identifiable;
 pub mod issuer;
 pub mod jose;
@@ -24,6 +24,7 @@ pub mod response_mode;
 pub mod response_type;
 pub mod scopes;
 pub mod secret;
+pub mod simple_id_token;
 pub mod state;
 pub mod subject;
 pub mod subject_type;

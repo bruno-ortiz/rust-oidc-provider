@@ -58,6 +58,14 @@ impl ClientInformation {
         }
     }
 
+    pub async fn keystore(&self, alg: &SigningAlgorithm) -> anyhow::Result<Arc<KeyStore>> {
+        if alg.is_symmetric() {
+            Ok(self.symmetric_keystore())
+        } else {
+            self.asymmetric_keystore().await
+        }
+    }
+
     pub fn symmetric_keystore(&self) -> Arc<KeyStore> {
         keystore::create_symmetric(self)
     }

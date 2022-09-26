@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 
 use crate::claims::get_id_token_claims;
 use oidc_types::scopes::OPEN_ID;
+use oidc_types::simple_id_token::SimpleIdToken;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::RefreshTokenGrant;
 
@@ -49,7 +50,8 @@ impl GrantTypeResolver for RefreshTokenGrant {
         }
         let at_duration = ttl.access_token_ttl(client.as_ref());
 
-        let access_token = create_access_token(at_duration, refresh_token.scopes.clone()).await?;
+        let access_token =
+            create_access_token(client.id(), at_duration, refresh_token.scopes.clone()).await?;
 
         let mut id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
@@ -85,7 +87,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
             access_token.t_type,
             access_token.expires_in,
             rt_token,
-            id_token,
+            id_token.map(|it| SimpleIdToken::new(it.serialized())),
         ))
     }
 }

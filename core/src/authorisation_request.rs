@@ -1,3 +1,4 @@
+use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use std::str::FromStr;
 
 use serde::Deserialize;
@@ -7,7 +8,6 @@ use url::Url;
 use oidc_types::acr::Acr;
 use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
-use oidc_types::jose::jwt::JWT;
 use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;
@@ -18,6 +18,7 @@ use oidc_types::state::State;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
+use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
 
 #[derive(Debug, Clone)]
@@ -36,7 +37,7 @@ pub struct ValidatedAuthorisationRequest {
     //rfc8707
     pub include_granted_scopes: Option<bool>,
     pub request_uri: Option<Url>,
-    pub request: Option<JWT>,
+    pub request: Option<ValidJWT<GenericJWT>>,
     pub prompt: Option<Vec<Prompt>>,
     pub acr_values: Option<Acr>,
     pub claims: Option<Claims>,
@@ -75,19 +76,20 @@ pub struct AuthorisationRequest {
     //rfc8707
     pub include_granted_scopes: Option<bool>,
     pub request_uri: Option<Url>,
-    pub request: Option<JWT>,
+    pub request: Option<String>,
     pub prompt: Option<String>,
     pub acr_values: Option<Acr>,
     pub claims: Option<String>,
 }
 
 impl AuthorisationRequest {
-    pub fn validate(
+    pub async fn validate(
         self,
         client: &ClientInformation,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
+        let configuration = OpenIDProviderConfiguration::instance();
         let this = self;
-        if let Err(err) = this.validate_response_type(client) {
+        if let Err(err) = this.validate_response_type(configuration, client) {
             return Err((err, this));
         }
         if let Err(err) = this.validate_scopes(client) {
@@ -123,11 +125,15 @@ impl AuthorisationRequest {
         }
         let prompt = prompt.map(|it| it.into_iter().map(Result::unwrap).collect());
 
-        let claims = match parse_claims(&this) {
+        let claims = match parse_claims(configuration, &this) {
             Ok(c) => c,
             Err(err) => return Err((err, this)),
         };
 
+        let request_object = match process_request_object(client, configuration, &this).await {
+            Ok(ro) => ro,
+            Err(err) => return Err((err, this)),
+        };
         Ok(ValidatedAuthorisationRequest {
             response_type: this.response_type.expect("Response type not found"),
             client_id: this
@@ -144,7 +150,7 @@ impl AuthorisationRequest {
             resource: this.resource,
             include_granted_scopes: this.include_granted_scopes,
             request_uri: this.request_uri,
-            request: this.request,
+            request: request_object,
             acr_values: this.acr_values,
             max_age: this.max_age,
             prompt,
@@ -166,11 +172,14 @@ impl AuthorisationRequest {
         }
     }
 
-    fn validate_response_type(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
+    fn validate_response_type(
+        &self,
+        configuration: &OpenIDProviderConfiguration,
+        client: &ClientInformation,
+    ) -> Result<(), OpenIdError> {
         match self.response_type {
             None => Err(OpenIdError::invalid_request("Missing response type")),
             Some(ref rt) => {
-                let configuration = OpenIDProviderConfiguration::instance();
                 if !AuthorisationRequest::server_allows_response_type(configuration, rt) {
                     return Err(OpenIdError::unsupported_response_type(
                         "Unsupported response type",
@@ -215,9 +224,11 @@ impl AuthorisationRequest {
     }
 }
 
-fn parse_claims(this: &AuthorisationRequest) -> Result<Option<Claims>, OpenIdError> {
+fn parse_claims(
+    config: &OpenIDProviderConfiguration,
+    this: &AuthorisationRequest,
+) -> Result<Option<Claims>, OpenIdError> {
     let claims = if let Some(ref c) = this.claims {
-        let config = OpenIDProviderConfiguration::instance();
         if !config.claims_parameter_supported() {
             return Err(OpenIdError::invalid_request(
                 "Claims parameter not supported in authorization request",
@@ -234,4 +245,36 @@ fn parse_claims(this: &AuthorisationRequest) -> Result<Option<Claims>, OpenIdErr
         None
     };
     Ok(claims)
+}
+
+async fn process_request_object(
+    client: &ClientInformation,
+    configuration: &OpenIDProviderConfiguration,
+    this: &AuthorisationRequest,
+) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
+    let required = configuration.request_object().require_signed_request_object;
+    let request_object = if let Some(ref req) = this.request {
+        let req = GenericJWT::parse(req, client)
+            .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
+        //TODO: finish process and validation in request_objects
+        if let Some(alg) = req.alg() {
+            if alg.name() == UnsecuredJwsAlgorithm::None.name() && required {
+                return Err(OpenIdError::invalid_request(
+                    "Request object must be signed",
+                ));
+            } else {
+                let result = ValidJWT::validate(&req, client)
+                    .await
+                    .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
+                Some(result)
+            }
+        } else {
+            return Err(OpenIdError::invalid_request(
+                "Missing alg in request_object Header",
+            ));
+        }
+    } else {
+        None
+    };
+    Ok(request_object)
 }

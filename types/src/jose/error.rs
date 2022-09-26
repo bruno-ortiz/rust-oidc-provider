@@ -1,71 +1,40 @@
-use std::error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
+use std::str::Utf8Error;
 
 use base64::DecodeError;
 use josekit::JoseError;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum JWTError {
-    B64DecodeError(DecodeError),
+    #[error("Error decoding b64 jwt part")]
+    B64DecodeError(#[from] DecodeError),
+    #[error("JWT has an invalid format")]
     InvalidJwtFormat(String),
-    SerDeParseError(serde_json::Error),
-    JoseCreationError(JoseError),
+    #[error("Unable to parse jwt to json")]
+    SerDeParseError(#[from] serde_json::Error),
+    #[error("Unable to parse jwt header from json")]
+    HeaderParseError(#[source] JoseError),
+    #[error("Error creating JWT")]
+    JoseCreationError(#[from] JoseError),
+    #[error("Missing algorithm in JWT")]
     JWKAlgorithmNotFound,
+    #[error("Invalid algorithm '{}' when trying to create JWT", .0)]
+    InvalidJWKAlgorithm(String),
+    #[error("Error parsing JWK to signer")]
     SignerCreationError(JoseError),
-}
-
-impl Display for JWTError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            JWTError::B64DecodeError(err) => {
-                write!(f, "Error decoding b64 jwt part, {}", err)
-            }
-            JWTError::InvalidJwtFormat(jwt) => {
-                write!(f, "JWT has an invalid format. {}", jwt)
-            }
-            JWTError::SerDeParseError(err) => {
-                write!(f, "Unable to parse jwt to json. {}", err)
-            }
-            JWTError::JoseCreationError(err) => {
-                write!(f, "Error creating JWT. {:?}", err)
-            }
-            JWTError::JWKAlgorithmNotFound => {
-                write!(f, "Invalid algorithm when trying to create JWT")
-            }
-            JWTError::SignerCreationError(err) => {
-                write!(f, "Error parsing JWK to signer. Err: {:?}", err)
-            }
-        }
-    }
-}
-
-impl error::Error for JWTError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match *self {
-            JWTError::B64DecodeError(ref err) => Some(err),
-            JWTError::SerDeParseError(ref err) => Some(err),
-            JWTError::JoseCreationError(ref err) => Some(err),
-            JWTError::SignerCreationError(ref err) => Some(err),
-            JWTError::JWKAlgorithmNotFound => None,
-            JWTError::InvalidJwtFormat(_) => None,
-        }
-    }
-}
-
-impl From<DecodeError> for JWTError {
-    fn from(err: DecodeError) -> Self {
-        JWTError::B64DecodeError(err)
-    }
-}
-
-impl From<serde_json::Error> for JWTError {
-    fn from(err: serde_json::Error) -> Self {
-        JWTError::SerDeParseError(err)
-    }
-}
-
-impl From<JoseError> for JWTError {
-    fn from(err: JoseError) -> Self {
-        JWTError::JoseCreationError(err)
-    }
+    #[error("Error parsing JWK to verifier")]
+    VerifierCreationError(JoseError),
+    #[error("Error parsing JWK to decrypter")]
+    DecrypterCreationError(JoseError),
+    #[error("Error decrypting JWE")]
+    DecryptError(JoseError),
+    #[error("Invalid JWS Signature")]
+    InvalidSignature(JoseError),
+    #[error("Invalid encoding of payload")]
+    NoUTF8(#[from] Utf8Error),
+    #[error("Error getting client keystore")]
+    KeystoreCreation(String),
+    #[error("Could not find JWK Key to perform {}", .0)]
+    KeyNotFound(String),
 }

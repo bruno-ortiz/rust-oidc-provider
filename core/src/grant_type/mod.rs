@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use oidc_types::client::ClientID;
 use time::Duration;
 
 use oidc_types::scopes::Scopes;
@@ -44,10 +45,11 @@ impl GrantTypeResolver for TokenRequestBody {
 }
 
 async fn create_access_token(
+    client_id: ClientID,
     duration: Duration,
     scopes: Scopes,
 ) -> Result<AccessToken, OpenIdError> {
-    AccessToken::bearer(duration, Some(scopes))
+    AccessToken::bearer(client_id, duration, Some(scopes))
         .save()
         .await
         .map_err(OpenIdError::server_error)

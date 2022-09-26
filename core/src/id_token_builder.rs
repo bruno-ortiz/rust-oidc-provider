@@ -13,10 +13,9 @@ use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::code::Code;
 use oidc_types::hash::Hashable;
-use oidc_types::id_token::IdToken;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
-use oidc_types::jose::jwt::JWT;
+use oidc_types::jose::jwt2::SignedJWT;
 use oidc_types::jose::JwsHeaderExt;
 use oidc_types::nonce::Nonce;
 use oidc_types::state::State;
@@ -24,6 +23,7 @@ use oidc_types::subject::Subject;
 
 use crate::error::OpenIdError;
 use crate::hash::TokenHasher;
+use crate::id_token::IdToken;
 use crate::models::access_token::AccessToken;
 
 #[derive(Error, Debug)]
@@ -36,7 +36,9 @@ pub enum IdTokenError {
     #[error("Required id_token claim {} not found", .0)]
     MissingRequiredClaim(String),
     #[error("Failed to set claim")]
-    SetClaimFailure(#[from] JoseError),
+    SetClaimFailure(#[source] JoseError),
+    #[error("Error encrypting IDToken")]
+    EncryptingErr(#[source] JoseError),
 }
 
 #[derive(Debug)]
@@ -142,7 +144,7 @@ impl<'a> IdTokenBuilder<'a> {
         Ok(self)
     }
 
-    pub fn build(mut self) -> Result<IdToken, IdTokenError> {
+    pub fn build(mut self) -> Result<IdToken<SignedJWT>, IdTokenError> {
         let header = JwsHeader::from_key(self.signing_key);
         let mut payload = JwtPayload::new();
         if self.audience.is_empty() {
@@ -161,10 +163,12 @@ impl<'a> IdTokenBuilder<'a> {
         payload.set_at_hash(self.at_hash);
 
         for (claim, value) in self.custom_claims {
-            payload.set_claim(claim, Some(value.into_owned()))?;
+            payload
+                .set_claim(claim, Some(value.into_owned()))
+                .map_err(IdTokenError::SetClaimFailure)?;
         }
 
-        let jwt = JWT::new(header, payload, self.signing_key)
+        let jwt = SignedJWT::new(header, payload, self.signing_key)
             .map_err(|err| IdTokenError::EncodingErr { source: err })?;
         Ok(IdToken::new(jwt))
     }

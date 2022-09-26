@@ -1,12 +1,15 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 use std::prelude::v1::Result::Err;
+use std::str::FromStr;
 
 use josekit::jws::JwsAlgorithm;
 use josekit::jws::*;
-use serde::de::{Error, StdError, Visitor};
+use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
+use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct SigningAlgorithm(Box<dyn JwsAlgorithm>);
@@ -75,39 +78,41 @@ impl<'de> Deserialize<'de> for SigningAlgorithm {
             where
                 E: Error,
             {
-                match alg {
-                    "HS256" => Ok(SigningAlgorithm::new(Box::new(HS256))),
-                    "HS384" => Ok(SigningAlgorithm::new(Box::new(HS384))),
-                    "HS512" => Ok(SigningAlgorithm::new(Box::new(HS512))),
-                    "RS256" => Ok(SigningAlgorithm::new(Box::new(RS256))),
-                    "RS384" => Ok(SigningAlgorithm::new(Box::new(RS384))),
-                    "RS512" => Ok(SigningAlgorithm::new(Box::new(RS512))),
-                    "PS256" => Ok(SigningAlgorithm::new(Box::new(PS256))),
-                    "PS384" => Ok(SigningAlgorithm::new(Box::new(PS384))),
-                    "PS512" => Ok(SigningAlgorithm::new(Box::new(PS512))),
-                    "ES256" => Ok(SigningAlgorithm::new(Box::new(ES256))),
-                    "ES256K" => Ok(SigningAlgorithm::new(Box::new(ES256K))),
-                    "ES384" => Ok(SigningAlgorithm::new(Box::new(ES384))),
-                    "ES512" => Ok(SigningAlgorithm::new(Box::new(ES512))),
-                    "EdDSA" => Ok(SigningAlgorithm::new(Box::new(EdDSA))),
-                    _ => Err(Error::custom(format!("Unsupported algorithm {}", alg))),
-                }
+                SigningAlgorithm::from_str(alg).map_err(|err| Error::custom(err.to_string()))
             }
         }
         deserializer.deserialize_str(AlgVisitor)
     }
 }
 
-#[derive(Debug)]
-struct DeserializeError(String);
+#[derive(Debug, Error)]
+#[error("Unsupported algorithm {}", .0)]
+pub struct ParseAlgError(String);
 
-impl Display for DeserializeError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+impl FromStr for SigningAlgorithm {
+    type Err = ParseAlgError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "HS256" => Ok(SigningAlgorithm::new(Box::new(HS256))),
+            "HS384" => Ok(SigningAlgorithm::new(Box::new(HS384))),
+            "HS512" => Ok(SigningAlgorithm::new(Box::new(HS512))),
+            "RS256" => Ok(SigningAlgorithm::new(Box::new(RS256))),
+            "RS384" => Ok(SigningAlgorithm::new(Box::new(RS384))),
+            "RS512" => Ok(SigningAlgorithm::new(Box::new(RS512))),
+            "PS256" => Ok(SigningAlgorithm::new(Box::new(PS256))),
+            "PS384" => Ok(SigningAlgorithm::new(Box::new(PS384))),
+            "PS512" => Ok(SigningAlgorithm::new(Box::new(PS512))),
+            "ES256" => Ok(SigningAlgorithm::new(Box::new(ES256))),
+            "ES256K" => Ok(SigningAlgorithm::new(Box::new(ES256K))),
+            "ES384" => Ok(SigningAlgorithm::new(Box::new(ES384))),
+            "ES512" => Ok(SigningAlgorithm::new(Box::new(ES512))),
+            "EdDSA" => Ok(SigningAlgorithm::new(Box::new(EdDSA))),
+            "none" => Ok(SigningAlgorithm::new(Box::new(UnsecuredJwsAlgorithm::None))),
+            _ => Err(ParseAlgError(s.to_owned())),
+        }
     }
 }
-
-impl StdError for DeserializeError {}
 
 #[cfg(test)]
 mod tests {

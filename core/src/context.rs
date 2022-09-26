@@ -1,7 +1,6 @@
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::claims::Claims;
-use oidc_types::grant::Grant;
 use oidc_types::nonce::Nonce;
 use std::sync::Arc;
 

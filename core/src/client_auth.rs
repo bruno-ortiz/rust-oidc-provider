@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use thiserror::Error;
 
-use crate::models::client::{AuthenticatedClient, ClientInformation};
-use oidc_types::client_credentials::{
+use crate::client_credentials::{
     ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, PrivateKeyJWTCredential,
     SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
 };
+use crate::models::client::{AuthenticatedClient, ClientInformation};
 use oidc_types::secret::PlainTextSecret;
 use ClientCredential::*;
 
