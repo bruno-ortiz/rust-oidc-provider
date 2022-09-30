@@ -1,12 +1,14 @@
-use josekit::jwe::enc::aescbc_hmac::AescbcHmacJweEncryption;
-use josekit::jwe::enc::aesgcm::AesgcmJweEncryption;
-use josekit::jwe::JweContentEncryption;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::prelude::v1::Result::Err;
 
+use josekit::jwe::enc::aescbc_hmac::AescbcHmacJweEncryption;
+use josekit::jwe::enc::aesgcm::AesgcmJweEncryption;
+use josekit::jwe::JweContentEncryption;
 use serde::de::{Error, StdError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::jose::Algorithm;
 
 #[derive(Debug, Clone)]
 pub struct ContentEncryptionAlgorithm(Box<dyn JweContentEncryption>);
@@ -14,6 +16,16 @@ pub struct ContentEncryptionAlgorithm(Box<dyn JweContentEncryption>);
 impl ContentEncryptionAlgorithm {
     pub fn new(jwe_algorithm: Box<dyn JweContentEncryption>) -> Self {
         ContentEncryptionAlgorithm(jwe_algorithm)
+    }
+
+    pub fn name(&self) -> &str {
+        self.0.name()
+    }
+}
+
+impl Algorithm for ContentEncryptionAlgorithm {
+    fn is_symmetric(&self) -> bool {
+        true
     }
 }
 
@@ -90,8 +102,9 @@ impl StdError for DeserializeError {}
 
 #[cfg(test)]
 mod tests {
-    use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
     use josekit::jwe::enc::aescbc_hmac::AescbcHmacJweEncryption::A128cbcHs256;
+
+    use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
 
     #[test]
     fn test_can_serialize_algorithm() {

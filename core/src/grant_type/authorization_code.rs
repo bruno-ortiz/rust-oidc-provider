@@ -4,13 +4,12 @@ use time::OffsetDateTime;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::claims::get_id_token_claims;
 use oidc_types::pkce::CodeChallengeError;
 use oidc_types::scopes::OPEN_ID;
-use oidc_types::simple_id_token::SimpleIdToken;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
+use crate::claims::get_id_token_claims;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver};
@@ -41,7 +40,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let access_token =
             create_access_token(client.id(), at_duration, code.scopes.clone()).await?;
 
-        let mut id_token = None;
+        let mut simple_id_token = None;
         if code.scopes.contains(&OPEN_ID) {
             let profile = ProfileData::get(&code)
                 .await
@@ -54,20 +53,27 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .select(KeyUse::Sig)
                 .alg(alg.name())
                 .first()
-                .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
-            id_token = Some(
-                IdTokenBuilder::new(signing_key)
-                    .with_issuer(configuration.issuer())
-                    .with_sub(&code.subject)
-                    .with_audience(vec![client.id().into()])
-                    .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
-                    .with_iat(OffsetDateTime::now_utc())
-                    .with_nonce(code.nonce.as_ref())
-                    .with_s_hash(code.state.as_ref())?
-                    .with_c_hash(Some(&code.code))?
-                    .with_at_hash(Some(&access_token))?
-                    .with_custom_claims(claims)
-                    .build()
+                .ok_or_else(|| {
+                    let error = anyhow!("Missing signing key");
+                    OpenIdError::server_error(error)
+                })?;
+            let id_token = IdTokenBuilder::new(signing_key)
+                .with_issuer(configuration.issuer())
+                .with_sub(&code.subject)
+                .with_audience(vec![client.id().into()])
+                .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
+                .with_iat(OffsetDateTime::now_utc())
+                .with_nonce(code.nonce.as_ref())
+                .with_s_hash(code.state.as_ref())?
+                .with_c_hash(Some(&code.code))?
+                .with_at_hash(Some(&access_token))?
+                .with_custom_claims(claims)
+                .build()
+                .map_err(OpenIdError::server_error)?;
+            simple_id_token = Some(
+                id_token
+                    .return_or_encrypt_simple_id_token(&client)
+                    .await
                     .map_err(OpenIdError::server_error)?,
             );
         }
@@ -102,7 +108,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             access_token.t_type,
             access_token.expires_in,
             rt,
-            id_token.map(|it| SimpleIdToken::new(it.serialized())),
+            simple_id_token,
         ))
     }
 }

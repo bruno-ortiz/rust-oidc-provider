@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use oidc_types::client::ClientID;
 use time::Duration;
 
+use oidc_types::client::ClientID;
 use oidc_types::scopes::Scopes;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;

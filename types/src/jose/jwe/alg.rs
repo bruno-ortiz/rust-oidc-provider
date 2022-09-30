@@ -1,3 +1,7 @@
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::prelude::v1::Result::Err;
+
 use josekit::jwe::alg::aesgcmkw::AesgcmkwJweAlgorithm;
 use josekit::jwe::alg::aeskw::AeskwJweAlgorithm;
 use josekit::jwe::alg::direct::DirectJweAlgorithm;
@@ -5,12 +9,10 @@ use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::alg::pbes2_hmac_aeskw::Pbes2HmacAeskwJweAlgorithm;
 use josekit::jwe::alg::rsaes::RsaesJweAlgorithm;
 use josekit::jwe::JweAlgorithm;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::prelude::v1::Result::Err;
-
 use serde::de::{Error, StdError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::jose::Algorithm;
 
 #[derive(Debug, Clone)]
 pub struct EncryptionAlgorithm(Box<dyn JweAlgorithm>);
@@ -18,6 +20,17 @@ pub struct EncryptionAlgorithm(Box<dyn JweAlgorithm>);
 impl EncryptionAlgorithm {
     pub fn new(jwe_algorithm: Box<dyn JweAlgorithm>) -> Self {
         EncryptionAlgorithm(jwe_algorithm)
+    }
+
+    pub fn name(&self) -> &str {
+        self.0.name()
+    }
+}
+
+impl Algorithm for EncryptionAlgorithm {
+    fn is_symmetric(&self) -> bool {
+        let name = self.0.name();
+        name.starts_with("PBES2") || (name.starts_with('A') && name.ends_with("KW"))
     }
 }
 
@@ -106,8 +119,9 @@ impl StdError for DeserializeError {}
 
 #[cfg(test)]
 mod tests {
-    use crate::jose::jwe::alg::EncryptionAlgorithm;
     use josekit::jwe::RSA_OAEP;
+
+    use crate::jose::jwe::alg::EncryptionAlgorithm;
 
     #[test]
     fn test_can_serialize_algorithm() {

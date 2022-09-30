@@ -2,12 +2,11 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 
-use crate::claims::get_id_token_claims;
 use oidc_types::scopes::OPEN_ID;
-use oidc_types::simple_id_token::SimpleIdToken;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::RefreshTokenGrant;
 
+use crate::claims::get_id_token_claims;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver, RTContext};
@@ -37,9 +36,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
             rt: &refresh_token,
             client: &client,
         };
-        if let Err(err) = configuration.validate_refresh_token(context).await {
-            return Err(err);
-        };
+        configuration.validate_refresh_token(context).await?;
         let ttl = configuration.ttl();
 
         let mut rt_token = None;
@@ -53,7 +50,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
         let access_token =
             create_access_token(client.id(), at_duration, refresh_token.scopes.clone()).await?;
 
-        let mut id_token = None;
+        let mut simple_id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
             let profile = ProfileData::get(&refresh_token)
                 .await
@@ -67,18 +64,23 @@ impl GrantTypeResolver for RefreshTokenGrant {
                 .alg(alg.name())
                 .first()
                 .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
-            id_token = Some(
-                IdTokenBuilder::new(signing_key)
-                    .with_sub(&refresh_token.subject)
-                    .with_issuer(configuration.issuer())
-                    .with_audience(vec![client.id().into()])
-                    .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
-                    .with_iat(OffsetDateTime::now_utc())
-                    .with_nonce(refresh_token.nonce.as_ref())
-                    .with_s_hash(refresh_token.state.as_ref())?
-                    .with_at_hash(Some(&access_token))?
-                    .with_custom_claims(claims)
-                    .build()
+            let id_token = IdTokenBuilder::new(signing_key)
+                .with_sub(&refresh_token.subject)
+                .with_issuer(configuration.issuer())
+                .with_audience(vec![client.id().into()])
+                .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
+                .with_iat(OffsetDateTime::now_utc())
+                .with_nonce(refresh_token.nonce.as_ref())
+                .with_s_hash(refresh_token.state.as_ref())?
+                .with_at_hash(Some(&access_token))?
+                .with_custom_claims(claims)
+                .build()
+                .map_err(OpenIdError::server_error)?;
+
+            simple_id_token = Some(
+                id_token
+                    .return_or_encrypt_simple_id_token(&client)
+                    .await
                     .map_err(OpenIdError::server_error)?,
             );
         }
@@ -87,7 +89,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
             access_token.t_type,
             access_token.expires_in,
             rt_token,
-            id_token.map(|it| SimpleIdToken::new(it.serialized())),
+            simple_id_token,
         ))
     }
 }

@@ -1,9 +1,11 @@
+use josekit::jwk::Jwk;
 use std::fmt;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 use std::prelude::v1::Result::Err;
 use std::str::FromStr;
 
+use crate::jose::Algorithm;
 use josekit::jws::JwsAlgorithm;
 use josekit::jws::*;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
@@ -19,12 +21,14 @@ impl SigningAlgorithm {
         SigningAlgorithm(jws_algorithm)
     }
 
-    pub fn is_symmetric(&self) -> bool {
-        self.0.name().starts_with("HS")
-    }
-
     pub fn name(&self) -> &str {
         self.0.name()
+    }
+}
+
+impl Algorithm for SigningAlgorithm {
+    fn is_symmetric(&self) -> bool {
+        self.0.name().starts_with("HS")
     }
 }
 
@@ -111,6 +115,25 @@ impl FromStr for SigningAlgorithm {
             "none" => Ok(SigningAlgorithm::new(Box::new(UnsecuredJwsAlgorithm::None))),
             _ => Err(ParseAlgError(s.to_owned())),
         }
+    }
+}
+
+pub trait JwsHeaderExt {
+    fn from_key(key: &Jwk) -> Self;
+}
+
+impl JwsHeaderExt for JwsHeader {
+    fn from_key(key: &Jwk) -> Self {
+        let alg = key
+            .algorithm()
+            .expect("Signing key must have an  algorithm");
+        let mut header = JwsHeader::new();
+        if let Some(kid) = key.key_id() {
+            header.set_key_id(kid);
+        }
+        header.set_token_type("JWT");
+        header.set_algorithm(alg);
+        header
     }
 }
 

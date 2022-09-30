@@ -1,6 +1,7 @@
 use crate::url_encodable::UrlEncodable;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SimpleIdToken(String);
@@ -8,6 +9,12 @@ pub struct SimpleIdToken(String);
 impl SimpleIdToken {
     pub fn new(repr: String) -> Self {
         Self(repr)
+    }
+}
+
+impl Display for SimpleIdToken {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

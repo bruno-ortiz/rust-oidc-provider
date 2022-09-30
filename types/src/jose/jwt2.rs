@@ -1,7 +1,7 @@
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-use josekit::jwe::JweHeader;
+use josekit::jwe::{JweContext, JweHeader};
 use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 use josekit::jwt;
@@ -11,6 +11,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::jose::error::JWTError;
+use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
+use crate::jose::jwe::JweHeaderExt;
 use crate::jose::jwk_ext::JwkExt;
 use crate::jose::jws::SigningAlgorithm;
 
@@ -59,6 +61,24 @@ impl SignedJWT {
         verifier
             .verify(parts[1].as_bytes(), parts[2].as_bytes())
             .map_err(JWTError::InvalidSignature)
+    }
+
+    pub fn encrypt(
+        self,
+        key: &Jwk,
+        content_encryption: &ContentEncryptionAlgorithm,
+    ) -> Result<EncryptedJWT<SignedJWT>, JWTError> {
+        let encrypter = key
+            .get_encrypter()
+            .map_err(JWTError::EncrypterCreationError)?;
+
+        let header = JweHeader::from_key(key, content_encryption.name(), true);
+        let payload = self.serialized().as_bytes();
+        let ctx = JweContext::new();
+        let encrypted = ctx
+            .serialize_compact(payload, &header, &*encrypter)
+            .map_err(JWTError::EncryptError)?;
+        Ok(EncryptedJWT::new_signed(header, self, encrypted))
     }
 
     pub fn decode_no_verify(input: impl AsRef<str>) -> Result<Self, JWTError> {

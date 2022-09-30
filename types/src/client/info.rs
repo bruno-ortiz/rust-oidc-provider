@@ -10,9 +10,8 @@ use uuid::Uuid;
 
 use crate::application_type::ApplicationType;
 use crate::auth_method::AuthMethod;
+use crate::client::encryption::EncryptionData;
 use crate::grant_type::GrantType;
-use crate::jose::jwe::alg::EncryptionAlgorithm;
-use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
 use crate::jose::jwk_set::JwkSet;
 use crate::jose::jws::SigningAlgorithm;
 use crate::jose::jwt2::SignedJWT;
@@ -60,7 +59,7 @@ impl Default for ClientID {
     }
 }
 
-#[derive(Serialize, Debug, Clone, Builder)]
+#[derive(Debug, Clone, Builder)]
 #[builder(setter(into, strip_option), default)]
 pub struct ClientMetadata {
     pub redirect_uris: Vec<Url>,
@@ -79,17 +78,13 @@ pub struct ClientMetadata {
     pub sector_identifier_uri: Option<Url>,
     pub subject_type: SubjectType,
     pub id_token_signed_response_alg: SigningAlgorithm,
-    pub id_token_encrypted_response_alg: Option<EncryptionAlgorithm>,
-    pub id_token_encrypted_response_enc: Option<ContentEncryptionAlgorithm>,
+    pub id_token_encryption: Option<EncryptionData>,
     pub userinfo_signed_response_alg: Option<SigningAlgorithm>,
-    pub userinfo_encrypted_response_alg: Option<EncryptionAlgorithm>,
-    pub userinfo_encrypted_response_enc: Option<ContentEncryptionAlgorithm>,
+    pub userinfo_encryption: Option<EncryptionData>,
     pub request_object_signing_alg: Option<SigningAlgorithm>,
-    pub request_object_encryption_alg: Option<EncryptionAlgorithm>,
-    pub request_object_encryption_enc: Option<ContentEncryptionAlgorithm>,
+    pub request_object_encryption: Option<EncryptionData>,
     pub authorization_signed_response_alg: SigningAlgorithm,
-    pub authorization_encrypted_response_alg: Option<EncryptionAlgorithm>,
-    pub authorization_encrypted_response_enc: Option<ContentEncryptionAlgorithm>,
+    pub authorization_response_encryption: Option<EncryptionData>,
     pub token_endpoint_auth_method: AuthMethod,
     pub token_endpoint_auth_signing_alg: Option<SigningAlgorithm>,
     pub default_max_age: Option<u64>,
@@ -123,17 +118,13 @@ impl Default for ClientMetadata {
             // For all "enc" values below:
             //   Default when {endpoint}_encrypted_response_alg is specified should be A128CBC-HS256
             id_token_signed_response_alg: RS256.into(),
-            id_token_encrypted_response_alg: None,
-            id_token_encrypted_response_enc: None,
+            id_token_encryption: None,
             userinfo_signed_response_alg: None,
-            userinfo_encrypted_response_alg: None,
-            userinfo_encrypted_response_enc: None,
+            userinfo_encryption: None,
             request_object_signing_alg: None,
-            request_object_encryption_alg: None,
-            request_object_encryption_enc: None,
+            request_object_encryption: None,
             authorization_signed_response_alg: RS256.into(),
-            authorization_encrypted_response_alg: None,
-            authorization_encrypted_response_enc: None,
+            authorization_response_encryption: None,
             token_endpoint_auth_method: Default::default(),
             token_endpoint_auth_signing_alg: None,
             default_max_age: None,

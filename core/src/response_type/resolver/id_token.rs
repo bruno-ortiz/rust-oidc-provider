@@ -34,14 +34,18 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
         let client = context.client.clone();
-        let alg = &client.metadata().id_token_signed_response_alg;
+        let client_metadata = client.metadata();
+        let alg = &client_metadata.id_token_signed_response_alg;
         let keystore = client.server_keystore(alg);
         let signing_key = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())
             .first()
             .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
-        if context.flow_type() == Flow::Hybrid && context.request.nonce.is_none() {
+        let flow_type = context.flow_type();
+        if (flow_type == Flow::Hybrid || flow_type == Flow::Implicit)
+            && context.request.nonce.is_none()
+        {
             return Err(OpenIdError::invalid_request(
                 "Hybrid flow must contain a nonce in the auth request",
             ));
@@ -69,13 +73,18 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 error!("{:?}", err);
                 OpenIdError::server_error(err)
             })?;
-        Ok(SimpleIdToken::new(id_token.serialized()))
+
+        id_token
+            .return_or_encrypt_simple_id_token(&context.client)
+            .await
+            .map_err(OpenIdError::server_error)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use oidc_types::issuer::Issuer;
+    use oidc_types::jose::jwt2::{SignedJWT, JWT};
     use oidc_types::nonce::Nonce;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
@@ -106,6 +115,8 @@ mod tests {
             .resolve(&context)
             .await
             .expect("Expecting a id token");
+
+        let id_token = SignedJWT::decode_no_verify(id_token.to_string()).unwrap();
 
         let payload = id_token.payload();
         assert_eq!(

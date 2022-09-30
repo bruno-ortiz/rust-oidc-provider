@@ -1,9 +1,9 @@
+use std::sync::Arc;
+
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::claims::Claims;
 use oidc_types::nonce::Nonce;
-use std::sync::Arc;
-
 use oidc_types::response_type::Flow;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
@@ -156,22 +156,18 @@ pub mod test_utils {
             sector_identifier_uri: None,
             subject_type: SubjectType::Public,
             id_token_signed_response_alg: RS256.into(),
-            id_token_encrypted_response_alg: None,
-            id_token_encrypted_response_enc: None,
+            id_token_encryption: None,
             userinfo_signed_response_alg: None,
-            userinfo_encrypted_response_alg: None,
-            userinfo_encrypted_response_enc: None,
+            userinfo_encryption: None,
             request_object_signing_alg: None,
-            request_object_encryption_alg: None,
             software_id: None,
             software_version: None,
             software_statement: None,
             application_type: ApplicationType::Native,
-            request_object_encryption_enc: None,
             authorization_signed_response_alg: RS256.into(),
-            authorization_encrypted_response_alg: None,
             request_uris: None,
-            authorization_encrypted_response_enc: None,
+            request_object_encryption: None,
+            authorization_response_encryption: None,
         };
         let client =
             ClientInformation::new(client_id, OffsetDateTime::now_utc(), plain, None, metadata);

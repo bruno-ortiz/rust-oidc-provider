@@ -15,8 +15,8 @@ use oidc_types::code::Code;
 use oidc_types::hash::Hashable;
 use oidc_types::issuer::Issuer;
 use oidc_types::jose::error::JWTError;
+use oidc_types::jose::jws::JwsHeaderExt;
 use oidc_types::jose::jwt2::SignedJWT;
-use oidc_types::jose::JwsHeaderExt;
 use oidc_types::nonce::Nonce;
 use oidc_types::state::State;
 use oidc_types::subject::Subject;
@@ -38,7 +38,9 @@ pub enum IdTokenError {
     #[error("Failed to set claim")]
     SetClaimFailure(#[source] JoseError),
     #[error("Error encrypting IDToken")]
-    EncryptingErr(#[source] JoseError),
+    EncryptingErr(#[source] JWTError),
+    #[error("Invalid client configuration: {}", .0)]
+    InvalidClient(String),
 }
 
 #[derive(Debug)]

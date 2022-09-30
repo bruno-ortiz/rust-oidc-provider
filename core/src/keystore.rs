@@ -4,6 +4,7 @@ use std::sync::Arc;
 use cached::proc_macro::cached;
 use derive_builder::Builder;
 use josekit::jwk::Jwk;
+use oidc_types::jose::Algorithm;
 use thiserror::Error;
 
 use oidc_types::auth_method::AuthMethod;

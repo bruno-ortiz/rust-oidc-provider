@@ -2,10 +2,10 @@ use indexmap::IndexMap;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::Value;
+use oidc_types::jose::jws::JwsHeaderExt;
 use time::{Duration, OffsetDateTime};
 
 use oidc_types::jose::jwt2::{SignedJWT, JWT};
-use oidc_types::jose::JwsHeaderExt;
 use oidc_types::response_mode::ResponseMode;
 
 use crate::configuration::OpenIDProviderConfiguration;

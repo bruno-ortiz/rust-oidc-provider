@@ -27,14 +27,18 @@ pub enum JWTError {
     VerifierCreationError(JoseError),
     #[error("Error parsing JWK to decrypter")]
     DecrypterCreationError(JoseError),
+    #[error("Error parsing JWK to encrypter")]
+    EncrypterCreationError(JoseError),
     #[error("Error decrypting JWE")]
     DecryptError(JoseError),
+    #[error("Error encrypting JWE")]
+    EncryptError(JoseError),
     #[error("Invalid JWS Signature")]
     InvalidSignature(JoseError),
     #[error("Invalid encoding of payload")]
     NoUTF8(#[from] Utf8Error),
     #[error("Error getting client keystore")]
-    KeystoreCreation(String),
+    KeystoreCreation(#[source] anyhow::Error),
     #[error("Could not find JWK Key to perform {}", .0)]
     KeyNotFound(String),
 }

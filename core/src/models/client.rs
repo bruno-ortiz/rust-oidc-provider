@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
 use getset::{CopyGetters, Getters};
@@ -8,6 +9,7 @@ use oidc_types::client::{ClientID, ClientMetadata};
 use oidc_types::grant_type::GrantType;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::jose::jws::SigningAlgorithm;
+use oidc_types::jose::Algorithm;
 use oidc_types::secret::PlainTextSecret;
 
 use crate::configuration::OpenIDProviderConfiguration;
@@ -49,7 +51,7 @@ impl ClientInformation {
         self.metadata
     }
 
-    pub fn server_keystore(&self, alg: &SigningAlgorithm) -> Arc<KeyStore> {
+    pub fn server_keystore(&self, alg: &impl Algorithm) -> Arc<KeyStore> {
         if alg.is_symmetric() {
             self.symmetric_keystore()
         } else {
@@ -58,7 +60,7 @@ impl ClientInformation {
         }
     }
 
-    pub async fn keystore(&self, alg: &SigningAlgorithm) -> anyhow::Result<Arc<KeyStore>> {
+    pub async fn keystore(&self, alg: &impl Algorithm) -> anyhow::Result<Arc<KeyStore>> {
         if alg.is_symmetric() {
             Ok(self.symmetric_keystore())
         } else {
@@ -72,6 +74,10 @@ impl ClientInformation {
 
     pub async fn asymmetric_keystore(&self) -> anyhow::Result<Arc<KeyStore>> {
         Ok(keystore::create_asymmetric(self).await?)
+    }
+
+    pub fn encrypt_id_token(&self) -> bool {
+        self.metadata.id_token_encryption.is_some()
     }
 }
 
@@ -101,6 +107,14 @@ impl AuthenticatedClient {
     }
     pub fn id_token_signing_alg(&self) -> &SigningAlgorithm {
         &self.0.metadata.id_token_signed_response_alg
+    }
+}
+
+impl Deref for AuthenticatedClient {
+    type Target = ClientInformation;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

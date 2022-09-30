@@ -148,12 +148,6 @@ impl ValidJWT<GenericJWT> {
     }
 }
 
-impl ValidJWT<SignedJWT> {}
-
-impl ValidJWT<EncryptedJWT<JwtPayload>> {}
-
-impl ValidJWT<EncryptedJWT<SignedJWT>> {}
-
 impl<T> Deref for ValidJWT<T>
 where
     T: JWT,
@@ -183,13 +177,13 @@ async fn validate_signature(client: &ClientInformation, jwt: &SignedJWT) -> Resu
         let keystore = client
             .keystore(&alg)
             .await
-            .map_err(|err| JWTError::KeystoreCreation(err.to_string()))?;
+            .map_err(JWTError::KeystoreCreation)?;
         let jwk = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())
             .kid(jwt.kid().map(ToOwned::to_owned))
             .first()
-            .ok_or(JWTError::KeyNotFound("jwt signature validation".to_owned()))?;
+            .ok_or_else(|| JWTError::KeyNotFound("jwt signature validation".to_owned()))?;
         jwt.verify(jwk)
     } else {
         Ok(())
