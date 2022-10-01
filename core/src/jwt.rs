@@ -50,7 +50,7 @@ impl GenericJWT {
                 .alg(alg.name())
                 .kid(header.key_id().map(String::from))
                 .first()
-                .ok_or(JWTError::KeyNotFound("JWE decryption".to_owned()))?;
+                .ok_or_else(|| JWTError::KeyNotFound("JWE decryption".to_owned()))?;
             let jwe = JweContext::new();
             let decrypter = jwk
                 .get_decrypter()

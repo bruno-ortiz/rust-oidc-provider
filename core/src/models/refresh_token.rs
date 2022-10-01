@@ -16,6 +16,7 @@ use oidc_types::state::State;
 use oidc_types::subject::Subject;
 
 use crate::adapter::PersistenceError;
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::client::AuthenticatedClient;
@@ -70,7 +71,8 @@ impl RefreshToken {
     }
 
     pub fn is_expired(&self) -> bool {
-        let now = OffsetDateTime::now_utc();
+        let clock = OpenIDProviderConfiguration::clock();
+        let now = clock.now();
         self.expires_in <= now
     }
 
@@ -102,14 +104,16 @@ impl RefreshToken {
     }
 
     pub fn total_lifetime(&self) -> Duration {
-        let now = OffsetDateTime::now_utc();
+        let clock = OpenIDProviderConfiguration::clock();
+        let now = clock.now();
         now - self.created
     }
 
     pub fn ttl_elapsed(&self) -> f64 {
+        let clock = OpenIDProviderConfiguration::clock();
         let created = self.created;
         let due_date = self.expires_in;
-        let partial = (OffsetDateTime::now_utc() - created).as_seconds_f64();
+        let partial = (clock.now() - created).as_seconds_f64();
         let total_duration = (due_date - created).as_seconds_f64();
         total_duration * 100.0 / partial
     }

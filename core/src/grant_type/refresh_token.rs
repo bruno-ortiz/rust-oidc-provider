@@ -1,12 +1,12 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use time::OffsetDateTime;
 
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::RefreshTokenGrant;
 
 use crate::claims::get_id_token_claims;
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver, RTContext};
@@ -20,6 +20,7 @@ use crate::profile::ProfileData;
 impl GrantTypeResolver for RefreshTokenGrant {
     async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
+        let clock = configuration.clock_provider();
         let grant = self;
 
         let mut refresh_token = configuration
@@ -43,7 +44,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
         if configuration.rotate_refresh_token(context) {
             let old_rt = refresh_token.consume().await?;
             refresh_token = RefreshToken::new_from(old_rt)?.save().await?;
-            rt_token = Some(refresh_token.token.to_string())
+            rt_token = Some(refresh_token.token.clone())
         }
         let at_duration = ttl.access_token_ttl(client.as_ref());
 
@@ -64,12 +65,13 @@ impl GrantTypeResolver for RefreshTokenGrant {
                 .alg(alg.name())
                 .first()
                 .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
+            let now = clock.now();
             let id_token = IdTokenBuilder::new(signing_key)
                 .with_sub(&refresh_token.subject)
                 .with_issuer(configuration.issuer())
                 .with_audience(vec![client.id().into()])
-                .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
-                .with_iat(OffsetDateTime::now_utc())
+                .with_exp(now + ttl.id_token)
+                .with_iat(now)
                 .with_nonce(refresh_token.nonce.as_ref())
                 .with_s_hash(refresh_token.state.as_ref())?
                 .with_at_hash(Some(&access_token))?

@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use time::OffsetDateTime;
 use tracing::error;
 
 use oidc_types::code::Code;
@@ -8,6 +7,7 @@ use oidc_types::response_type::Flow;
 use oidc_types::simple_id_token::SimpleIdToken;
 
 use crate::claims::get_id_token_claims;
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
@@ -33,6 +33,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
+        let clock = configuration.clock_provider();
         let client = context.client.clone();
         let client_metadata = client.metadata();
         let alg = &client_metadata.id_token_signed_response_alg;
@@ -61,8 +62,8 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             .with_issuer(configuration.issuer())
             .with_sub(context.user.sub())
             .with_audience(vec![context.client.id().into()])
-            .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
-            .with_iat(OffsetDateTime::now_utc())
+            .with_exp(clock.now() + ttl.id_token)
+            .with_iat(clock.now())
             .with_nonce(context.request.nonce.as_ref())
             .with_s_hash(context.request.state.as_ref())?
             .with_c_hash(self.code)?

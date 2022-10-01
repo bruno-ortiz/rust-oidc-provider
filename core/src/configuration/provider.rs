@@ -12,6 +12,7 @@ use time::Duration;
 use tracing::warn;
 use url::Url;
 
+use crate::configuration::clock::ClockProvider;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::claim_type::ClaimType;
 use oidc_types::grant_type::GrantType;
@@ -130,6 +131,7 @@ pub struct OpenIDProviderConfiguration {
     #[get_copy = "pub"]
     enable_userinfo: bool,
     request_object: RequestObjectConfiguration,
+    clock_provider: ClockProvider,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -155,6 +157,12 @@ impl OpenIDProviderConfiguration {
 
     pub fn instance() -> &'static OpenIDProviderConfiguration {
         INSTANCE.get_or_init(OpenIDProviderConfiguration::default)
+    }
+
+    pub fn clock() -> &'static ClockProvider {
+        INSTANCE
+            .get_or_init(OpenIDProviderConfiguration::default)
+            .clock_provider()
     }
 
     pub fn interaction_login_url(&self) -> Url {
@@ -348,6 +356,7 @@ impl Default for OpenIDProviderConfiguration {
             profile_resolver: Box::new(NoOpProfileResolver),
             enable_userinfo: false,
             request_object: Default::default(),
+            clock_provider: Default::default(),
         }
     }
 }

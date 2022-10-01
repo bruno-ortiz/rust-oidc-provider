@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use thiserror::Error;
-use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -15,6 +14,7 @@ use oidc_types::subject::Subject;
 use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::client::retrieve_client_info;
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
@@ -58,6 +58,7 @@ pub async fn complete_login(
     amr: Option<Amr>,
 ) -> Result<Url, InteractionError> {
     let configuration = OpenIDProviderConfiguration::instance();
+    let clock = configuration.clock_provider();
     match Interaction::find(interaction_id).await {
         Some(Interaction::Login {
             session, request, ..
@@ -65,7 +66,7 @@ pub async fn complete_login(
             let user = AuthenticatedUser::new(
                 session,
                 subject,
-                OffsetDateTime::now_utc(),
+                clock.now(),
                 configuration.auth_max_age(),
                 interaction_id,
                 acr,

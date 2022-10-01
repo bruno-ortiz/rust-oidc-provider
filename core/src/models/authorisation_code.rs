@@ -14,6 +14,7 @@ use oidc_types::state::State;
 use oidc_types::subject::Subject;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::client::AuthenticatedClient;
@@ -41,7 +42,8 @@ pub struct AuthorisationCode {
 
 impl AuthorisationCode {
     pub fn is_expired(&self) -> bool {
-        let now = OffsetDateTime::now_utc();
+        let clock = OpenIDProviderConfiguration::clock();
+        let now = clock.now();
         self.expires_in <= now
     }
 

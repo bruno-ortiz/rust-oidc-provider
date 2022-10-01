@@ -1,10 +1,10 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use time::OffsetDateTime;
 
 use oidc_types::claims::{ClaimOptions, Claims};
 use oidc_types::code::Code;
 
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
@@ -26,6 +26,7 @@ impl ResponseTypeResolver for CodeResolver {
         })?;
 
         let configuration = OpenIDProviderConfiguration::instance();
+        let clock = configuration.clock_provider();
         let ttl = configuration.ttl();
         let code = AuthorisationCode {
             code: Code::random(),
@@ -33,7 +34,7 @@ impl ResponseTypeResolver for CodeResolver {
             code_challenge: authorisation_request.code_challenge.clone(),
             code_challenge_method: authorisation_request.code_challenge_method,
             status: Status::Awaiting,
-            expires_in: OffsetDateTime::now_utc() + ttl.authorization_code,
+            expires_in: clock.now() + ttl.authorization_code,
             redirect_uri: authorisation_request.redirect_uri.clone(),
             subject: context.user.sub().clone(),
             scopes: grant.scopes().clone(),

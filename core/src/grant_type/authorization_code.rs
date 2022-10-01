@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
-use time::OffsetDateTime;
 use tracing::error;
 use uuid::Uuid;
 
@@ -10,6 +9,7 @@ use oidc_types::token::TokenResponse;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
 use crate::claims::get_id_token_claims;
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::{create_access_token, GrantTypeResolver};
@@ -23,6 +23,7 @@ use crate::profile::ProfileData;
 impl GrantTypeResolver for AuthorisationCodeGrant {
     async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
+        let clock = configuration.clock_provider();
         let grant = self;
         let code = configuration
             .adapters()
@@ -40,6 +41,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let access_token =
             create_access_token(client.id(), at_duration, code.scopes.clone()).await?;
 
+        let now = clock.now();
         let mut simple_id_token = None;
         if code.scopes.contains(&OPEN_ID) {
             let profile = ProfileData::get(&code)
@@ -61,8 +63,8 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .with_issuer(configuration.issuer())
                 .with_sub(&code.subject)
                 .with_audience(vec![client.id().into()])
-                .with_exp(OffsetDateTime::now_utc() + ttl.id_token)
-                .with_iat(OffsetDateTime::now_utc())
+                .with_exp(now + ttl.id_token)
+                .with_iat(now)
                 .with_nonce(code.nonce.as_ref())
                 .with_s_hash(code.state.as_ref())?
                 .with_c_hash(Some(&code.code))?
@@ -89,8 +91,8 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .scopes(code.scopes)
                 .state(code.state)
                 .nonce(code.nonce)
-                .expires_in(OffsetDateTime::now_utc() + rt_ttl)
-                .created(OffsetDateTime::now_utc())
+                .expires_in(now + rt_ttl)
+                .created(now)
                 .acr(code.acr)
                 .amr(code.amr)
                 .claims(code.claims)

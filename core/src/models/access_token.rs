@@ -1,16 +1,19 @@
 use indexmap::IndexMap;
-use oidc_types::client::ClientID;
 use serde::Serialize;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use oidc_types::client::ClientID;
 use oidc_types::hash::Hashable;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;
+use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
+
+pub struct ActiveAccessToken(AccessToken);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
@@ -31,10 +34,11 @@ impl AccessToken {
         scopes: Option<Scopes>,
         client_id: ClientID,
     ) -> Self {
+        let clock = OpenIDProviderConfiguration::clock();
         Self {
             token: Uuid::new_v4().to_string(),
             t_type: token_type.into(),
-            created: OffsetDateTime::now_utc(),
+            created: clock.now(),
             expires_in,
             scopes,
             client_id,
@@ -43,6 +47,16 @@ impl AccessToken {
 
     pub fn bearer(client_id: ClientID, expires_in: Duration, scopes: Option<Scopes>) -> Self {
         Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, client_id)
+    }
+
+    pub fn into_active(self) -> Option<ActiveAccessToken> {
+        let clock = OpenIDProviderConfiguration::clock();
+        let now = clock.now();
+        if now <= (self.created + self.expires_in) {
+            Some(ActiveAccessToken(self))
+        } else {
+            None
+        }
     }
 
     pub async fn find(id: &str) -> Option<AccessToken> {

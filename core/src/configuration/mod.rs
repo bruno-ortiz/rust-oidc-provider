@@ -1,6 +1,7 @@
 pub use provider::*;
 
 pub mod adapter_container;
+pub mod clock;
 pub mod credentials;
 pub mod pkce;
 pub mod profile;
