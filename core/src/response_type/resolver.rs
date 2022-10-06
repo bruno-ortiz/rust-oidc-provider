@@ -126,7 +126,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code() {
-        let context = setup_context(response_type!(Code), None, None);
+        let context = setup_context(response_type!(Code), None, None).await;
         let configuration = OpenIDProviderConfiguration::instance();
         let resolver = DynamicResponseTypeResolver::from(configuration);
         let result = ResponseTypeResolver::resolve(&resolver, &context)
@@ -142,7 +142,8 @@ mod tests {
             response_type!(Code, IdToken),
             None,
             Some(Nonce::new("some-nonce")),
-        );
+        )
+        .await;
         let configuration = OpenIDProviderConfiguration::instance();
         let resolver = DynamicResponseTypeResolver::from(configuration);
         let result = ResponseTypeResolver::resolve(&resolver, &context)

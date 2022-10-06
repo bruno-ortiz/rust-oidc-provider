@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use thiserror::Error;
 
 use oidc_types::url_encodable::UrlEncodable;
@@ -9,6 +10,7 @@ use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::models::client::ClientInformation;
+use crate::models::grant::Grant;
 use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
@@ -70,7 +72,13 @@ where
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
         let client = Arc::new(client);
-        let context = OpenIDContext::new(client.clone(), user, request);
+        let grant_id = user.grant_id().ok_or_else(|| {
+            AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
+        })?;
+        let grant = Grant::find(grant_id).await.ok_or_else(|| {
+            AuthorisationError::InternalError(anyhow!("User has not granted access to data"))
+        })?;
+        let context = OpenIDContext::new(client.clone(), user, request, grant);
         let auth_result = self.resolver.resolve(&context).await;
 
         let config = OpenIDProviderConfiguration::instance();

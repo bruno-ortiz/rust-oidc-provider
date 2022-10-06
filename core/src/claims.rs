@@ -1,17 +1,24 @@
-use crate::error::OpenIdError;
-use crate::models::Token;
-use crate::profile::ProfileData;
-use oidc_types::claims::ClaimOptions;
-use serde_json::Value;
 use std::collections::HashMap;
 
-pub(crate) fn get_id_token_claims<'a, T: Token>(
+use serde_json::Value;
+
+use oidc_types::claims::ClaimOptions;
+
+use crate::error::OpenIdError;
+use crate::models::grant::Grant;
+use crate::profile::ProfileData;
+
+pub(crate) fn get_id_token_claims<'a>(
     profile: &'a ProfileData,
-    token: &'a T,
+    grant: &'a Grant,
 ) -> Result<HashMap<&'a str, &'a Value>, OpenIdError> {
     //TODO: make possible to filter rejected claims
-    let mut claims = profile.claims(token.scopes());
-    if let Some(requested_claims) = token.claims() {
+    let mut claims = grant
+        .scopes()
+        .as_ref()
+        .map(|it| profile.claims(it))
+        .unwrap_or_default();
+    if let Some(requested_claims) = grant.claims() {
         let id_token_claims = &requested_claims.id_token;
         let filtered = filter_claims(profile, id_token_claims)?;
         claims.extend(filtered);
@@ -20,13 +27,17 @@ pub(crate) fn get_id_token_claims<'a, T: Token>(
     Ok(claims)
 }
 
-pub(crate) fn get_userinfo_claims<'a, T: Token>(
+pub(crate) fn get_userinfo_claims<'a>(
     profile: &'a ProfileData,
-    token: &'a T,
+    grant: &'a Grant,
 ) -> Result<HashMap<&'a str, &'a Value>, OpenIdError> {
     //TODO: make possible to filter rejected claims
-    let mut claims = profile.claims(token.scopes());
-    if let Some(requested_claims) = token.claims() {
+    let mut claims = grant
+        .scopes()
+        .as_ref()
+        .map(|it| profile.claims(it))
+        .unwrap_or_default();
+    if let Some(requested_claims) = grant.claims() {
         let userinfo_claims = &requested_claims.userinfo;
         let filtered = filter_claims(profile, userinfo_claims)?;
         claims.extend(filtered);

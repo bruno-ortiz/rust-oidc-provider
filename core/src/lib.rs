@@ -26,7 +26,7 @@ mod macros {
         ($i:ident = $e:expr) => {
             $i = $e;
             if !$i {
-                return dbg!($i);
+                return $i;
             }
         };
     }

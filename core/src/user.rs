@@ -3,13 +3,12 @@ use uuid::Uuid;
 
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
-use oidc_types::grant::Grant;
 use oidc_types::identifiable::Identifiable;
-use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
 use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::models::grant::GrantID;
 use crate::session::SessionID;
 
 #[derive(Debug, Clone)]
@@ -18,7 +17,7 @@ pub struct AuthenticatedUser {
     subject: Subject,
     auth_time: OffsetDateTime,
     max_age: u64,
-    grant: Option<Grant>,
+    grant: Option<GrantID>,
     interaction_id: Uuid,
     acr: Acr,
     amr: Option<Amr>,
@@ -68,19 +67,11 @@ impl AuthenticatedUser {
         self.interaction_id
     }
 
-    pub fn grant(&self) -> Option<&Grant> {
-        self.grant.as_ref() //TODO: create a GrantedUser?
+    pub fn grant_id(&self) -> Option<GrantID> {
+        self.grant
     }
 
-    pub fn has_requested_grant(&self, requested: &Scopes) -> bool {
-        if let Some(ref grant) = self.grant {
-            grant.scopes().contains_all(requested)
-        } else {
-            false
-        }
-    }
-
-    pub fn with_grant(mut self, grant: Grant) -> Self {
+    pub fn with_grant(mut self, grant: GrantID) -> Self {
         self.grant = Some(grant);
         self
     }

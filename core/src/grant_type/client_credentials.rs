@@ -1,21 +1,28 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
 use async_trait::async_trait;
 
+use oidc_types::acr::Acr;
 use oidc_types::scopes::Scopes;
+use oidc_types::subject::Subject;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::ClientCredentialsGrant;
 
+use crate::configuration::clock::Clock;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::grant_type::GrantTypeResolver;
 use crate::models::access_token::AccessToken;
 use crate::models::client::{AuthenticatedClient, ClientInformation};
+use crate::models::grant::GrantBuilder;
 
 #[async_trait]
 impl GrantTypeResolver for ClientCredentialsGrant {
     async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
+        let clock = configuration.clock_provider();
         let cc_config = configuration.client_credentials();
         let ttl = configuration.ttl();
         let scopes = if let Some(requested_scope) = self.scope {
@@ -24,8 +31,24 @@ impl GrantTypeResolver for ClientCredentialsGrant {
         } else {
             None
         };
+
+        let grant = GrantBuilder::new()
+            .subject(Subject::new(client.id()))
+            .scopes(scopes.clone())
+            .acr(Acr::default())
+            .amr(None)
+            .client_id(client.id())
+            .nonce(None)
+            .auth_time(clock.now())
+            .max_age(0)
+            .redirect_uri(None)
+            .rejected_claims(HashSet::new())
+            .claims(None)
+            .build()
+            .expect("Should always build successfully");
+
         let at_duration = ttl.client_credentials_ttl(client.as_ref());
-        let access_token = AccessToken::bearer(client.id(), at_duration, scopes)
+        let access_token = AccessToken::bearer(grant.id(), at_duration, scopes)
             .save()
             .await
             .map_err(OpenIdError::server_error)?;

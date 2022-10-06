@@ -16,7 +16,7 @@ impl ResponseTypeResolver for TokenResolver {
         let ttl = configuration.ttl();
         let at_ttl = ttl.access_token_ttl(context.client.as_ref());
         let token = AccessToken::bearer(
-            context.client.id(),
+            context.grant.id(),
             at_ttl,
             Some(context.request.scope.clone()),
         );
@@ -43,7 +43,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_can_create_access_token() {
-        let context = setup_context(response_type!(ResponseTypeValue::Token), None, None);
+        let context = setup_context(response_type!(ResponseTypeValue::Token), None, None).await;
 
         let resolver = TokenResolver;
 

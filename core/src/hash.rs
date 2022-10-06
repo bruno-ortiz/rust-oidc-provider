@@ -42,39 +42,14 @@ where
 #[cfg(test)]
 mod tests {
     use josekit::jwk::Jwk;
-    use time::{Duration, OffsetDateTime};
-    use url::Url;
 
-    use oidc_types::acr::Acr;
-    use oidc_types::client::ClientID;
     use oidc_types::code::Code;
-    use oidc_types::scopes;
-    use oidc_types::subject::Subject;
 
     use crate::hash::TokenHasher;
-    use crate::models::authorisation_code::AuthorisationCode;
-    use crate::models::Status;
 
     #[test]
     fn test_can_hash() {
-        let code = AuthorisationCode {
-            code: Code::from("some-value"),
-            client_id: ClientID::default(),
-            subject: Subject::new("sub"),
-            scopes: scopes!("openid accounts"),
-            redirect_uri: Url::parse("https://test.com/callback").unwrap(),
-            code_challenge: None,
-            code_challenge_method: None,
-            status: Status::Awaiting,
-            expires_in: OffsetDateTime::now_utc() + Duration::minutes(10),
-            nonce: None,
-            state: None,
-            acr: Acr::default(),
-            amr: None,
-            auth_time: OffsetDateTime::now_utc(),
-            claims: None,
-            max_age: None,
-        };
+        let code = Code::from("some-value");
         let rsa_key = Jwk::from_bytes(r#"
         {
             "p": "2Z1co6mhAXOtwSb1szKBcHd1jCyddlXr401qp3v_VnRMCoYKxgVSwSbuxOZjhtfKBb_Mc6kE6Je6rqWK_rv6cP0ks1HgPj0tsoY_9CBfxFVqYJNKPg4pN56E2bJNgNi-QbwPjCryHIdFeg_Z6_aH9faEekrCKEUqz8BkOeQgVOU",
@@ -93,7 +68,7 @@ mod tests {
         "#).expect("parsed jwk");
         assert_eq!(
             String::from("cA88WX2aDbX8LcxByNm2UA=="),
-            code.code.hash(&rsa_key).unwrap()
+            code.hash(&rsa_key).unwrap()
         );
     }
 }

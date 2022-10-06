@@ -11,7 +11,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::models::Token;
+use crate::models::grant::Grant;
 use crate::profile::ProfileError::FormatMismatch;
 
 #[derive(Debug, Error)]
@@ -37,16 +37,16 @@ impl ProfileData {
         Self(HashMap::new())
     }
 
-    pub async fn get<T: Token>(token: &T) -> Result<ProfileData, ProfileError> {
+    pub async fn get(grant: &Grant) -> Result<ProfileData, ProfileError> {
         let configuration = OpenIDProviderConfiguration::instance();
         Ok(configuration
             .profile_resolver()
-            .resolve(token.subject())
+            .resolve(grant.subject())
             .await?
-            .append("auth_time", token.auth_time())
-            .append("acr", token.acr())
-            .append("sub", token.subject()) //todo: resolve pairwise here?
-            .maybe_append("amr", token.amr()))
+            .append("auth_time", grant.auth_time())
+            .append("acr", grant.acr())
+            .append("sub", grant.subject()) //todo: resolve pairwise here?
+            .maybe_append("amr", grant.amr().as_ref()))
     }
 
     pub fn claim(&self, key: &str) -> Option<&Value> {

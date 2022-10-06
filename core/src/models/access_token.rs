@@ -3,7 +3,6 @@ use serde::Serialize;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use oidc_types::client::ClientID;
 use oidc_types::hash::Hashable;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::scopes::Scopes;
@@ -12,17 +11,18 @@ use oidc_types::url_encodable::UrlEncodable;
 use crate::adapter::PersistenceError;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::models::grant::GrantID;
 
 pub struct ActiveAccessToken(AccessToken);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
+    pub grant_id: GrantID,
     pub token: String,
     pub t_type: String,
     pub expires_in: Duration,
-    client_id: ClientID,
-    created: OffsetDateTime,
-    scopes: Option<Scopes>,
+    pub created: OffsetDateTime,
+    pub scopes: Option<Scopes>,
 }
 
 impl AccessToken {
@@ -32,7 +32,7 @@ impl AccessToken {
         token_type: TT,
         expires_in: Duration,
         scopes: Option<Scopes>,
-        client_id: ClientID,
+        grant_id: GrantID,
     ) -> Self {
         let clock = OpenIDProviderConfiguration::clock();
         Self {
@@ -41,12 +41,12 @@ impl AccessToken {
             created: clock.now(),
             expires_in,
             scopes,
-            client_id,
+            grant_id,
         }
     }
 
-    pub fn bearer(client_id: ClientID, expires_in: Duration, scopes: Option<Scopes>) -> Self {
-        Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, client_id)
+    pub fn bearer(grant_id: GrantID, expires_in: Duration, scopes: Option<Scopes>) -> Self {
+        Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, grant_id)
     }
 
     pub fn into_active(self) -> Option<ActiveAccessToken> {

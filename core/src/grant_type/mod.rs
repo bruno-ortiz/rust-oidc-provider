@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use time::Duration;
 
-use oidc_types::client::ClientID;
 use oidc_types::scopes::Scopes;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
@@ -10,6 +9,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::access_token::AccessToken;
 use crate::models::client::AuthenticatedClient;
+use crate::models::grant::GrantID;
 use crate::models::refresh_token::RefreshToken;
 
 mod authorization_code;
@@ -45,11 +45,11 @@ impl GrantTypeResolver for TokenRequestBody {
 }
 
 async fn create_access_token(
-    client_id: ClientID,
+    grant_id: GrantID,
     duration: Duration,
-    scopes: Scopes,
+    scopes: Option<Scopes>,
 ) -> Result<AccessToken, OpenIdError> {
-    AccessToken::bearer(client_id, duration, Some(scopes))
+    AccessToken::bearer(grant_id, duration, scopes)
         .save()
         .await
         .map_err(OpenIdError::server_error)

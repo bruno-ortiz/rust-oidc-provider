@@ -10,6 +10,7 @@ use crate::adapter::Adapter;
 use crate::models::access_token::AccessToken;
 use crate::models::authorisation_code::AuthorisationCode;
 use crate::models::client::ClientInformation;
+use crate::models::grant::{Grant, GrantID};
 use crate::models::refresh_token::RefreshToken;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
@@ -17,6 +18,7 @@ use crate::user::AuthenticatedUser;
 
 pub struct AdapterContainer {
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync>,
+    grant: Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync>,
     token: Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync>,
     refresh: Arc<dyn Adapter<Item = RefreshToken, Id = String> + Send + Sync>,
     client: Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>,
@@ -27,6 +29,10 @@ pub struct AdapterContainer {
 impl AdapterContainer {
     pub fn code(&self) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync> {
         self.code.clone()
+    }
+
+    pub fn grant(&self) -> Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync> {
+        self.grant.clone()
     }
 
     pub fn refresh(&self) -> Arc<dyn Adapter<Item = RefreshToken, Id = String> + Send + Sync> {
@@ -56,6 +62,7 @@ impl Default for AdapterContainer {
     fn default() -> Self {
         AdapterContainer {
             code: Arc::new(InMemoryGenericAdapter::new()),
+            grant: Arc::new(InMemoryGenericAdapter::new()),
             token: Arc::new(InMemoryGenericAdapter::new()),
             refresh: Arc::new(InMemoryGenericAdapter::new()),
             client: Arc::new(InMemoryGenericAdapter::new()),

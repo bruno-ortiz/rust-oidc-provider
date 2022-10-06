@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::anyhow;
 use thiserror::Error;
 use url::Url;
@@ -6,7 +8,6 @@ use uuid::Uuid;
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::client::ClientID;
-use oidc_types::grant::Grant;
 use oidc_types::prompt::Prompt;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
@@ -16,6 +17,8 @@ use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::client::retrieve_client_info;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::models::grant::{Grant, GrantBuilder};
+use crate::prepare_claims;
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::{AuthorisationError, AuthorisationService};
@@ -96,7 +99,28 @@ where
 {
     match Interaction::find(interaction_id).await {
         Some(Interaction::Consent { request, user, .. }) => {
-            let user = user.with_grant(Grant::new(scopes)).save().await?;
+            let grant = GrantBuilder::new()
+                .subject(user.sub().clone())
+                .scopes(scopes)
+                .acr(user.acr().clone())
+                .amr(user.amr().cloned())
+                .client_id(request.client_id)
+                .nonce(request.nonce.clone())
+                .auth_time(user.auth_time())
+                .max_age(request.max_age)
+                .redirect_uri(request.redirect_uri.clone())
+                .rejected_claims(HashSet::new()) //todo: implement rejected claims
+                .claims(prepare_claims!(
+                    request,
+                    (acr_values, "acr"),
+                    (max_age, "auth_time")
+                ))
+                .build()
+                .expect("Should always build successfully")
+                .save()
+                .await?;
+
+            let user = user.with_grant(grant.id()).save().await?;
             let client = retrieve_client_info(request.client_id)
                 .await
                 .ok_or(InteractionError::ClientNotFound(request.client_id))?;
@@ -126,12 +150,18 @@ async fn resolve_interaction(
     if user.is_none() || prompt.is_some() && prompt.unwrap().contains(&Prompt::Login) {
         Interaction::login(session, request)
     } else if let Some(user) = user {
-        if !user.has_requested_grant(&request.scope)
-            || prompt.is_some() && prompt.unwrap().contains(&Prompt::Consent)
-        {
-            Interaction::consent(request, user)
+        if let Some(grant_id) = user.grant_id() {
+            let grant = Grant::find(grant_id).await;
+            if grant.is_none()
+                || !grant.unwrap().has_requested_scopes(&request.scope)
+                || prompt.is_some() && prompt.unwrap().contains(&Prompt::Consent)
+            {
+                Interaction::consent(request, user)
+            } else {
+                Interaction::none(request, user)
+            }
         } else {
-            Interaction::none(request, user)
+            Interaction::consent(request, user)
         }
     } else {
         panic!("unreachable")
@@ -145,6 +175,37 @@ async fn finalize_interaction(
     Interaction::none(request, user)
         .save()
         .await?
-        .consume()
+        .consume_authenticated()
         .ok_or_else(|| InteractionError::Internal(anyhow!("Unable to consume this interaction")))
+}
+
+mod macros {
+    #[macro_export]
+    macro_rules! prepare_claims {
+        ($req:ident, ($opt:ident, $claim:expr)$(,($opt2:ident, $claim2:expr))* ) => {
+            {
+                let request = &$req;
+                if request.$opt.is_some() $(|| request.$opt2.is_some())*  {
+                    let mut c = if let Some(claims) = &request.claims {
+                        claims.clone()
+                    } else {
+                        oidc_types::claims::Claims::default()
+                    };
+                    if request.$opt.is_some() {
+                        c.id_token.insert($claim.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
+                        c.userinfo.insert($claim.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
+                    }
+                    $(
+                      if request.$opt2.is_some() {
+                        c.id_token.insert($claim2.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
+                        c.userinfo.insert($claim2.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
+                      }
+                    )*
+                    Some(c)
+                } else {
+                    request.claims.clone()
+                }
+            }
+        };
+    }
 }

@@ -68,7 +68,9 @@ impl Interaction {
         url
     }
 
-    pub fn consume(self) -> Option<(AuthenticatedUser, ValidatedAuthorisationRequest)> {
+    pub fn consume_authenticated(
+        self,
+    ) -> Option<(AuthenticatedUser, ValidatedAuthorisationRequest)> {
         match self {
             Interaction::Login { .. } => None,
             Interaction::Consent { user, request, .. } => Some((user, request)),

@@ -52,10 +52,10 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             ));
         }
 
-        let profile = ProfileData::get(context)
+        let profile = ProfileData::get(&context.grant)
             .await
             .map_err(OpenIdError::server_error)?;
-        let claims = get_id_token_claims(&profile, context)?;
+        let claims = get_id_token_claims(&profile, &context.grant)?;
 
         let ttl = configuration.ttl();
         let id_token = IdTokenBuilder::new(signing_key)
@@ -106,7 +106,8 @@ mod tests {
             response_type![ResponseTypeValue::Code],
             Some(state.clone()),
             Some(nonce.clone()),
-        );
+        )
+        .await;
         let configuration = OpenIDProviderConfiguration::instance();
         let keystore = configuration.keystore();
         let signing_key = keystore.select(KeyUse::Sig).first().unwrap();
@@ -161,7 +162,8 @@ mod tests {
             response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken],
             Some(state.clone()),
             None,
-        );
+        )
+        .await;
         let resolver = IDTokenResolver::new(None, None);
         let result = resolver.resolve(&context).await;
 

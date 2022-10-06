@@ -9,7 +9,6 @@ pub mod claims;
 pub mod client;
 pub mod code;
 pub mod discovery;
-pub mod grant;
 pub mod grant_type;
 pub mod hash;
 pub mod identifiable;

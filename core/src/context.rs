@@ -1,22 +1,17 @@
 use std::sync::Arc;
 
-use oidc_types::acr::Acr;
-use oidc_types::amr::Amr;
-use oidc_types::claims::Claims;
-use oidc_types::nonce::Nonce;
 use oidc_types::response_type::Flow;
-use oidc_types::scopes::Scopes;
-use oidc_types::subject::Subject;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::models::client::ClientInformation;
-use crate::models::Token;
+use crate::models::grant::Grant;
 use crate::user::AuthenticatedUser;
 
 pub struct OpenIDContext {
     pub client: Arc<ClientInformation>,
     pub user: AuthenticatedUser,
     pub request: ValidatedAuthorisationRequest,
+    pub grant: Grant,
 }
 
 impl OpenIDContext {
@@ -24,11 +19,13 @@ impl OpenIDContext {
         client: Arc<ClientInformation>,
         user: AuthenticatedUser,
         request: ValidatedAuthorisationRequest,
+        grant: Grant,
     ) -> Self {
         OpenIDContext {
             client,
             user,
             request,
+            grant,
         }
     }
 
@@ -37,47 +34,15 @@ impl OpenIDContext {
     }
 }
 
-impl Token for OpenIDContext {
-    fn subject(&self) -> &Subject {
-        self.user.sub()
-    }
-
-    fn auth_time(&self) -> u64 {
-        self.user.auth_time().unix_timestamp() as u64
-    }
-
-    fn acr(&self) -> &Acr {
-        self.user.acr()
-    }
-
-    fn amr(&self) -> Option<&Amr> {
-        self.user.amr()
-    }
-
-    fn scopes(&self) -> &Scopes {
-        self.user
-            .grant()
-            .expect("This should not be called when user has no grants")
-            .scopes()
-    }
-
-    fn claims(&self) -> Option<&Claims> {
-        self.request.claims.as_ref()
-    }
-
-    fn nonce(&self) -> Option<&Nonce> {
-        self.request.nonce.as_ref()
-    }
-}
-
 #[cfg(test)]
 pub mod test_utils {
+    use std::collections::HashSet;
     use std::sync::Arc;
 
     use josekit::jwk::alg::ec::EcCurve;
     use josekit::jwk::Jwk;
     use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
-    use josekit::jws::RS256;
+    use josekit::jws::ES256;
     use time::OffsetDateTime;
     use url::Url;
     use uuid::Uuid;
@@ -85,7 +50,6 @@ pub mod test_utils {
     use oidc_types::application_type::ApplicationType;
     use oidc_types::auth_method::AuthMethod;
     use oidc_types::client::{ClientID, ClientMetadata};
-    use oidc_types::grant::Grant;
     use oidc_types::jose::jwk_set::JwkSet;
     use oidc_types::nonce::Nonce;
     use oidc_types::password_hasher::HasherConfig;
@@ -105,10 +69,12 @@ pub mod test_utils {
     use crate::context::OpenIDContext;
     use crate::keystore::KeyStore;
     use crate::models::client::ClientInformation;
+    use crate::models::grant::GrantBuilder;
+    use crate::prepare_claims;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
 
-    pub fn setup_context(
+    pub async fn setup_context(
         response_type: ResponseType,
         state: Option<State>,
         nonce: Option<Nonce>,
@@ -155,7 +121,7 @@ pub mod test_utils {
             jwks: None,
             sector_identifier_uri: None,
             subject_type: SubjectType::Public,
-            id_token_signed_response_alg: RS256.into(),
+            id_token_signed_response_alg: ES256.into(),
             id_token_encryption: None,
             userinfo_signed_response_alg: None,
             userinfo_encryption: None,
@@ -164,11 +130,12 @@ pub mod test_utils {
             software_version: None,
             software_statement: None,
             application_type: ApplicationType::Native,
-            authorization_signed_response_alg: RS256.into(),
+            authorization_signed_response_alg: ES256.into(),
             request_uris: None,
             request_object_encryption: None,
             authorization_response_encryption: None,
         };
+
         let client =
             ClientInformation::new(client_id, OffsetDateTime::now_utc(), plain, None, metadata);
 
@@ -180,8 +147,7 @@ pub mod test_utils {
             Uuid::new_v4(),
             None,
             None,
-        )
-        .with_grant(Grant::new(scopes!("openid", "test")));
+        );
 
         let mut jwk = Jwk::generate_ec_key(EcCurve::P256).unwrap();
         jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.to_string());
@@ -202,6 +168,29 @@ pub mod test_utils {
             .build()
             .unwrap();
         OpenIDProviderConfiguration::set(config);
-        OpenIDContext::new(Arc::new(client), user, request)
+
+        let grant = GrantBuilder::new()
+            .subject(user.sub().clone())
+            .scopes(scopes!("openid", "test"))
+            .acr(user.acr().clone())
+            .amr(user.amr().cloned())
+            .client_id(request.client_id)
+            .nonce(request.nonce.clone())
+            .auth_time(user.auth_time())
+            .max_age(request.max_age)
+            .redirect_uri(request.redirect_uri.clone())
+            .rejected_claims(HashSet::new())
+            .claims(prepare_claims!(
+                request,
+                (acr_values, "acr"),
+                (max_age, "auth_time")
+            ))
+            .build()
+            .expect("Should always build successfully")
+            .save()
+            .await
+            .unwrap();
+        let user = user.with_grant(grant.id());
+        OpenIDContext::new(Arc::new(client), user, request, grant)
     }
 }

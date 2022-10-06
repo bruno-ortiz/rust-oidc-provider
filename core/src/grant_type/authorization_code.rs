@@ -16,6 +16,7 @@ use crate::grant_type::{create_access_token, GrantTypeResolver};
 use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
 use crate::models::client::AuthenticatedClient;
+use crate::models::grant::Grant;
 use crate::models::refresh_token::RefreshTokenBuilder;
 use crate::profile::ProfileData;
 
@@ -24,30 +25,44 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
     async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
         let clock = configuration.clock_provider();
-        let grant = self;
         let code = configuration
             .adapters()
             .code()
-            .find(&grant.code)
+            .find(&self.code)
             .await
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
-            .validate(&client, &grant)?
+            .validate(&self)?
             .consume()
             .await?;
 
-        let ttl = configuration.ttl();
+        let grant = Grant::find(code.grant_id)
+            .await
+            .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
+        if *grant.client_id() != client.id() {
+            return Err(OpenIdError::invalid_grant(
+                "Client mismatch for refresh token",
+            ));
+        }
+        if grant.redirect_uri().is_none() {
+            return Err(OpenIdError::invalid_grant("Missing redirect_uri"));
+        }
+        if *grant.redirect_uri() != Some(self.redirect_uri) {
+            return Err(OpenIdError::invalid_grant("redirect_uri mismatch"));
+        }
+
+        let ttl = configuration.ttl();
         let at_duration = ttl.access_token_ttl(client.as_ref());
         let access_token =
-            create_access_token(client.id(), at_duration, code.scopes.clone()).await?;
+            create_access_token(grant.id(), at_duration, grant.scopes().clone()).await?;
 
         let now = clock.now();
         let mut simple_id_token = None;
-        if code.scopes.contains(&OPEN_ID) {
-            let profile = ProfileData::get(&code)
+        if grant.scopes().is_some() && grant.scopes().as_ref().unwrap().contains(&OPEN_ID) {
+            let profile = ProfileData::get(&grant)
                 .await
                 .map_err(OpenIdError::server_error)?;
-            let claims = get_id_token_claims(&profile, &code)?;
+            let claims = get_id_token_claims(&profile, &grant)?;
 
             let alg = client.id_token_signing_alg();
             let keystore = client.as_ref().server_keystore(alg);
@@ -61,11 +76,11 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 })?;
             let id_token = IdTokenBuilder::new(signing_key)
                 .with_issuer(configuration.issuer())
-                .with_sub(&code.subject)
+                .with_sub(grant.subject())
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
                 .with_iat(now)
-                .with_nonce(code.nonce.as_ref())
+                .with_nonce(grant.nonce().as_ref())
                 .with_s_hash(code.state.as_ref())?
                 .with_c_hash(Some(&code.code))?
                 .with_at_hash(Some(&access_token))?
@@ -85,19 +100,10 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
             let refresh_token = RefreshTokenBuilder::default()
                 .token(Uuid::new_v4().to_string())
-                .client_id(code.client_id)
-                .redirect_uri(code.redirect_uri)
-                .subject(code.subject)
-                .scopes(code.scopes)
+                .grant_id(code.grant_id)
                 .state(code.state)
-                .nonce(code.nonce)
                 .expires_in(now + rt_ttl)
                 .created(now)
-                .acr(code.acr)
-                .amr(code.amr)
-                .claims(code.claims)
-                .max_age(code.max_age)
-                .auth_time(code.auth_time)
                 .build()
                 .map_err(OpenIdError::server_error)?
                 .save()
