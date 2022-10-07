@@ -1,10 +1,11 @@
 use axum::headers::authorization::Bearer;
-use std::collections::HashMap;
-
 use axum::headers::Authorization;
 use axum::response::Result;
 use axum::{Json, TypedHeader};
+
+use oidc_core::error::OpenIdError;
 use oidc_core::models::access_token::AccessToken;
+use oidc_core::userinfo::get_user_info;
 use oidc_types::userinfo::UserInfo;
 
 use crate::routes::error::OpenIdErrorResponse;
@@ -13,7 +14,14 @@ use crate::routes::error::OpenIdErrorResponse;
 pub async fn userinfo(
     bearer_token: TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<UserInfo>, OpenIdErrorResponse> {
+    //TODO: review error to respond wwwAuthenticate Header
     let token = bearer_token.token();
 
-    Ok(Json(UserInfo::Normal(HashMap::new())))
+    let token = AccessToken::find(token)
+        .await
+        .ok_or_else(|| OpenIdError::invalid_grant("Invalid token"))
+        .and_then(|token| token.into_active().map_err(OpenIdError::from))?;
+
+    let user_info = get_user_info(token).await?;
+    Ok(Json(user_info))
 }

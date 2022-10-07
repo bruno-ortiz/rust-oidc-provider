@@ -40,8 +40,6 @@ impl Interaction {
         }
     }
 
-    // pub fn advance(self, )
-
     pub fn consent(request: ValidatedAuthorisationRequest, user: AuthenticatedUser) -> Self {
         Self::Consent {
             id: user.interaction_id(),

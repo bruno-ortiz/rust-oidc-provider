@@ -24,6 +24,8 @@ pub struct OIDCProviderMetadata<'a> {
     token_endpoint: Url,
     token_endpoint_auth_signing_alg_values_supported: &'a Vec<SigningAlgorithm>,
     token_endpoint_auth_methods_supported: &'a Vec<AuthMethod>,
+    userinfo_endpoint: Url,
+    userinfo_signing_alg_values_supported: &'a Vec<SigningAlgorithm>,
     response_types_supported: &'a Vec<ResponseType>,
     scopes_supported: &'a Vec<Scope>,
     jwks_uri: Url,
@@ -64,7 +66,4 @@ revocation_endpoint_auth_methods_supported: Vec<AuthMethod>,
 introspection_endpoint: Url,
 introspection_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
 introspection_endpoint_auth_methods_supported: Vec<AuthMethod>,
-TODO: implement userinfo
-userinfo_endpoint: Url,
-userinfo_signing_alg_values_supported: Vec<Algorithm>,
 */

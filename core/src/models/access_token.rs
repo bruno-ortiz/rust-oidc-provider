@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use serde::Serialize;
+use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -11,13 +12,20 @@ use oidc_types::url_encodable::UrlEncodable;
 use crate::adapter::PersistenceError;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::error::OpenIdError;
 use crate::models::grant::GrantID;
 
 pub struct ActiveAccessToken(AccessToken);
 
+impl ActiveAccessToken {
+    pub fn grant_id(&self) -> GrantID {
+        self.0.grant_id
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
-    pub grant_id: GrantID,
+    grant_id: GrantID,
     pub token: String,
     pub t_type: String,
     pub expires_in: Duration,
@@ -49,13 +57,13 @@ impl AccessToken {
         Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, grant_id)
     }
 
-    pub fn into_active(self) -> Option<ActiveAccessToken> {
+    pub fn into_active(self) -> Result<ActiveAccessToken, TokenError> {
         let clock = OpenIDProviderConfiguration::clock();
         let now = clock.now();
         if now <= (self.created + self.expires_in) {
-            Some(ActiveAccessToken(self))
+            Ok(ActiveAccessToken(self))
         } else {
-            None
+            Err(TokenError::Expired)
         }
     }
 
@@ -92,5 +100,19 @@ impl UrlEncodable for AccessToken {
 impl Hashable for AccessToken {
     fn identifier(&self) -> &str {
         &self.token
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum TokenError {
+    #[error("Token expired")]
+    Expired,
+}
+
+impl From<TokenError> for OpenIdError {
+    fn from(err: TokenError) -> Self {
+        match err {
+            TokenError::Expired => OpenIdError::invalid_grant(err.to_string()),
+        }
     }
 }

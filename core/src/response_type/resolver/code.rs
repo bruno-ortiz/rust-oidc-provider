@@ -77,7 +77,7 @@ mod tests {
             context.request.code_challenge_method.unwrap(),
             code.code_challenge_method.unwrap()
         );
-        assert_eq!(context.client.id(), *grant.client_id());
+        assert_eq!(context.client.id(), grant.client_id());
         assert_eq!(Some(context.request.scope), *grant.scopes());
         assert_eq!(Status::Awaiting, code.status);
         assert_eq!(Some(context.request.redirect_uri), *grant.redirect_uri());

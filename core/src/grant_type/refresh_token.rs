@@ -36,7 +36,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
             .await
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
-        if *grant.client_id() != client.id() {
+        if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for refresh token",
             ));

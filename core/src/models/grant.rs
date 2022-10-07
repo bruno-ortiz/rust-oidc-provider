@@ -33,6 +33,8 @@ pub struct Grant {
     id: GrantID,
     #[builder(setter(custom))]
     status: Status,
+    #[getset(skip)]
+    #[get_copy = "pub"]
     client_id: ClientID,
     scopes: Option<Scopes>,
     subject: Subject,

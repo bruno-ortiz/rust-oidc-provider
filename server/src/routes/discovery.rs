@@ -23,6 +23,10 @@ pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata
         .token_endpoint_auth_signing_alg_values_supported(
             configuration.token_endpoint_auth_signing_alg_values_supported(),
         )
+        .userinfo_endpoint(url(issuer, routes.userinfo))
+        .userinfo_signing_alg_values_supported(
+            configuration.userinfo_signing_alg_values_supported(),
+        )
         .jwks_uri(url(issuer, routes.jwks))
         .response_types_supported(configuration.response_types_supported())
         .response_modes_supported(configuration.response_modes_supported())
@@ -96,5 +100,3 @@ pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata
 fn url(issuer: &Issuer, path: &str) -> Url {
     issuer.inner().join(path).expect("Should be a valid url")
 }
-
-mod tests {}

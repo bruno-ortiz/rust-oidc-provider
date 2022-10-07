@@ -20,6 +20,7 @@ pub mod response_type;
 pub mod services;
 pub mod session;
 pub mod user;
+pub mod userinfo;
 
 mod macros {
     macro_rules! true_or_return {
