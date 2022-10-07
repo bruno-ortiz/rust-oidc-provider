@@ -41,7 +41,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
         if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
-                "Client mismatch for refresh token",
+                "Client mismatch for Authorization Code",
             ));
         }
         if grant.redirect_uri().is_none() {
@@ -80,7 +80,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
                 .with_iat(now)
-                .with_nonce(grant.nonce().as_ref())
+                .with_nonce(code.nonce.as_ref())
                 .with_s_hash(code.state.as_ref())?
                 .with_c_hash(Some(&code.code))?
                 .with_at_hash(Some(&access_token))?
@@ -101,6 +101,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             let refresh_token = RefreshTokenBuilder::default()
                 .token(Uuid::new_v4().to_string())
                 .grant_id(code.grant_id)
+                .nonce(code.nonce)
                 .state(code.state)
                 .expires_in(now + rt_ttl)
                 .created(now)

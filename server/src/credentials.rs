@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::string::FromUtf8Error;
 
 use axum::body::Bytes;
-use axum::http::header::AUTHORIZATION;
+use axum::headers::authorization::Basic;
+use axum::headers::{Authorization, HeaderMapExt};
 use axum::http::StatusCode;
 use hyper::HeaderMap;
 use serde::de::value::Error as SerdeError;
@@ -36,6 +38,8 @@ pub enum CredentialsError {
     CredentialError(#[from] CredentialError),
     #[error("{}", .0)]
     MismatchedClientId(String),
+    #[error("{}", .0)]
+    UTF8Err(#[from] FromUtf8Error),
     #[error("Error parsing body params, {:?}", .0)]
     ParseBody(#[from] SerdeError),
 }
@@ -66,7 +70,9 @@ impl Credentials {
             credentials.insert(AuthMethod::SelfSignedTlsClientAuth, credential);
         }
 
-        if let Ok(AuthBasic((id, secret))) = AuthBasic::from_headers(headers) {
+        if let Ok(header) = Authorization::<Basic>::from_headers(headers) {
+            let id = header.username();
+            let secret = header.password();
             let (id, credential) = parse_credential(id, secret)?;
 
             validate_client_id("Authorization header", &client_id, id)?;
@@ -104,11 +110,11 @@ impl Credentials {
 }
 
 fn parse_credential(
-    client_id: String,
-    secret: Option<String>,
+    client_id: &str,
+    secret: &str,
 ) -> Result<(ClientID, ClientSecretCredential), CredentialsError> {
-    let client_id = parse_client_id(client_id.as_str())?;
-    let secret = secret.ok_or(CredentialsError::MissingSecret)?;
+    let client_id = parse_client_id(client_id)?;
+    let secret = urlencoding::decode(secret)?;
     Ok((client_id, ClientSecretCredential::new(secret)))
 }
 
@@ -136,52 +142,25 @@ fn validate_client_id(
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct AuthBasic((String, Option<String>));
+trait AuthorizationBasicExt {
+    fn from_headers(
+        headers: &HeaderMap,
+    ) -> Result<Authorization<Basic>, (StatusCode, &'static str)>;
+}
 
-impl AuthBasic {
-    fn from_headers(headers: &HeaderMap) -> Result<Self, (StatusCode, &'static str)> {
-        let authorisation = headers
-            .get(AUTHORIZATION)
-            .ok_or((StatusCode::BAD_REQUEST, "`Authorization` header is missing"))?
-            .to_str()
-            .map_err(|_| {
-                (
-                    StatusCode::BAD_REQUEST,
-                    "`Authorization` header contains invalid characters",
-                )
-            })?;
-
-        // Check that its a well-formed basic auth then decode and return
-        let split = authorisation.split_once(' ');
-        match split {
-            Some((name, contents)) if name == "Basic" => decode_basic(contents),
-            _ => Err((
+impl AuthorizationBasicExt for Authorization<Basic> {
+    fn from_headers(
+        headers: &HeaderMap,
+    ) -> Result<Authorization<Basic>, (StatusCode, &'static str)> {
+        match headers.typed_try_get::<Authorization<Basic>>() {
+            Ok(Some(header)) => Ok(header),
+            Ok(None) => Err((StatusCode::BAD_REQUEST, "`Authorization` header is missing")),
+            Err(_) => Err((
                 StatusCode::BAD_REQUEST,
-                "`Authorization` header must be for basic authentication",
+                "Error decoding`Authorization` header",
             )),
         }
     }
-}
-
-fn decode_basic(input: &str) -> Result<AuthBasic, (StatusCode, &'static str)> {
-    const ERR: (StatusCode, &str) = (
-        StatusCode::BAD_REQUEST,
-        "`Authorization` header's basic authentication was improperly encoded",
-    );
-
-    // Decode from base64 into a string
-    let decoded = base64::decode(input).map_err(|_| ERR)?;
-    let decoded = String::from_utf8(decoded).map_err(|_| ERR)?;
-
-    // Return depending on if password is present
-    Ok(AuthBasic(
-        if let Some((id, password)) = decoded.split_once(':') {
-            (id.to_string(), Some(password.to_string()))
-        } else {
-            (decoded, None)
-        },
-    ))
 }
 
 impl From<CredentialsError> for OpenIdError {
@@ -192,6 +171,7 @@ impl From<CredentialsError> for OpenIdError {
             | CredentialsError::MissingSecret
             | CredentialsError::MismatchedClientId(_)
             | CredentialsError::ParseBody(_)
+            | CredentialsError::UTF8Err(_)
             | CredentialsError::CredentialError(_) => OpenIdError::invalid_request(err.to_string()),
         }
     }

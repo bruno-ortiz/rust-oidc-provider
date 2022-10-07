@@ -1,13 +1,14 @@
 use async_trait::async_trait;
 use thiserror::Error;
 
+use oidc_types::secret::{PlainTextSecret, MIN_SECRET_LEN};
+use ClientCredential::*;
+
 use crate::client_credentials::{
     ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, PrivateKeyJWTCredential,
     SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
 };
 use crate::models::client::{AuthenticatedClient, ClientInformation};
-use oidc_types::secret::PlainTextSecret;
-use ClientCredential::*;
 
 #[derive(Debug, Error)]
 pub enum ClientAuthenticationError {
@@ -48,6 +49,9 @@ impl ClientAuthenticator for ClientSecretCredential {
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         let secret = PlainTextSecret::from(self.secret());
+        if secret.size() < MIN_SECRET_LEN {
+            return Err(ClientAuthenticationError::InvalidSecret(secret));
+        }
         if *client.secret() == secret {
             Ok(AuthenticatedClient::new(client))
         } else {

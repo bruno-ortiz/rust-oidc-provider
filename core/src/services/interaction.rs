@@ -105,7 +105,6 @@ where
                 .acr(user.acr().clone())
                 .amr(user.amr().cloned())
                 .client_id(request.client_id)
-                .nonce(request.nonce.clone())
                 .auth_time(user.auth_time())
                 .max_age(request.max_age)
                 .redirect_uri(request.redirect_uri.clone())
@@ -153,7 +152,8 @@ async fn resolve_interaction(
         if let Some(grant_id) = user.grant_id() {
             let grant = Grant::find(grant_id).await;
             if grant.is_none()
-                || !grant.unwrap().has_requested_scopes(&request.scope)
+                || !grant.as_ref().unwrap().has_requested_scopes(&request.scope)
+                || grant.as_ref().unwrap().client_id() != request.client_id
                 || prompt.is_some() && prompt.unwrap().contains(&Prompt::Consent)
             {
                 Interaction::consent(request, user)

@@ -89,10 +89,12 @@ where
                 .request
                 .response_mode(config.jwt_secure_response_mode()),
         };
-        let mut parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
-        if let Some(state) = context.request.state {
-            parameters = (parameters, state).params();
-        }
-        encode_response(encoding_context, &self.encoder, parameters)
+        let parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
+        encode_response(
+            encoding_context,
+            &self.encoder,
+            parameters,
+            context.request.state,
+        )
     }
 }

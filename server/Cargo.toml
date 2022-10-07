@@ -29,6 +29,7 @@ thiserror = "1.0.31"
 time = "0.3.11"
 tracing = "0.1.35"
 base64 = "0.13.0"
+urlencoding = "2.1.2"
 
 [dev-dependencies]
 axum-macros = "0.2.3"

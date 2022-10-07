@@ -5,6 +5,7 @@ use url::Url;
 
 use format as f;
 use oidc_types::response_mode::ResponseMode;
+use oidc_types::state::State;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::configuration::OpenIDProviderConfiguration;
@@ -96,9 +97,14 @@ pub fn encode_response<E: ResponseModeEncoder, P: UrlEncodable>(
     context: EncodingContext,
     encoder: &E,
     parameters: P,
+    state: Option<State>,
 ) -> std::result::Result<AuthorisationResponse, AuthorisationError> {
+    let mut parameters = parameters.params();
+    if let Some(state) = state {
+        parameters = (parameters, state).params();
+    }
     let result = encoder
-        .encode(&context, parameters.params())
+        .encode(&context, parameters)
         .map_err(OpenIdError::server_error);
     match result {
         Ok(res) => Ok(res),

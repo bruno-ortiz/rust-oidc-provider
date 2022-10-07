@@ -40,8 +40,8 @@ pub enum ClientCredential {
 pub struct ClientSecretCredential(String);
 
 impl ClientSecretCredential {
-    pub fn new(secret: String) -> Self {
-        Self(secret)
+    pub fn new<T: Into<String>>(secret: T) -> Self {
+        Self(secret.into())
     }
 
     pub fn secret(self) -> String {

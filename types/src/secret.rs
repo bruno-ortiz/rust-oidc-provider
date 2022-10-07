@@ -8,14 +8,20 @@ use crate::password_hasher::{HashingError, PasswordHasher};
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                          abcdefghijklmnopqrstuvwxyz\
                          0123456789)(*&^%$#@!~";
-const PASSWORD_LEN: usize = 32;
+pub const MIN_SECRET_LEN: usize = 32;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PlainTextSecret(String);
 
 impl PlainTextSecret {
+    pub fn size(&self) -> usize {
+        self.0.as_bytes().len()
+    }
+}
+
+impl PlainTextSecret {
     pub fn random() -> Self {
-        PlainTextSecret(random_pwd(CHARSET, PASSWORD_LEN))
+        PlainTextSecret(random_pwd(CHARSET, MIN_SECRET_LEN))
     }
 }
 

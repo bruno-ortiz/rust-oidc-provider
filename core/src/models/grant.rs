@@ -12,7 +12,6 @@ use oidc_types::amr::Amr;
 use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::identifiable::Identifiable;
-use oidc_types::nonce::Nonce;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
@@ -39,7 +38,6 @@ pub struct Grant {
     scopes: Option<Scopes>,
     subject: Subject,
     acr: Acr,
-    nonce: Option<Nonce>,
     amr: Option<Amr>,
     auth_time: OffsetDateTime,
     claims: Option<Claims>,

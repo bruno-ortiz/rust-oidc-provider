@@ -38,7 +38,6 @@ impl GrantTypeResolver for ClientCredentialsGrant {
             .acr(Acr::default())
             .amr(None)
             .client_id(client.id())
-            .nonce(None)
             .auth_time(clock.now())
             .max_age(0)
             .redirect_uri(None)

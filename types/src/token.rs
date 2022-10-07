@@ -6,7 +6,7 @@ use time::Duration;
 #[skip_serializing_none]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct TokenResponse {
-    token: String,
+    access_token: String,
     token_type: String,
     #[serde(serialize_with = "serialize_duration")]
     expires_in: Duration,
@@ -23,7 +23,7 @@ impl TokenResponse {
         id_token: Option<SimpleIdToken>,
     ) -> Self {
         Self {
-            token,
+            access_token: token,
             token_type,
             expires_in,
             refresh_token,

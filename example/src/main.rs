@@ -1,5 +1,3 @@
-mod profile;
-
 use std::collections::HashMap;
 use std::io;
 use std::path::Path;
@@ -29,10 +27,12 @@ use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadataBuilder};
 use oidc_types::grant_type::GrantType;
 use oidc_types::jose::jwk_set::JwkSet;
-use oidc_types::jose::HS256;
+use oidc_types::jose::ES256;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use ResponseTypeValue::Code;
+
+mod profile;
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
@@ -60,7 +60,7 @@ async fn main() {
         .nest("/assets", serve_dir("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://766c-2804-431-c7c6-24e4-200c-3f6f-2dfc-553e.sa.ngrok.io")
+        .issuer("https://9e05-2804-431-c7c7-3044-a8db-af14-e1bf-ba64.sa.ngrok.io")
         .build()
         .expect("Expected valid configuration");
 
@@ -69,6 +69,7 @@ async fn main() {
         "Test client 1",
         "1d8fca3b-a2f1-48c2-924d-843e5173a951",
         "1fCW^$)*(I#tll2EH#!MfsHFQ$*6&gEx",
+        AuthMethod::ClientSecretBasic,
     )
     .await;
     create_client(
@@ -76,6 +77,16 @@ async fn main() {
         "Test client 2",
         "e9f6fa6b-4fb2-4a85-85c0-14d13521a377",
         "T*8XnO6JRqI8rrPh^5dUzE0BNQR0u5Hy",
+        AuthMethod::ClientSecretBasic,
+    )
+    .await;
+
+    create_client(
+        &config,
+        "Test Client_Secret_Post",
+        "e9f6fa6b-4fb2-4a85-85c0-14d13521a378",
+        "T*8XnO6JRqI8rrPh^5dUzE0BNQR0u5Hy",
+        AuthMethod::ClientSecretPost,
     )
     .await;
 
@@ -86,15 +97,21 @@ async fn main() {
         .unwrap()
 }
 
-async fn create_client(config: &OpenIDProviderConfiguration, name: &str, id: &str, secret: &str) {
-    let callback_url = "http://localhost:8000/callback"
+async fn create_client(
+    config: &OpenIDProviderConfiguration,
+    name: &str,
+    id: &str,
+    secret: &str,
+    auth_method: AuthMethod,
+) {
+    let callback_url = "https://www.certification.openid.net/test/a/rust-oidc-test/callback"
         .try_into()
         .expect("expect valid url");
     let client_metadata = ClientMetadataBuilder::default()
         .redirect_uris(vec![callback_url])
         .jwks(JwkSet::default())
-        .token_endpoint_auth_method(AuthMethod::ClientSecretPost)
-        .id_token_signed_response_alg(HS256)
+        .token_endpoint_auth_method(auth_method)
+        .id_token_signed_response_alg(ES256)
         .client_name(name)
         .response_types(vec![Code, IdToken, Token])
         .grant_types(vec![GrantType::AuthorizationCode, GrantType::RefreshToken])

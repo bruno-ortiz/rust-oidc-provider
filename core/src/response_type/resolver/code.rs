@@ -30,6 +30,7 @@ impl ResponseTypeResolver for CodeResolver {
             status: Status::Awaiting,
             expires_in: clock.now() + ttl.authorization_code,
             state: context.request.state.clone(),
+            nonce: context.request.nonce.clone(),
         };
         let code = configuration
             .adapters()

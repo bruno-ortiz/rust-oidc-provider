@@ -2,6 +2,7 @@ use time::OffsetDateTime;
 
 use oidc_types::code::Code;
 use oidc_types::identifiable::Identifiable;
+use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{validate_pkce, CodeChallenge, CodeChallengeMethod};
 use oidc_types::state::State;
 use oidc_types::token_request::AuthorisationCodeGrant;
@@ -21,6 +22,7 @@ pub struct AuthorisationCode {
     pub code_challenge_method: Option<CodeChallengeMethod>,
     pub expires_in: OffsetDateTime,
     pub state: Option<State>,
+    pub nonce: Option<Nonce>,
 }
 
 impl AuthorisationCode {

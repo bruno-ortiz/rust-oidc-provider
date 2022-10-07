@@ -45,10 +45,11 @@ fn handle_validation_error(
     encoder: &DynamicResponseModeEncoder,
     client: &ClientInformation,
     err: OpenIdError,
-    request: AuthorisationRequest,
+    mut request: AuthorisationRequest,
 ) -> Result<Response, AuthorisationErrorWrapper> {
+    let state = request.state.take();
     let encoding_context = encoding_context(client, &request)?;
-    let response = encode_response(encoding_context, encoder, err)?;
+    let response = encode_response(encoding_context, encoder, err, state)?;
     Ok(respond(response))
 }
 

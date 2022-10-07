@@ -56,11 +56,10 @@ impl GrantTypeResolver for RefreshTokenGrant {
             refresh_token = RefreshToken::new_from(old_rt)?.save().await?;
             rt_token = Some(refresh_token.token.clone())
         }
-        let at_duration = ttl.access_token_ttl(client.as_ref());
 
+        let at_duration = ttl.access_token_ttl(client.as_ref());
         let access_token =
             create_access_token(grant.id(), at_duration, grant.scopes().clone()).await?;
-
         let mut simple_id_token = None;
         if grant.scopes().is_some() && grant.scopes().as_ref().unwrap().contains(&OPEN_ID) {
             let profile = ProfileData::get(&grant)
@@ -82,7 +81,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
                 .with_iat(now)
-                .with_nonce(grant.nonce().as_ref())
+                .with_nonce(refresh_token.nonce.as_ref())
                 .with_s_hash(refresh_token.state.as_ref())?
                 .with_at_hash(Some(&access_token))?
                 .with_custom_claims(claims)

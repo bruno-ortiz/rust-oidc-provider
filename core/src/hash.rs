@@ -1,3 +1,4 @@
+use base64::URL_SAFE_NO_PAD;
 use josekit::jwk::Jwk;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
@@ -10,6 +11,8 @@ pub enum HashingError {
     InvalidKey,
     #[error("Invalid hashing algorithm in JWK. {:?}", .0)]
     InvalidHashAlgorithm(String),
+    #[error("Error ascii encoding identifier. {:?}", .0)]
+    Ascii(String),
 }
 
 pub trait TokenHasher {
@@ -35,7 +38,7 @@ where
             }
         };
         let first_half = &hash[..hash.len() / 2];
-        Ok(base64::encode(first_half))
+        Ok(base64::encode_config(first_half, URL_SAFE_NO_PAD))
     }
 }
 
@@ -49,7 +52,7 @@ mod tests {
 
     #[test]
     fn test_can_hash() {
-        let code = Code::from("some-value");
+        let code = Code::from("a54c6b34-6541-4fb1-9576-4b6635e18767");
         let rsa_key = Jwk::from_bytes(r#"
         {
             "p": "2Z1co6mhAXOtwSb1szKBcHd1jCyddlXr401qp3v_VnRMCoYKxgVSwSbuxOZjhtfKBb_Mc6kE6Je6rqWK_rv6cP0ks1HgPj0tsoY_9CBfxFVqYJNKPg4pN56E2bJNgNi-QbwPjCryHIdFeg_Z6_aH9faEekrCKEUqz8BkOeQgVOU",
@@ -67,7 +70,7 @@ mod tests {
         }
         "#).expect("parsed jwk");
         assert_eq!(
-            String::from("cA88WX2aDbX8LcxByNm2UA=="),
+            String::from("OeE_4nSEE0FQZ17oUBVikg"),
             code.hash(&rsa_key).unwrap()
         );
     }

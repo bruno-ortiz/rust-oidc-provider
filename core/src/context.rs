@@ -175,7 +175,6 @@ pub mod test_utils {
             .acr(user.acr().clone())
             .amr(user.amr().cloned())
             .client_id(request.client_id)
-            .nonce(request.nonce.clone())
             .auth_time(user.auth_time())
             .max_age(request.max_age)
             .redirect_uri(request.redirect_uri.clone())
