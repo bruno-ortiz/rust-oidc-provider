@@ -13,16 +13,19 @@ use crate::adapter::PersistenceError;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
-use crate::models::grant::GrantID;
+use crate::models::grant::{Grant, GrantID};
 
-pub struct ActiveAccessToken(AccessToken);
+pub struct ActiveAccessToken {
+    inner: AccessToken,
+    grant: Grant,
+}
 
 impl ActiveAccessToken {
     pub fn grant_id(&self) -> GrantID {
-        self.0.grant_id
+        self.grant.id()
     }
     pub fn scopes(&self) -> Option<&Scopes> {
-        self.0.scopes.as_ref()
+        self.inner.scopes.as_ref()
     }
 }
 
@@ -60,11 +63,14 @@ impl AccessToken {
         Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, grant_id)
     }
 
-    pub fn into_active(self) -> Result<ActiveAccessToken, TokenError> {
+    pub async fn into_active(self) -> Result<ActiveAccessToken, TokenError> {
         let clock = OpenIDProviderConfiguration::clock();
         let now = clock.now();
         if now <= (self.created + self.expires_in) {
-            Ok(ActiveAccessToken(self))
+            let grant = Grant::find(self.grant_id)
+                .await
+                .ok_or(TokenError::InvalidGrant)?;
+            Ok(ActiveAccessToken { inner: self, grant })
         } else {
             Err(TokenError::Expired)
         }
@@ -110,12 +116,15 @@ impl Hashable for AccessToken {
 pub enum TokenError {
     #[error("Token expired")]
     Expired,
+    #[error("Invalid grant")]
+    InvalidGrant,
 }
 
 impl From<TokenError> for OpenIdError {
     fn from(err: TokenError) -> Self {
         match err {
             TokenError::Expired => OpenIdError::invalid_grant(err.to_string()),
+            TokenError::InvalidGrant => OpenIdError::invalid_grant(err.to_string()),
         }
     }
 }

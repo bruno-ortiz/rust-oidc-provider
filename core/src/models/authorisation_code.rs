@@ -35,11 +35,6 @@ impl AuthorisationCode {
     }
 
     pub fn validate(self, grant: &AuthorisationCodeGrant) -> Result<Self, OpenIdError> {
-        if self.status != Status::Awaiting {
-            return Err(OpenIdError::invalid_grant(
-                "Authorization code already consumed",
-            ));
-        }
         if self.is_expired() {
             return Err(OpenIdError::invalid_grant("Authorization code is expired"));
         }

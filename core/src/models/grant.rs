@@ -17,6 +17,7 @@ use oidc_types::subject::Subject;
 
 use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::error::OpenIdError;
 use crate::models::Status;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -49,12 +50,22 @@ pub struct Grant {
 impl Grant {
     pub async fn find(id: GrantID) -> Option<Grant> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapters().grant().find(&id).await
+        config
+            .adapters()
+            .grant()
+            .find(&id)
+            .await
+            .filter(|it| it.status != Status::Consumed)
     }
 
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
         config.adapters().grant().save(self).await
+    }
+
+    pub async fn consume(mut self) -> Result<Grant, OpenIdError> {
+        self.status = Status::Consumed;
+        self.save().await.map_err(OpenIdError::server_error)
     }
 
     pub fn has_requested_scopes(&self, requested: &Scopes) -> bool {

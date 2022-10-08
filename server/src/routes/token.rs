@@ -2,7 +2,9 @@ use async_trait::async_trait;
 use axum::body::{Bytes, HttpBody};
 use axum::extract::rejection::BytesRejection;
 use axum::extract::{FromRequest, RequestParts};
-use axum::response::{IntoResponse, Response};
+use axum::headers::HeaderName;
+use axum::http::header::{CACHE_CONTROL, PRAGMA};
+use axum::response::{AppendHeaders, IntoResponse, Response};
 use axum::{BoxError, Json};
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
@@ -23,7 +25,13 @@ use crate::routes::error::OpenIdErrorResponse;
 // #[axum_macros::debug_handler]
 pub async fn token(
     request: TokenRequest,
-) -> axum::response::Result<Json<TokenResponse>, OpenIdErrorResponse> {
+) -> axum::response::Result<
+    (
+        AppendHeaders<HeaderName, &'static str, 2>,
+        Json<TokenResponse>,
+    ),
+    OpenIdErrorResponse,
+> {
     let mut credentials = request.credentials;
     let client = retrieve_client_info(credentials.client_id)
         .await
@@ -47,7 +55,8 @@ pub async fn token(
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
     let tokens = request.body.execute(client).await?;
 
-    Ok(Json(tokens))
+    let headers = AppendHeaders([(CACHE_CONTROL, "no-store"), (PRAGMA, "no-cache")]);
+    Ok((headers, Json(tokens)))
 }
 
 #[derive(Debug, Error)]

@@ -18,6 +18,7 @@ use crate::keystore::KeyUse;
 use crate::models::client::AuthenticatedClient;
 use crate::models::grant::Grant;
 use crate::models::refresh_token::RefreshTokenBuilder;
+use crate::models::Status;
 use crate::profile::ProfileData;
 
 #[async_trait]
@@ -31,14 +32,19 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             .find(&self.code)
             .await
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
-            .validate(&self)?
-            .consume()
-            .await?;
+            .validate(&self)?;
 
         let grant = Grant::find(code.grant_id)
             .await
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
+        if code.status != Status::Awaiting {
+            grant.consume().await?;
+            return Err(OpenIdError::invalid_grant(
+                "Authorization code already consumed",
+            ));
+        }
+        let code = code.consume().await?;
         if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for Authorization Code",
