@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use oidc_types::identifiable::Identifiable;
 use oidc_types::nonce::Nonce;
+use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 
 use crate::adapter::PersistenceError;
@@ -26,6 +27,7 @@ pub struct RefreshToken {
     pub created: OffsetDateTime,
     pub state: Option<State>,
     pub nonce: Option<Nonce>,
+    pub scopes: Scopes,
 }
 
 impl RefreshToken {
@@ -36,6 +38,7 @@ impl RefreshToken {
             .status(Status::Awaiting)
             .state(old_rt.state)
             .nonce(old_rt.nonce)
+            .scopes(old_rt.scopes)
             .expires_in(old_rt.expires_in)
             .created(old_rt.created)
             .build()

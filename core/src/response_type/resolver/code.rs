@@ -31,6 +31,7 @@ impl ResponseTypeResolver for CodeResolver {
             expires_in: clock.now() + ttl.authorization_code,
             state: context.request.state.clone(),
             nonce: context.request.nonce.clone(),
+            scopes: context.request.scope.clone(),
         };
         let code = configuration
             .adapters()

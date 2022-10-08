@@ -1,8 +1,9 @@
+use std::collections::HashSet;
 use std::ops::Add;
 
 use crate::configuration::claims::ClaimConfiguration::{Scoped, Standalone};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ClaimConfiguration {
     Standalone(&'static str),
     Scoped(&'static str, Vec<&'static str>),
@@ -25,11 +26,15 @@ impl ClaimConfiguration {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClaimsSupported(Vec<ClaimConfiguration>);
+pub struct ClaimsSupported(HashSet<ClaimConfiguration>);
 
 impl ClaimsSupported {
+    pub fn new(claims: HashSet<ClaimConfiguration>) -> Self {
+        Self(claims)
+    }
+
     pub fn profile() -> ClaimsSupported {
-        ClaimsSupported(vec![Scoped(
+        ClaimsSupported(HashSet::from([Scoped(
             "profile",
             vec![
                 "name",
@@ -47,7 +52,33 @@ impl ClaimsSupported {
                 "locale",
                 "updated_at",
             ],
-        )])
+        )]))
+    }
+
+    pub fn email() -> ClaimsSupported {
+        ClaimsSupported(HashSet::from([Scoped(
+            "email",
+            vec!["email", "email_verified"],
+        )]))
+    }
+
+    pub fn address() -> ClaimsSupported {
+        ClaimsSupported(HashSet::from([Scoped("address", vec!["address"])]))
+    }
+
+    pub fn phone() -> ClaimsSupported {
+        ClaimsSupported(HashSet::from([Scoped(
+            "phone",
+            vec!["phone_number", "phone_number_verified"],
+        )]))
+    }
+
+    pub fn all() -> ClaimsSupported {
+        ClaimsSupported::default()
+            + ClaimsSupported::profile()
+            + ClaimsSupported::address()
+            + ClaimsSupported::email()
+            + ClaimsSupported::phone()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &ClaimConfiguration> {
@@ -67,12 +98,12 @@ impl Add for ClaimsSupported {
 
 impl Default for ClaimsSupported {
     fn default() -> Self {
-        ClaimsSupported(vec![
+        ClaimsSupported(HashSet::from([
             Standalone("acr"),
             Standalone("auth_time"),
             Standalone("iss"),
             Standalone("sid"),
             Scoped("openid", vec!["sub"]),
-        ])
+        ]))
     }
 }

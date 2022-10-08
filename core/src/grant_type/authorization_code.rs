@@ -54,15 +54,15 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let ttl = configuration.ttl();
         let at_duration = ttl.access_token_ttl(client.as_ref());
         let access_token =
-            create_access_token(grant.id(), at_duration, grant.scopes().clone()).await?;
+            create_access_token(grant.id(), at_duration, Some(code.scopes.clone())).await?;
 
         let now = clock.now();
         let mut simple_id_token = None;
-        if grant.scopes().is_some() && grant.scopes().as_ref().unwrap().contains(&OPEN_ID) {
+        if code.scopes.contains(&OPEN_ID) {
             let profile = ProfileData::get(&grant)
                 .await
                 .map_err(OpenIdError::server_error)?;
-            let claims = get_id_token_claims(&profile, &grant)?;
+            let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
             let keystore = client.as_ref().server_keystore(alg);
@@ -103,6 +103,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .grant_id(code.grant_id)
                 .nonce(code.nonce)
                 .state(code.state)
+                .scopes(code.scopes)
                 .expires_in(now + rt_ttl)
                 .created(now)
                 .build()

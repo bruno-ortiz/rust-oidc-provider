@@ -59,13 +59,14 @@ impl GrantTypeResolver for RefreshTokenGrant {
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
         let access_token =
-            create_access_token(grant.id(), at_duration, grant.scopes().clone()).await?;
+            create_access_token(grant.id(), at_duration, Some(refresh_token.scopes.clone()))
+                .await?;
         let mut simple_id_token = None;
-        if grant.scopes().is_some() && grant.scopes().as_ref().unwrap().contains(&OPEN_ID) {
+        if refresh_token.scopes.contains(&OPEN_ID) {
             let profile = ProfileData::get(&grant)
                 .await
                 .map_err(OpenIdError::server_error)?;
-            let claims = get_id_token_claims(&profile, &grant)?;
+            let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
             let keystore = client.as_ref().server_keystore(alg);

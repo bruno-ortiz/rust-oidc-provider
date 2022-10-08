@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use serde::Serialize;
 use thiserror::Error;
 
-use oidc_types::scopes::{Scope, Scopes};
+use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;

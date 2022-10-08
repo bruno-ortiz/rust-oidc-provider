@@ -29,10 +29,11 @@ pub async fn get_user_info(at: ActiveAccessToken) -> Result<UserInfo, OpenIdErro
     let profile = ProfileData::get(&grant)
         .await
         .map_err(OpenIdError::server_error)?;
-    let claims: HashMap<&str, Value> = get_userinfo_claims(&profile, &grant)?
-        .into_iter()
-        .map(|(k, v)| (k, v.to_owned()))
-        .collect();
+    let claims: HashMap<&str, Value> =
+        get_userinfo_claims(&profile, grant.claims().as_ref(), at.scopes())?
+            .into_iter()
+            .map(|(k, v)| (k, v.to_owned()))
+            .collect();
 
     let client = retrieve_client_info(grant.client_id())
         .await

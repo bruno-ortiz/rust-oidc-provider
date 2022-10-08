@@ -55,7 +55,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let profile = ProfileData::get(&context.grant)
             .await
             .map_err(OpenIdError::server_error)?;
-        let claims = get_id_token_claims(&profile, &context.grant)?;
+        let claims = get_id_token_claims(&profile, context.grant.claims().as_ref())?;
 
         let ttl = configuration.ttl();
         let id_token = IdTokenBuilder::new(signing_key)

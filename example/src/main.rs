@@ -14,13 +14,12 @@ use tera::{Context, Tera};
 use time::OffsetDateTime;
 use tower_http::services::ServeDir;
 
-use crate::profile::MockProfileResolver;
 use oidc_admin::oidc_admin::{
     ClientInfoRequest, CompleteLoginRequest, ConfirmConsentRequest, InteractionInfoRequest,
 };
 use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
-use oidc_core::configuration::claims::{ClaimConfiguration, ClaimsSupported};
+use oidc_core::configuration::claims::ClaimsSupported;
 use oidc_core::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_core::models::client::ClientInformation;
 use oidc_server::server::OidcServer;
@@ -34,6 +33,8 @@ use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use oidc_types::scopes;
 use ResponseTypeValue::Code;
+
+use crate::profile::MockProfileResolver;
 
 mod profile;
 
@@ -65,7 +66,7 @@ async fn main() {
     let config = OpenIDProviderConfigurationBuilder::default()
         .issuer("https://9e05-2804-431-c7c7-3044-a8db-af14-e1bf-ba64.sa.ngrok.io")
         .profile_resolver(MockProfileResolver)
-        .claims_supported(ClaimsSupported::profile() + ClaimsSupported::default())
+        .claims_supported(ClaimsSupported::all())
         .build()
         .expect("Expected valid configuration");
 
@@ -120,7 +121,7 @@ async fn create_client(
         .client_name(name)
         .response_types(vec![Code, IdToken, Token])
         .grant_types(vec![GrantType::AuthorizationCode, GrantType::RefreshToken])
-        .scope(scopes!("openid", "profile"))
+        .scope(scopes!("openid", "profile", "email", "phone", "address"))
         .build()
         .expect("Valid client metadata");
 

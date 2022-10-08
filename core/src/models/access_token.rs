@@ -21,6 +21,9 @@ impl ActiveAccessToken {
     pub fn grant_id(&self) -> GrantID {
         self.0.grant_id
     }
+    pub fn scopes(&self) -> Option<&Scopes> {
+        self.0.scopes.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
