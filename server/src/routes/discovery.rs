@@ -6,6 +6,7 @@ use url::Url;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_types::discovery::{OIDCProviderMetadata, OIDCProviderMetadataBuilder};
 use oidc_types::issuer::Issuer;
+use oidc_types::scopes::Scope;
 
 pub const DISCOVERY_ROUTE: &str = "/.well-known/openid-configuration";
 
@@ -13,6 +14,19 @@ pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata
     let configuration = OpenIDProviderConfiguration::instance();
     let issuer = configuration.issuer();
     let routes = configuration.routes();
+    let scopes_supported: Vec<Scope> = configuration
+        .scopes_supported()
+        .inner()
+        .clone()
+        .into_iter()
+        .chain(
+            configuration
+                .claims_supported()
+                .iter()
+                .flat_map(|it| it.unwrap_scoped())
+                .map(|it| Scope::simple(it.0)),
+        )
+        .collect();
     let metadata = OIDCProviderMetadataBuilder::default()
         .issuer(issuer)
         .authorization_endpoint(url(issuer, routes.authorisation))
@@ -31,7 +45,7 @@ pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata
         .response_types_supported(configuration.response_types_supported())
         .response_modes_supported(configuration.response_modes_supported())
         .grant_types_supported(configuration.grant_types_supported())
-        .scopes_supported(configuration.scopes_supported().inner())
+        .scopes_supported(scopes_supported)
         .claims_supported(
             configuration
                 .claims_supported()

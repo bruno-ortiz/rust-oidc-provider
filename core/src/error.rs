@@ -75,12 +75,8 @@ impl OpenIdError {
         Self::new(OpenIdErrorType::InvalidRequest, description, None)
     }
 
-    pub fn invalid_scope(scope: &Scope) -> Self {
-        Self::new(
-            OpenIdErrorType::InvalidScope,
-            format!("Invalid scope {}", scope),
-            None,
-        )
+    pub fn invalid_scope<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::InvalidScope, description, None)
     }
 
     pub fn invalid_scopes(scope: &Scopes) -> Self {

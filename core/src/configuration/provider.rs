@@ -12,7 +12,6 @@ use time::Duration;
 use tracing::warn;
 use url::Url;
 
-use crate::configuration::clock::ClockProvider;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::claim_type::ClaimType;
 use oidc_types::grant_type::GrantType;
@@ -27,12 +26,12 @@ use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
 use oidc_types::scopes::Scopes;
 use oidc_types::subject_type::SubjectType;
 use oidc_types::{response_type, scopes};
-use ClaimConfiguration::{Scoped, Standalone};
 
 use crate::configuration::adapter_container::AdapterContainer;
+use crate::configuration::claims::ClaimsSupported;
+use crate::configuration::clock::ClockProvider;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::pkce::PKCE;
-use crate::configuration::profile::ClaimConfiguration;
 use crate::configuration::request_object::RequestObjectConfiguration;
 use crate::configuration::routes::Routes;
 use crate::configuration::ttl::TTL;
@@ -99,7 +98,7 @@ pub struct OpenIDProviderConfiguration {
     token_endpoint_auth_signing_alg_values_supported: Vec<SigningAlgorithm>,
     display_values_supported: Option<Vec<String>>,
     claim_types_supported: Option<Vec<ClaimType>>,
-    claims_supported: Vec<ClaimConfiguration>,
+    claims_supported: ClaimsSupported,
     service_documentation: Option<String>,
     claims_locales_supported: Option<Vec<String>>,
     ui_locales_supported: Option<Vec<String>>,
@@ -126,6 +125,7 @@ pub struct OpenIDProviderConfiguration {
     validate_refresh_token: ValidateRefreshTokenFunc,
     #[getset(skip)]
     rotate_refresh_token: RotateRefreshTokenFunc,
+    #[builder(setter(custom))]
     profile_resolver: Box<dyn ProfileResolver + Send + Sync>,
     #[getset(skip)]
     #[get_copy = "pub"]
@@ -135,6 +135,14 @@ pub struct OpenIDProviderConfiguration {
 }
 
 impl OpenIDProviderConfigurationBuilder {
+    pub fn profile_resolver<T>(mut self, resolver: T) -> Self
+    where
+        T: ProfileResolver + Send + Sync + 'static,
+    {
+        self.profile_resolver = Some(Box::new(resolver));
+        self
+    }
+
     pub fn enable_jarm(mut self) -> Self {
         self.jwt_secure_response_mode = Some(true);
         self.response_modes_supported = Some(vec![
@@ -233,13 +241,7 @@ impl Default for OpenIDProviderConfiguration {
             }),
             auth_max_age: 3600,
             subject_types_supported: vec![SubjectType::Public, SubjectType::Pairwise],
-            claims_supported: vec![
-                Standalone("acr"),
-                Standalone("auth_time"),
-                Standalone("iss"),
-                Standalone("sid"),
-                Scoped("openid", vec!["sub"]),
-            ],
+            claims_supported: ClaimsSupported::default(),
             acr_values_supported: None,
             authorization_signing_alg_values_supported: Some(vec![
                 SigningAlgorithm::from(RS256),

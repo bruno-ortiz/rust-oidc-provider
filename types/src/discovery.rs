@@ -27,7 +27,7 @@ pub struct OIDCProviderMetadata<'a> {
     userinfo_endpoint: Url,
     userinfo_signing_alg_values_supported: &'a Vec<SigningAlgorithm>,
     response_types_supported: &'a Vec<ResponseType>,
-    scopes_supported: &'a Vec<Scope>,
+    scopes_supported: Vec<Scope>,
     jwks_uri: Url,
     code_challenge_methods_supported: &'a Vec<CodeChallengeMethod>,
     grant_types_supported: &'a Vec<GrantType>,

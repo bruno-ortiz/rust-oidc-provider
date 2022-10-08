@@ -11,7 +11,9 @@ pub struct MockProfileResolver;
 impl ProfileResolver for MockProfileResolver {
     async fn resolve(&self, sub: &Subject) -> Result<ProfileData, ProfileError> {
         Ok(ProfileData::try_from(json!({
-            "sub" : sub.to_string()
+            "sub" : sub.to_string(),
+            "name": "Xose",
+            "nickname": "xovial"
         }))?)
     }
 }

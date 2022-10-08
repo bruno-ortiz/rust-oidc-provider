@@ -217,7 +217,11 @@ impl AuthorisationRequest {
                     .find(|&item| !client.metadata().scope.contains(item));
                 match invalid_scope {
                     None => Ok(()),
-                    Some(scope) => Err(OpenIdError::invalid_scope(scope)),
+                    Some(scope) => Err(OpenIdError::invalid_scope(format!(
+                        "Unsupported scope {} for client {}",
+                        scope,
+                        client.id()
+                    ))),
                 }
             }
         }
