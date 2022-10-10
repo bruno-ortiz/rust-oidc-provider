@@ -30,7 +30,8 @@ where
     E: ResponseModeEncoder,
 {
     let client = get_client(&request).await?;
-    match request.0.validate(&client).await {
+    validate_redirect_uri(&request.0, &client)?;
+    match request.0.validate(session.session_id(), &client).await {
         Ok(req) => {
             let res = auth_service
                 .authorise(session.session_id(), client, req)
@@ -67,7 +68,7 @@ fn encoding_context<'a>(
     let redirect_uri = request
         .redirect_uri
         .as_ref()
-        .ok_or(AuthorisationError::InvalidRedirectUri)?;
+        .ok_or(AuthorisationError::MissingRedirectUri)?;
     let response_mode = request
         .response_type
         .as_ref()
@@ -78,6 +79,21 @@ fn encoding_context<'a>(
         redirect_uri,
         response_mode,
     })
+}
+
+fn validate_redirect_uri(
+    request: &AuthorisationRequest,
+    client: &ClientInformation,
+) -> Result<(), AuthorisationError> {
+    let redirect_uri = request
+        .redirect_uri
+        .as_ref()
+        .ok_or(AuthorisationError::MissingRedirectUri)?;
+    if client.metadata().redirect_uris.contains(redirect_uri) {
+        Ok(())
+    } else {
+        Err(AuthorisationError::InvalidRedirectUri)
+    }
 }
 
 async fn get_client(

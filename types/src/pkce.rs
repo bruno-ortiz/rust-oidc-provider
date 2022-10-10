@@ -1,14 +1,17 @@
-use crate::token_request::AuthorisationCodeGrant;
+use std::fmt::{Display, Formatter};
+
+use base64::URL_SAFE_NO_PAD;
 use encoding::all::ASCII;
 use encoding::{EncoderTrap, Encoding};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
+use crate::token_request::AuthorisationCodeGrant;
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
 pub enum CodeChallengeMethod {
+    #[serde(rename = "lowercase")]
     Plain,
     S256,
 }
@@ -49,7 +52,7 @@ impl CodeChallenge {
                     .encode(verifier, EncoderTrap::Strict)
                     .map_err(|err| CodeChallengeError::Ascii(err.into_owned()))?;
                 let hash = &Sha256::digest(ascii_encoded)[..];
-                let b64_encoded = base64::encode(hash);
+                let b64_encoded = base64::encode_config(hash, URL_SAFE_NO_PAD);
                 Self(b64_encoded)
             }
         };

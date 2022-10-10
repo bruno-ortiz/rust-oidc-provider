@@ -21,10 +21,10 @@ use crate::models::grant::{Grant, GrantBuilder};
 use crate::prepare_claims;
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::services::authorisation::{AuthorisationError, AuthorisationService};
+use crate::services::authorisation::AuthorisationService;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
-use crate::user::{find_user_by_session, AuthenticatedUser};
+use crate::user::{find_user_by_session, AuthenticatedUser, OptUserExt};
 
 #[derive(Debug, Error)]
 pub enum InteractionError {
@@ -37,7 +37,7 @@ pub enum InteractionError {
     #[error("Unexpected error saving interaction")]
     Persistence(#[from] PersistenceError),
     #[error("Unexpected error authorizing user")]
-    Authorization(#[from] AuthorisationError),
+    Authorization(anyhow::Error),
     #[error("Unexpected error resolving user interaction")]
     Internal(#[from] anyhow::Error),
 }
@@ -45,12 +45,8 @@ pub enum InteractionError {
 pub async fn begin_interaction(
     session: SessionID,
     request: ValidatedAuthorisationRequest,
-) -> Result<Interaction, AuthorisationError> {
-    let interaction = resolve_interaction(session, request)
-        .await
-        .save()
-        .await
-        .map_err(AuthorisationError::InteractionErr)?;
+) -> Result<Interaction, InteractionError> {
+    let interaction = resolve_interaction(session, request).await.save().await?;
     Ok(interaction)
 }
 
@@ -125,7 +121,10 @@ where
                 .ok_or(InteractionError::ClientNotFound(request.client_id))?;
 
             let (user, request) = finalize_interaction(request, user).await?;
-            let res = auth_service.do_authorise(user, client, request).await?;
+            let res = auth_service
+                .do_authorise(user, client, request)
+                .await
+                .map_err(|err| InteractionError::Authorization(err.into()))?;
             if let AuthorisationResponse::Redirect(url) = res {
                 Ok(url)
             } else {
@@ -136,35 +135,6 @@ where
         _ => Err(InteractionError::FailedPreCondition(
             "Expected to find consent interaction".to_owned(),
         )),
-    }
-}
-
-async fn resolve_interaction(
-    session: SessionID,
-    request: ValidatedAuthorisationRequest,
-) -> Interaction {
-    let user = find_user_by_session(session).await;
-
-    let prompt = request.prompt.as_ref();
-    if user.is_none() || prompt.is_some() && prompt.unwrap().contains(&Prompt::Login) {
-        Interaction::login(session, request)
-    } else if let Some(user) = user {
-        if let Some(grant_id) = user.grant_id() {
-            let grant = Grant::find(grant_id).await;
-            if grant.is_none()
-                || !grant.as_ref().unwrap().has_requested_scopes(&request.scope)
-                || grant.as_ref().unwrap().client_id() != request.client_id
-                || prompt.is_some() && prompt.unwrap().contains(&Prompt::Consent)
-            {
-                Interaction::consent(request, user)
-            } else {
-                Interaction::none(request, user)
-            }
-        } else {
-            Interaction::consent(request, user)
-        }
-    } else {
-        panic!("unreachable")
     }
 }
 
@@ -207,5 +177,40 @@ mod macros {
                 }
             }
         };
+    }
+}
+
+async fn resolve_interaction(
+    session: SessionID,
+    request: ValidatedAuthorisationRequest,
+) -> Interaction {
+    let user = find_user_by_session(session).await;
+    let grant = if let Some(grant_id) = user.grant_id() {
+        Grant::find(grant_id).await
+    } else {
+        None
+    };
+    if let Some(prompt) = request.prompt.as_ref() {
+        if prompt.contains(&Prompt::Login) {
+            return Interaction::login(session, request);
+        } else if user.is_some() && prompt.contains(&Prompt::Consent) {
+            return Interaction::consent(request, user.unwrap());
+        }
+    }
+
+    if let Some(user) = user {
+        if let Some(ref grant) = grant {
+            if grant.client_id() != request.client_id {
+                Interaction::login(session, request)
+            } else if !grant.has_requested_scopes(&request.scope) {
+                Interaction::consent(request, user)
+            } else {
+                Interaction::none(request, user)
+            }
+        } else {
+            Interaction::consent(request, user)
+        }
+    } else {
+        Interaction::login(session, request)
     }
 }

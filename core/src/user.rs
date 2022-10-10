@@ -17,7 +17,7 @@ pub struct AuthenticatedUser {
     subject: Subject,
     auth_time: OffsetDateTime,
     max_age: u64,
-    grant: Option<GrantID>,
+    grant_id: Option<GrantID>,
     interaction_id: Uuid,
     acr: Acr,
     amr: Option<Amr>,
@@ -41,7 +41,7 @@ impl AuthenticatedUser {
             interaction_id,
             amr,
             acr: acr.unwrap_or_default(),
-            grant: None,
+            grant_id: None,
         }
     }
 
@@ -68,11 +68,11 @@ impl AuthenticatedUser {
     }
 
     pub fn grant_id(&self) -> Option<GrantID> {
-        self.grant
+        self.grant_id
     }
 
     pub fn with_grant(mut self, grant: GrantID) -> Self {
-        self.grant = Some(grant);
+        self.grant_id = Some(grant);
         self
     }
 
@@ -91,4 +91,14 @@ impl Identifiable<SessionID> for AuthenticatedUser {
 pub async fn find_user_by_session(session: SessionID) -> Option<AuthenticatedUser> {
     let config = OpenIDProviderConfiguration::instance();
     config.adapters().user().find(&session).await
+}
+
+pub trait OptUserExt {
+    fn grant_id(&self) -> Option<GrantID>;
+}
+
+impl OptUserExt for Option<AuthenticatedUser> {
+    fn grant_id(&self) -> Option<GrantID> {
+        self.as_ref().and_then(|it| it.grant_id())
+    }
 }

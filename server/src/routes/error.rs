@@ -17,17 +17,17 @@ impl IntoResponse for AuthorisationErrorWrapper {
 
         match self.0 {
             AuthorisationError::InvalidRedirectUri
+            | AuthorisationError::InteractionErr(_)
+            | AuthorisationError::MissingRedirectUri
             | AuthorisationError::InvalidClient(_)
             | AuthorisationError::MissingClient => Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .body(body)
                 .unwrap(),
-            AuthorisationError::InternalError(_) | AuthorisationError::InteractionErr(_) => {
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(body)
-                    .unwrap()
-            }
+            AuthorisationError::InternalError(_) => Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(body)
+                .unwrap(),
         }
     }
 }

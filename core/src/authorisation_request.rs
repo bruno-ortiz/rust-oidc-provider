@@ -1,6 +1,6 @@
-use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use std::str::FromStr;
 
+use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use serde::Deserialize;
 use tracing::error;
 use url::Url;
@@ -21,6 +21,9 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
+use crate::models::grant::Grant;
+use crate::session::SessionID;
+use crate::user::{find_user_by_session, OptUserExt};
 
 #[derive(Debug, Clone)]
 pub struct ValidatedAuthorisationRequest {
@@ -86,6 +89,7 @@ pub struct AuthorisationRequest {
 impl AuthorisationRequest {
     pub async fn validate(
         self,
+        session: SessionID,
         client: &ClientInformation,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
         let configuration = OpenIDProviderConfiguration::instance();
@@ -98,9 +102,6 @@ impl AuthorisationRequest {
         }
         if this.client_id.is_none() {
             return Err((OpenIdError::invalid_request("Missing client_id"), this));
-        }
-        if let Err(err) = this.validate_redirect_uri(client) {
-            return Err((err, this));
         }
 
         const MIN_ENTROPY: usize = 43;
@@ -124,7 +125,27 @@ impl AuthorisationRequest {
                 return Err((OpenIdError::invalid_request("Invalid prompt"), this));
             }
         }
-        let prompt = prompt.map(|it| it.into_iter().map(Result::unwrap).collect());
+        let prompt: Option<Vec<Prompt>> = prompt.map(|it| it.into_iter().flatten().collect());
+        let user = find_user_by_session(session).await;
+        let grant = if let Some(grant_id) = user.grant_id() {
+            Grant::find(grant_id).await
+        } else {
+            None
+        };
+        if let Some(prompt) = prompt.as_ref() {
+            if prompt.contains(&Prompt::None) && user.is_none() {
+                return Err((
+                    OpenIdError::login_required("User is not authenticated"),
+                    this,
+                ));
+            }
+            if prompt.contains(&Prompt::None) && grant.is_none() {
+                return Err((
+                    OpenIdError::consent_required("User has not consented"),
+                    this,
+                ));
+            }
+        }
 
         let claims = match parse_claims(configuration, &this) {
             Ok(c) => c,
@@ -157,20 +178,6 @@ impl AuthorisationRequest {
             prompt,
             claims,
         })
-    }
-
-    fn validate_redirect_uri(&self, client: &ClientInformation) -> Result<(), OpenIdError> {
-        let redirect_uri = self
-            .redirect_uri
-            .as_ref()
-            .ok_or_else(|| OpenIdError::invalid_request("Missing redirect_uri"))?;
-        if client.metadata().redirect_uris.contains(redirect_uri) {
-            Ok(())
-        } else {
-            Err(OpenIdError::invalid_request(
-                "Redirect uri not registered for client",
-            ))
-        }
     }
 
     fn validate_response_type(

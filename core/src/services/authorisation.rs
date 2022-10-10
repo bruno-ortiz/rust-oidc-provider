@@ -5,7 +5,6 @@ use thiserror::Error;
 
 use oidc_types::url_encodable::UrlEncodable;
 
-use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
@@ -15,7 +14,7 @@ use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::services::interaction::begin_interaction;
+use crate::services::interaction::{begin_interaction, InteractionError};
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
@@ -24,12 +23,14 @@ use crate::user::AuthenticatedUser;
 pub enum AuthorisationError {
     #[error("Invalid redirect_uri")]
     InvalidRedirectUri,
+    #[error("Missing redirect_uri")]
+    MissingRedirectUri,
     #[error("Invalid client {}", .0)]
     InvalidClient(String),
     #[error("Missing client")]
     MissingClient,
     #[error(transparent)]
-    InteractionErr(PersistenceError),
+    InteractionErr(#[from] InteractionError),
     #[error(transparent)]
     InternalError(#[from] anyhow::Error),
 }

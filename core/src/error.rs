@@ -16,6 +16,8 @@ pub enum OpenIdErrorType {
     InvalidClient,
     InvalidGrant,
     UnauthorizedClient,
+    LoginRequired,
+    ConsentRequired,
     UnsupportedGrantType,
     UnsupportedResponseType,
     InvalidScope,
@@ -35,6 +37,8 @@ impl Display for OpenIdErrorType {
             OpenIdErrorType::InvalidClient => write!(f, "invalid_client"),
             OpenIdErrorType::UnsupportedGrantType => write!(f, "unsupported_grant_type"),
             OpenIdErrorType::InvalidGrant => write!(f, "invalid_grant"),
+            OpenIdErrorType::LoginRequired => write!(f, "login_required"),
+            OpenIdErrorType::ConsentRequired => write!(f, "consent_required"),
         }
     }
 }
@@ -97,6 +101,14 @@ impl OpenIdError {
 
     pub fn unauthorized_client<D: Into<String>>(description: D) -> Self {
         Self::new(OpenIdErrorType::UnauthorizedClient, description, None)
+    }
+
+    pub fn login_required<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::LoginRequired, description, None)
+    }
+
+    pub fn consent_required<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::ConsentRequired, description, None)
     }
 
     pub fn server_error<T>(source: T) -> Self
