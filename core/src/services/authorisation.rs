@@ -2,19 +2,24 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use thiserror::Error;
+use url::Url;
 
+use oidc_types::response_mode::ResponseMode;
+use oidc_types::state::State;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
+use crate::error::OpenIdError;
 use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
+use crate::prompt::PromptError;
 use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::services::interaction::{begin_interaction, InteractionError};
+use crate::services::interaction::begin_interaction;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
@@ -29,8 +34,14 @@ pub enum AuthorisationError {
     InvalidClient(String),
     #[error("Missing client")]
     MissingClient,
-    #[error(transparent)]
-    InteractionErr(#[from] InteractionError),
+    #[error("Err: {}", .err)]
+    RedirectableErr {
+        #[source]
+        err: OpenIdError,
+        response_mode: ResponseMode,
+        redirect_uri: Url,
+        state: Option<State>,
+    },
     #[error(transparent)]
     InternalError(#[from] anyhow::Error),
 }
@@ -52,10 +63,12 @@ where
     pub async fn authorise(
         &self,
         session: SessionID,
-        client: ClientInformation,
+        client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let interaction = begin_interaction(session, request).await?;
+        let interaction = begin_interaction(session, request)
+            .await
+            .map_err(handle_prompt_err)?;
         match interaction {
             Interaction::Login { .. } | Interaction::Consent { .. } => {
                 Ok(AuthorisationResponse::Redirect(interaction.uri()))
@@ -69,10 +82,9 @@ where
     pub async fn do_authorise(
         &self,
         user: AuthenticatedUser,
-        client: ClientInformation,
+        client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let client = Arc::new(client);
         let grant_id = user.grant_id().ok_or_else(|| {
             AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
         })?;
@@ -97,5 +109,23 @@ where
             parameters,
             context.request.state,
         )
+    }
+}
+
+fn handle_prompt_err(err: PromptError) -> AuthorisationError {
+    let description = err.to_string();
+    match err {
+        PromptError::LoginRequired(req) => AuthorisationError::RedirectableErr {
+            err: OpenIdError::login_required(description),
+            redirect_uri: req.redirect_uri,
+            response_mode: req.response_type.default_response_mode(),
+            state: req.state,
+        },
+        PromptError::ConsentRequired(req) => AuthorisationError::RedirectableErr {
+            err: OpenIdError::consent_required(description),
+            redirect_uri: req.redirect_uri,
+            response_mode: req.response_type.default_response_mode(),
+            state: req.state,
+        },
     }
 }

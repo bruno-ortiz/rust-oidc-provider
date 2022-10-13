@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use thiserror::Error;
@@ -8,7 +9,6 @@ use uuid::Uuid;
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
 use oidc_types::client::ClientID;
-use oidc_types::prompt::Prompt;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
@@ -17,14 +17,15 @@ use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::client::retrieve_client_info;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::models::grant::{Grant, GrantBuilder};
+use crate::models::grant::GrantBuilder;
 use crate::prepare_claims;
+use crate::prompt::{NoneResolver, PromptChecker, PromptDispatcher, PromptError, PromptResolver};
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::AuthorisationService;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
-use crate::user::{find_user_by_session, AuthenticatedUser, OptUserExt};
+use crate::user::{find_user_by_session, AuthenticatedUser};
 
 #[derive(Debug, Error)]
 pub enum InteractionError {
@@ -45,8 +46,24 @@ pub enum InteractionError {
 pub async fn begin_interaction(
     session: SessionID,
     request: ValidatedAuthorisationRequest,
-) -> Result<Interaction, InteractionError> {
-    let interaction = resolve_interaction(session, request).await.save().await?;
+) -> Result<Interaction, PromptError> {
+    let user = find_user_by_session(session).await;
+    let resolvers = PromptDispatcher::default();
+
+    let mut resolver = None;
+    for checker in resolvers {
+        if checker.should_run(user.as_ref(), &request).await {
+            resolver = Some(checker);
+            break;
+        }
+    }
+    let resolver = resolver.unwrap_or(PromptDispatcher::None(NoneResolver));
+    let interaction = resolver
+        .resolve(session, user, request)
+        .await?
+        .save()
+        .await
+        .unwrap(); //TODO:resolve unwrap
     Ok(interaction)
 }
 
@@ -122,7 +139,7 @@ where
 
             let (user, request) = finalize_interaction(request, user).await?;
             let res = auth_service
-                .do_authorise(user, client, request)
+                .do_authorise(user, Arc::new(client), request)
                 .await
                 .map_err(|err| InteractionError::Authorization(err.into()))?;
             if let AuthorisationResponse::Redirect(url) = res {
@@ -177,40 +194,5 @@ mod macros {
                 }
             }
         };
-    }
-}
-
-async fn resolve_interaction(
-    session: SessionID,
-    request: ValidatedAuthorisationRequest,
-) -> Interaction {
-    let user = find_user_by_session(session).await;
-    let grant = if let Some(grant_id) = user.grant_id() {
-        Grant::find(grant_id).await
-    } else {
-        None
-    };
-    if let Some(prompt) = request.prompt.as_ref() {
-        if prompt.contains(&Prompt::Login) {
-            return Interaction::login(session, request);
-        } else if user.is_some() && prompt.contains(&Prompt::Consent) {
-            return Interaction::consent(request, user.unwrap());
-        }
-    }
-
-    if let Some(user) = user {
-        if let Some(ref grant) = grant {
-            if grant.client_id() != request.client_id {
-                Interaction::login(session, request)
-            } else if !grant.has_requested_scopes(&request.scope) {
-                Interaction::consent(request, user)
-            } else {
-                Interaction::none(request, user)
-            }
-        } else {
-            Interaction::consent(request, user)
-        }
-    } else {
-        Interaction::login(session, request)
     }
 }

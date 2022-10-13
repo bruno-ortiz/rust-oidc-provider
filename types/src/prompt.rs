@@ -6,7 +6,7 @@ use thiserror::Error;
 #[error("Error parsing prompt parameter {}", .0)]
 pub struct ParseError(String);
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Prompt {
     None,

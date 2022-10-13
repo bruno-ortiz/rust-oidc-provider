@@ -15,6 +15,7 @@ mod jwt;
 pub mod keystore;
 pub mod models;
 pub mod profile;
+mod prompt;
 pub mod response_mode;
 pub mod response_type;
 pub mod services;

@@ -29,16 +29,43 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    let client = get_client(&request).await?;
+    let client = Arc::new(get_client(&request).await?);
     validate_redirect_uri(&request.0, &client)?;
-    match request.0.validate(session.session_id(), &client).await {
+    match request.0.validate(&client).await {
         Ok(req) => {
             let res = auth_service
-                .authorise(session.session_id(), client, req)
-                .await?;
-            Ok(respond(res))
+                .authorise(session.session_id(), client.clone(), req)
+                .await;
+            match res {
+                Ok(res) => Ok(respond(res)),
+                Err(err) => handle_authorization_error(&encoder, &client, err),
+            }
         }
         Err((err, request)) => handle_validation_error(&encoder, &client, err, request),
+    }
+}
+
+fn handle_authorization_error(
+    encoder: &DynamicResponseModeEncoder,
+    client: &ClientInformation,
+    err: AuthorisationError,
+) -> Result<Response, AuthorisationErrorWrapper> {
+    match err {
+        AuthorisationError::RedirectableErr {
+            redirect_uri,
+            response_mode,
+            state,
+            err,
+        } => {
+            let encoding_context = EncodingContext {
+                client,
+                redirect_uri: &redirect_uri,
+                response_mode,
+            };
+            let response = encode_response(encoding_context, encoder, err, state)?;
+            Ok(respond(response))
+        }
+        _ => Err(AuthorisationErrorWrapper::from(err)),
     }
 }
 

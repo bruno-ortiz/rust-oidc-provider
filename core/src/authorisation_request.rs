@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use indexmap::IndexSet;
+use itertools::Itertools;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use serde::Deserialize;
 use tracing::error;
@@ -21,9 +23,6 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
-use crate::models::grant::Grant;
-use crate::session::SessionID;
-use crate::user::{find_user_by_session, OptUserExt};
 
 #[derive(Debug, Clone)]
 pub struct ValidatedAuthorisationRequest {
@@ -42,7 +41,7 @@ pub struct ValidatedAuthorisationRequest {
     pub include_granted_scopes: Option<bool>,
     pub request_uri: Option<Url>,
     pub request: Option<ValidJWT<GenericJWT>>,
-    pub prompt: Option<Vec<Prompt>>,
+    pub prompt: Option<IndexSet<Prompt>>,
     pub acr_values: Option<Acr>,
     pub claims: Option<Claims>,
 }
@@ -89,7 +88,6 @@ pub struct AuthorisationRequest {
 impl AuthorisationRequest {
     pub async fn validate(
         self,
-        session: SessionID,
         client: &ClientInformation,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
         let configuration = OpenIDProviderConfiguration::instance();
@@ -125,23 +123,14 @@ impl AuthorisationRequest {
                 return Err((OpenIdError::invalid_request("Invalid prompt"), this));
             }
         }
-        let prompt: Option<Vec<Prompt>> = prompt.map(|it| it.into_iter().flatten().collect());
-        let user = find_user_by_session(session).await;
-        let grant = if let Some(grant_id) = user.grant_id() {
-            Grant::find(grant_id).await
-        } else {
-            None
-        };
+        let prompt: Option<IndexSet<Prompt>> =
+            prompt.map(|it| it.into_iter().flatten().sorted().collect());
         if let Some(prompt) = prompt.as_ref() {
-            if prompt.contains(&Prompt::None) && user.is_none() {
+            if prompt.contains(&Prompt::None) && prompt.len() > 1 {
                 return Err((
-                    OpenIdError::login_required("User is not authenticated"),
-                    this,
-                ));
-            }
-            if prompt.contains(&Prompt::None) && grant.is_none() {
-                return Err((
-                    OpenIdError::consent_required("User has not consented"),
+                    OpenIdError::invalid_request(
+                        "Prompt 'none' cannot be combined with other prompt values",
+                    ),
                     this,
                 ));
             }

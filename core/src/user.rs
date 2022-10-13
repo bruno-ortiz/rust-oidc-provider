@@ -76,6 +76,10 @@ impl AuthenticatedUser {
         self
     }
 
+    pub fn matches_acr(&self, acr: &Acr) -> bool {
+        todo!()
+    }
+
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
         configuration.adapters().user().save(self).await
@@ -91,14 +95,4 @@ impl Identifiable<SessionID> for AuthenticatedUser {
 pub async fn find_user_by_session(session: SessionID) -> Option<AuthenticatedUser> {
     let config = OpenIDProviderConfiguration::instance();
     config.adapters().user().find(&session).await
-}
-
-pub trait OptUserExt {
-    fn grant_id(&self) -> Option<GrantID>;
-}
-
-impl OptUserExt for Option<AuthenticatedUser> {
-    fn grant_id(&self) -> Option<GrantID> {
-        self.as_ref().and_then(|it| it.grant_id())
-    }
 }
