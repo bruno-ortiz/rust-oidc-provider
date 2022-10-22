@@ -54,9 +54,6 @@ impl AuthenticatedUser {
     pub fn auth_time(&self) -> OffsetDateTime {
         self.auth_time
     }
-    pub fn max_age(&self) -> u64 {
-        self.max_age
-    }
     pub fn acr(&self) -> &Acr {
         &self.acr
     }

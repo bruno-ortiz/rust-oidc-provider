@@ -191,7 +191,6 @@ impl From<AuthenticatedUser> for AuthenticatedUserInfo {
     fn from(user: AuthenticatedUser) -> Self {
         AuthenticatedUserInfo {
             sub: user.sub().into(),
-            max_age: user.max_age() as i64,
             auth_time: user.auth_time().to_string(),
         }
     }

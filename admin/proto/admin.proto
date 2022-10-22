@@ -45,7 +45,6 @@ message AuthorisationRequestInfo{
 message AuthenticatedUserInfo {
   string sub = 1;
   string  auth_time = 2;
-  int64  max_age = 3;
 }
 
 message ClientInfoRequest{

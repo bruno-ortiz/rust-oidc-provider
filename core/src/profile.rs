@@ -43,7 +43,7 @@ impl ProfileData {
             .profile_resolver()
             .resolve(grant.subject())
             .await?
-            .append("auth_time", grant.auth_time())
+            .append_i64("auth_time", grant.auth_time().unix_timestamp())
             .append("acr", grant.acr())
             .append("sub", grant.subject()) //todo: resolve pairwise here?
             .maybe_append("amr", grant.amr().as_ref()))
@@ -77,6 +77,11 @@ impl ProfileData {
 
     pub fn append<T: Display>(mut self, key: &str, value: T) -> Self {
         self.0.insert(key.to_owned(), value.to_string().into());
+        self
+    }
+
+    pub fn append_i64(mut self, key: &str, value: i64) -> Self {
+        self.0.insert(key.to_owned(), value.into());
         self
     }
 }

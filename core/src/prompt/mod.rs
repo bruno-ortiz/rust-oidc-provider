@@ -4,10 +4,17 @@ use thiserror::Error;
 use oidc_types::prompt::Prompt;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
-use crate::models::grant::Grant;
+use crate::prompt::consent::ConsentResolver;
+use crate::prompt::login::LoginResolver;
+use crate::prompt::none::NoneResolver;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
+
+mod checks;
+mod consent;
+mod login;
+pub(crate) mod none;
 
 #[derive(Debug, Error)]
 pub enum PromptError {
@@ -36,120 +43,6 @@ pub trait PromptResolver {
     ) -> Result<Interaction, PromptError>;
 }
 
-#[derive(Debug)]
-pub struct LoginResolver;
-
-#[async_trait]
-impl PromptChecker for LoginResolver {
-    async fn should_run(
-        &self,
-        user: Option<&AuthenticatedUser>,
-        request: &ValidatedAuthorisationRequest,
-    ) -> bool {
-        if let Some(prompt) = request.prompt.as_ref() {
-            if prompt.contains(&Prompt::Login) {
-                return true;
-            }
-        }
-        if let Some(_user) = user {
-            //check acr
-            //check max_age
-            //check id_token_hint
-            //check sub in id_token claim
-            false
-        } else {
-            true
-        }
-    }
-}
-
-#[async_trait]
-impl PromptResolver for LoginResolver {
-    async fn resolve(
-        &self,
-        session: SessionID,
-        _user: Option<AuthenticatedUser>,
-        request: ValidatedAuthorisationRequest,
-    ) -> Result<Interaction, PromptError> {
-        Ok(Interaction::login(session, request))
-    }
-}
-
-#[derive(Debug)]
-pub struct ConsentResolver;
-
-#[async_trait]
-impl PromptChecker for ConsentResolver {
-    async fn should_run(
-        &self,
-        user: Option<&AuthenticatedUser>,
-        request: &ValidatedAuthorisationRequest,
-    ) -> bool {
-        if let Some(prompt) = request.prompt.as_ref() {
-            if prompt.contains(&Prompt::Consent) {
-                return true;
-            }
-        }
-        if let Some(user) = user {
-            let grant = if let Some(grant_id) = user.grant_id() {
-                Grant::find(grant_id).await
-            } else {
-                None
-            };
-            if let Some(grant) = grant {
-                grant.client_id() != request.client_id || grant.has_requested_scopes(&request.scope)
-            } else {
-                true
-            }
-        } else {
-            true
-        }
-    }
-}
-#[async_trait]
-impl PromptResolver for ConsentResolver {
-    async fn resolve(
-        &self,
-        _session: SessionID,
-        user: Option<AuthenticatedUser>,
-        request: ValidatedAuthorisationRequest,
-    ) -> Result<Interaction, PromptError> {
-        if let Some(user) = user {
-            Ok(Interaction::consent(request, user))
-        } else {
-            Err(PromptError::LoginRequired(request))
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct NoneResolver;
-
-#[async_trait]
-impl PromptResolver for NoneResolver {
-    async fn resolve(
-        &self,
-        _session: SessionID,
-        user: Option<AuthenticatedUser>,
-        request: ValidatedAuthorisationRequest,
-    ) -> Result<Interaction, PromptError> {
-        if let Some(user) = user {
-            let grant = if let Some(grant_id) = user.grant_id() {
-                Grant::find(grant_id).await
-            } else {
-                None
-            };
-            if grant.is_none() {
-                return Err(PromptError::ConsentRequired(request));
-            }
-            Ok(Interaction::none(request, user))
-        } else {
-            Err(PromptError::LoginRequired(request))
-        }
-    }
-}
-
-#[derive(Debug)]
 pub enum PromptDispatcher {
     Login(LoginResolver),
     Consent(ConsentResolver),
@@ -159,7 +52,7 @@ pub enum PromptDispatcher {
 impl PromptDispatcher {
     pub fn default() -> [PromptDispatcher; 3] {
         [
-            PromptDispatcher::Login(LoginResolver),
+            PromptDispatcher::Login(LoginResolver::default()),
             PromptDispatcher::Consent(ConsentResolver),
             PromptDispatcher::None(NoneResolver),
         ]
