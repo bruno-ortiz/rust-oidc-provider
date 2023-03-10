@@ -1,4 +1,5 @@
-use base64::DecodeError;
+use base64::engine::general_purpose::STANDARD as base64_engine;
+use base64::{DecodeError, Engine};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -26,11 +27,11 @@ impl PasswordHasher for SHA256Hasher {
         let mut salt = [0u8; SALT_LEN];
         rng.fill(&mut salt);
         let hash = &Sha256::digest([&salt, pwd].concat())[..];
-        Ok(base64::encode([&salt, hash].concat()))
+        Ok(base64_engine.encode([&salt, hash].concat()))
     }
 
     fn verify(&self, hash: &[u8], pwd: &[u8]) -> Result<bool, HashingError> {
-        let decoded = base64::decode(hash)?;
+        let decoded = base64_engine.decode(hash)?;
         let salt = &decoded[0..SALT_LEN];
         let hash = &decoded[SALT_LEN..];
 

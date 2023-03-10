@@ -1,6 +1,7 @@
+use base64::Engine;
 use std::fmt::{Display, Formatter};
 
-use base64::URL_SAFE_NO_PAD;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD as base64_engine;
 use encoding::all::ASCII;
 use encoding::{EncoderTrap, Encoding};
 use serde::{Deserialize, Serialize};
@@ -52,7 +53,7 @@ impl CodeChallenge {
                     .encode(verifier, EncoderTrap::Strict)
                     .map_err(|err| CodeChallengeError::Ascii(err.into_owned()))?;
                 let hash = &Sha256::digest(ascii_encoded)[..];
-                let b64_encoded = base64::encode_config(hash, URL_SAFE_NO_PAD);
+                let b64_encoded = base64_engine.encode(hash);
                 Self(b64_encoded)
             }
         };

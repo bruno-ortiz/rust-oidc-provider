@@ -1,4 +1,5 @@
-use base64::URL_SAFE_NO_PAD;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD as base64_engine;
+use base64::Engine;
 use josekit::jwk::Jwk;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use thiserror::Error;
@@ -38,7 +39,7 @@ where
             }
         };
         let first_half = &hash[..hash.len() / 2];
-        Ok(base64::encode_config(first_half, URL_SAFE_NO_PAD))
+        Ok(base64_engine.encode(first_half))
     }
 }
 

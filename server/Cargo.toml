@@ -14,22 +14,22 @@ uuid = { version = "1.1.2", features = ["v4", "serde"] }
 serde = { version = "1.0.139", features = ["derive"] }
 serde_urlencoded = "0.7.1"
 serde_with = "2.0.0"
-axum = { version = "0.5.16", features = ["headers", "form"] }
+axum = { version = "0.6.10", features = ["headers", "form"] }
 hyper = { version = "0.14.20", features = ["full"] }
 tokio = { version = "1.21.1", features = ["full"] }
-tower-http = { version = "0.3.4", features = ["fs", "add-extension", "util", "trace"] }
+tower-http = { version = "0.4.0", features = ["fs", "add-extension", "util", "trace"] }
 tower = "0.4.13"
-tower-cookies = { version = "0.7.0", features = ["signed"] }
+tower-cookies = { version = "0.9.0", features = ["signed"] }
 url = "2.2.2"
-cookie = { version = "0.16.0", features = ["key-expansion"] }
+cookie = { version = "0.17.0", features = ["key-expansion"] }
 async-trait = "0.1.56"
 futures = "0.3.21"
 anyhow = "1.0.58"
 thiserror = "1.0.31"
 time = "0.3.11"
 tracing = "0.1.35"
-base64 = "0.13.0"
+base64 = "0.21.0"
 urlencoding = "2.1.2"
 
 [dev-dependencies]
-axum-macros = "0.2.3"
+axum-macros = "0.3.5"
