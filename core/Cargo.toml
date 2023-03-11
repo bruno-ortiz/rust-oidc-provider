@@ -16,17 +16,17 @@ josekit = "0.8.1"
 anyhow = "1.0.58"
 thiserror = "1.0.31"
 time = { version = "0.3.11" }
-base64 = "0.13.0"
+base64 = "0.21.0"
 sha2 = "0.10.2"
 async-trait = "0.1.56"
 uuid = { version = "1.1.2", features = ["v4", "serde"] }
 tokio = { version = "1.21.1", features = ["full"] }
 futures = "0.3.23"
 indexmap = "1.9.1"
-derive_builder = "0.11.2"
+derive_builder = "0.12.0"
 getset = "0.1.2"
 tracing = "0.1.35"
 reqwest = { version = "0.11.11", features = ["json"] }
 once_cell = "1.14.0"
-cached = "0.39.0"
+cached = "0.42.0"
 itertools = "0.10.5"

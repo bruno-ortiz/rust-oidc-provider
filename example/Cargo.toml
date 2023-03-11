@@ -10,11 +10,11 @@ oidc-server = { path = "../server" }
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 oidc-admin = { path = "../admin" }
-axum = { version = "0.5.16", features = ["form"] }
+axum = { version = "0.6.10", features = ["form"] }
 hyper = { version = "0.14.20", features = ["full"] }
 tokio = { version = "1.21.1", features = ["full"] }
 tower = "0.4.13"
-tower-http = { version = "0.3.4", features = ["fs"] }
+tower-http = { version = "0.4.0", features = ["fs"] }
 tera = "1.16.0"
 time = "0.3.11"
 tracing = "0.1.35"
@@ -25,4 +25,4 @@ lazy_static = "1.4.0"
 urlencoding="2.1.2"
 
 [dev-dependencies]
-axum-macros = "0.2.3"
+axum-macros = "0.3.5"

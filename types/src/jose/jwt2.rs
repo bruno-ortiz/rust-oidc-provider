@@ -1,3 +1,4 @@
+use base64::Engine;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
@@ -9,6 +10,8 @@ use josekit::jwt::JwtPayload;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
+
+use base64::engine::general_purpose::URL_SAFE_NO_PAD as base64_engine;
 
 use crate::jose::error::JWTError;
 use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
@@ -89,11 +92,11 @@ impl SignedJWT {
             return Err(JWTError::InvalidJwtFormat(str_jwt.to_owned()));
         }
 
-        let header_b64 = base64::decode_config(&parts[0], base64::URL_SAFE_NO_PAD)?;
+        let header_b64 = base64_engine.decode(parts[0])?;
         let header: Map<String, Value> = serde_json::from_slice(&header_b64)?;
         let header = JwsHeader::from_map(header)?;
 
-        let payload_b64 = base64::decode_config(&parts[1], base64::URL_SAFE_NO_PAD)?;
+        let payload_b64 = base64_engine.decode(parts[1])?;
         let payload: Map<String, Value> = serde_json::from_slice(&payload_b64)?;
         let payload = JwtPayload::from_map(payload)?;
 
