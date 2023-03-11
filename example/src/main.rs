@@ -1,12 +1,10 @@
 use std::collections::HashMap;
-use std::io;
-use std::path::Path;
 use std::str::FromStr;
 
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
-use axum::routing::{get, get_service, post, MethodRouter};
+use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -61,7 +59,7 @@ async fn main() {
         .route("/interaction/consent", get(consent_page))
         .route("/login", post(login))
         .route("/consent", post(consent))
-        .nest("/assets", serve_dir("./example/static/assets"));
+        .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
         .issuer("https://9e05-2804-431-c7c7-3044-a8db-af14-e1bf-ba64.sa.ngrok.io")
@@ -138,15 +136,6 @@ async fn create_client(
         .expect("Expected successful client registration");
 }
 
-fn serve_dir<P: AsRef<Path>>(path: P) -> MethodRouter {
-    get_service(ServeDir::new(path)).handle_error(|error: io::Error| async move {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
-        )
-    })
-}
-
 async fn login_page(Query(params): Query<HashMap<String, String>>) -> Html<String> {
     let mut context: Context = Context::new();
     context.insert("interaction_id", params.get("interaction_id").unwrap());
@@ -195,8 +184,8 @@ struct LoginRequest {
 
 // #[axum_macros::debug_handler]
 async fn login(
-    Form(req): Form<LoginRequest>,
     Extension(mut interaction_client): Extension<InteractionClient>,
+    Form(req): Form<LoginRequest>,
 ) -> Response {
     if req.username != "xoze" || req.password != "1234" {
         return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
@@ -223,8 +212,8 @@ struct ConsentRequest {
 }
 
 async fn consent(
-    Form(req): Form<ConsentRequest>,
     Extension(mut interaction_client): Extension<InteractionClient>,
+    Form(req): Form<ConsentRequest>,
 ) -> impl IntoResponse {
     let interaction_id = req.interaction_id;
     let request = GrpcRequest::new(InteractionInfoRequest {

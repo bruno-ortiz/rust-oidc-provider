@@ -2,7 +2,8 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use axum::extract::{Extension, FromRequest, RequestParts};
+use axum::extract::{Extension, FromRequest, FromRequestParts};
+use axum::http::request::Parts;
 use axum::http::{Request, StatusCode};
 use axum::response::IntoResponse;
 use time::Duration;
@@ -91,14 +92,15 @@ impl SessionHolder {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for SessionHolder
+impl<S> FromRequestParts<S> for SessionHolder
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        if let Ok(Extension(session)) = Extension::<ShareableSessionInner>::from_request(req).await
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        if let Ok(Extension(session)) =
+            Extension::<ShareableSessionInner>::from_request_parts(parts, state).await
         {
             Ok(SessionHolder(session))
         } else {

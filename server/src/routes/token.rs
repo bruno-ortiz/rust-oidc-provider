@@ -1,11 +1,12 @@
 use async_trait::async_trait;
-use axum::body::{Bytes, HttpBody};
+use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
-use axum::extract::{FromRequest, RequestParts};
-use axum::headers::HeaderName;
+use axum::extract::{FromRequest, FromRequestParts};
+use axum::headers::{HeaderMap, HeaderName};
 use axum::http::header::{CACHE_CONTROL, PRAGMA};
+use axum::http::Request;
 use axum::response::{AppendHeaders, IntoResponse, Response};
-use axum::{BoxError, Json};
+use axum::Json;
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
 use thiserror::Error;
@@ -27,7 +28,7 @@ pub async fn token(
     request: TokenRequest,
 ) -> axum::response::Result<
     (
-        AppendHeaders<HeaderName, &'static str, 2>,
+        AppendHeaders<[(HeaderName, &'static str); 2]>,
         Json<TokenResponse>,
     ),
     OpenIdErrorResponse,
@@ -62,7 +63,7 @@ pub async fn token(
 #[derive(Debug, Error)]
 pub enum TokenRequestError {
     #[error("Error reading request body, {}", .0)]
-    ReadBody(#[from] BytesRejection),
+    ReadRequest(#[from] BytesRejection),
     #[error(transparent)]
     Credentials(#[from] CredentialsError),
     #[error("Error parsing body params, {:?}", .0)]
@@ -74,7 +75,7 @@ impl IntoResponse for TokenRequestError {
         error!("{:?}", self);
         let openid_error = match self {
             TokenRequestError::Credentials(err) => err.into(),
-            TokenRequestError::ReadBody(err) => OpenIdError::server_error(err),
+            TokenRequestError::ReadRequest(err) => OpenIdError::server_error(err),
             TokenRequestError::ParseBody(_) => {
                 OpenIdError::invalid_request("Error parsing body params")
             }
@@ -90,20 +91,27 @@ pub struct TokenRequest {
 }
 
 #[async_trait]
-impl<B> FromRequest<B> for TokenRequest
+impl<S> FromRequest<S, axum::body::Body> for TokenRequest
 where
-    B: HttpBody + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
+    S: Send + Sync,
 {
     type Rejection = TokenRequestError;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+    async fn from_request(
+        req: Request<axum::body::Body>,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
         let configuration = OpenIDProviderConfiguration::instance();
-        let body_bytes = Bytes::from_request(req).await?;
-        let headers = req.headers();
+        let (mut parts, body) = req.into_parts();
+
+        let headers = HeaderMap::from_request_parts(&mut parts, state)
+            .await
+            .expect("Expected to be infallible");
+
+        let req = Request::from_parts(parts, body);
+        let body_bytes = Bytes::from_request(req, state).await?;
         let credentials =
-            Credentials::parse_credentials(headers, &body_bytes, configuration).await?;
+            Credentials::parse_credentials(&headers, &body_bytes, configuration).await?;
         let token_request = from_bytes::<TokenRequestBody>(&body_bytes)?;
         Ok(TokenRequest {
             credentials,
