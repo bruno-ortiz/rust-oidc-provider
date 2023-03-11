@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use axum::extract::{Extension, FromRequest, FromRequestParts};
+use axum::extract::{Extension, FromRequestParts};
 use axum::http::request::Parts;
 use axum::http::{Request, StatusCode};
 use axum::response::IntoResponse;

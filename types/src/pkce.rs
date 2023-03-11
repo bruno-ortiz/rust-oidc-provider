@@ -96,7 +96,7 @@ mod tests {
             .expect("expected valid code challenge");
 
         assert_eq!(
-            CodeChallenge::new("9BKJ8IE/1FLFbp+AH4u4EsbmM7IIEC1L6pvxcBApgBE="),
+            CodeChallenge::new("9BKJ8IE_1FLFbp-AH4u4EsbmM7IIEC1L6pvxcBApgBE"),
             challenge
         )
     }
