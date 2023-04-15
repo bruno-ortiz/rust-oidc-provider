@@ -10,26 +10,26 @@ edition = "2021"
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 oidc-admin = { path = "../admin" }
-uuid = { version = "1.1.2", features = ["v4", "serde"] }
-serde = { version = "1.0.139", features = ["derive"] }
+uuid = { version = "1.3.1", features = ["v4", "serde"] }
+serde = { version = "1.0.160", features = ["derive"] }
 serde_urlencoded = "0.7.1"
-serde_with = "2.0.0"
-axum = { version = "0.6.10", features = ["headers", "form"] }
-hyper = { version = "0.14.20", features = ["full"] }
-tokio = { version = "1.21.1", features = ["full"] }
+serde_with = "2.3.2"
+axum = { version = "0.6.15", features = ["headers", "form"] }
+hyper = { version = "0.14.26", features = ["full"] }
+tokio = { version = "1.27.0", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["fs", "add-extension", "util", "trace"] }
 tower = "0.4.13"
 tower-cookies = { version = "0.9.0", features = ["signed"] }
-url = "2.2.2"
+url = "2.3.1"
 cookie = { version = "0.17.0", features = ["key-expansion"] }
-async-trait = "0.1.56"
-futures = "0.3.21"
-anyhow = "1.0.58"
-thiserror = "1.0.31"
-time = "0.3.11"
-tracing = "0.1.35"
+async-trait = "0.1.68"
+futures = "0.3.28"
+anyhow = "1.0.70"
+thiserror = "1.0.40"
+time = "0.3.20"
+tracing = "0.1.37"
 base64 = "0.21.0"
 urlencoding = "2.1.2"
 
 [dev-dependencies]
-axum-macros = "0.3.5"
+axum-macros = "0.3.7"
