@@ -87,7 +87,7 @@ impl GrantBuilder {
 }
 
 impl Identifiable<GrantID> for Grant {
-    fn id(&self) -> GrantID {
-        self.id
+    fn id(&self) -> &GrantID {
+        &self.id
     }
 }

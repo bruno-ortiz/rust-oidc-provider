@@ -88,8 +88,8 @@ impl AccessToken {
 }
 
 impl Identifiable<String> for AccessToken {
-    fn id(&self) -> String {
-        self.token.clone()
+    fn id(&self) -> &String {
+        &self.token
     }
 }
 

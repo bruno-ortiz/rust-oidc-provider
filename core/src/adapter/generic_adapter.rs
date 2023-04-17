@@ -22,7 +22,7 @@ impl<ID, IT> InMemoryGenericAdapter<ID, IT> {
 #[async_trait]
 impl<ID, IT> Adapter for InMemoryGenericAdapter<ID, IT>
 where
-    ID: Eq + Hash + Send + Sync,
+    ID: Eq + Hash + Send + Sync + Clone,
     IT: Identifiable<ID> + Send + Sync + Clone,
 {
     type Id = ID;
@@ -37,7 +37,7 @@ where
     async fn save(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
         let mut storage = self.storage.write().unwrap();
         let id = item.id();
-        storage.insert(id, item.clone());
+        storage.insert(id.clone(), item.clone());
         Ok(item)
     }
 }

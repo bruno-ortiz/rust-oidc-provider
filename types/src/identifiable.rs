@@ -1,4 +1,3 @@
-pub trait Identifiable<ID> {
-    //TODO: return Cow<ID> to avoid cloning the id
-    fn id(&self) -> ID;
+pub trait Identifiable<ID: Clone> {
+    fn id(&self) -> &ID;
 }

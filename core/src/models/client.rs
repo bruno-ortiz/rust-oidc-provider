@@ -82,8 +82,8 @@ impl ClientInformation {
 }
 
 impl Identifiable<ClientID> for ClientInformation {
-    fn id(&self) -> ClientID {
-        self.id
+    fn id(&self) -> &ClientID {
+        &self.id
     }
 }
 

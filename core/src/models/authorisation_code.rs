@@ -59,7 +59,7 @@ impl AuthorisationCode {
 }
 
 impl Identifiable<Code> for AuthorisationCode {
-    fn id(&self) -> Code {
-        self.code.clone()
+    fn id(&self) -> &Code {
+        &self.code
     }
 }

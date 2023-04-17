@@ -59,7 +59,7 @@ impl Interaction {
     }
 
     pub fn uri(self) -> Url {
-        let id = self.id();
+        let id = *self.id();
         let config = OpenIDProviderConfiguration::instance();
         let mut url = config.interaction_url_resolver()(self);
         Self::add_id(&mut url, id);
@@ -93,11 +93,11 @@ impl Interaction {
 }
 
 impl Identifiable<Uuid> for Interaction {
-    fn id(&self) -> Uuid {
+    fn id(&self) -> &Uuid {
         match *self {
-            Interaction::Login { id, .. } => id,
-            Interaction::Consent { id, .. } => id,
-            Interaction::None { id, .. } => id,
+            Interaction::Login { ref id, .. } => id,
+            Interaction::Consent { ref id, .. } => id,
+            Interaction::None { ref id, .. } => id,
         }
     }
 }

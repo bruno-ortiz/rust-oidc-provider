@@ -84,8 +84,8 @@ impl AuthenticatedUser {
 }
 
 impl Identifiable<SessionID> for AuthenticatedUser {
-    fn id(&self) -> SessionID {
-        self.session
+    fn id(&self) -> &SessionID {
+        &self.session
     }
 }
 

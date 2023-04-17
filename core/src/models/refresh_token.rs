@@ -95,8 +95,8 @@ impl RefreshToken {
 }
 
 impl Identifiable<String> for RefreshToken {
-    fn id(&self) -> String {
-        self.token.clone()
+    fn id(&self) -> &String {
+        &self.token
     }
 }
 
