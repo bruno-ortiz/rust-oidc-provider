@@ -62,7 +62,7 @@ async fn main() {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://9e05-2804-431-c7c7-3044-a8db-af14-e1bf-ba64.sa.ngrok.io")
+        .issuer("https://b079-200-158-52-149.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .build()
