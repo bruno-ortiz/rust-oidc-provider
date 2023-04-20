@@ -46,8 +46,8 @@ static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();
 
 const ONE_YEAR: Duration = Duration::days(365);
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
-const DEFAULT_LOGIN_PATH: &str = "/interaction/login/";
-const DEFAULT_CONSENT_PATH: &str = "/interaction/consent/";
+const DEFAULT_LOGIN_PATH: &str = "/interaction/login";
+const DEFAULT_CONSENT_PATH: &str = "/interaction/consent";
 type IssueRTFunc = Box<dyn Fn(&AuthenticatedClient) -> BoxFuture<bool> + Send + Sync>;
 type RotateRefreshTokenFunc = Box<dyn Fn(RTContext<'_>) -> bool + Send + Sync>;
 type ValidateRefreshTokenFunc =
