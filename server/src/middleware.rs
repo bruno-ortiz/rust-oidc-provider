@@ -13,11 +13,11 @@ use crate::extractors::{SessionHolder, SessionInner, SESSION_KEY};
 #[derive(Clone)]
 pub struct SessionManager<S> {
     inner: S,
-    key: Option<Key>,
+    key: Arc<Option<Key>>,
 }
 
 impl<S> SessionManager<S> {
-    pub fn new(inner: S, key: Option<Key>) -> Self {
+    pub fn new(inner: S, key: Arc<Option<Key>>) -> Self {
         Self { inner, key }
     }
 }
@@ -45,10 +45,9 @@ where
         let clone = self.inner.clone();
         let mut service = std::mem::replace(&mut self.inner, clone);
 
-        let cloned_key = Arc::new(self.key.as_ref().cloned());
-        req.extensions_mut().insert(cloned_key.clone());
+        let cloned_key = self.key.clone();
         Box::pin(async move {
-            match SessionInner::load(&req).await {
+            match SessionInner::load(&req, cloned_key.as_ref().as_ref()).await {
                 Ok(session_inner) => {
                     req.extensions_mut().insert(session_inner.clone());
                     let res: Response = service.call(req).await?;
@@ -72,13 +71,13 @@ where
 }
 #[derive(Clone, Default)]
 pub struct SessionManagerLayer {
-    key: Option<Key>,
+    key: Arc<Option<Key>>,
 }
 
 impl SessionManagerLayer {
     pub fn signed(key: &[u8]) -> Self {
         Self {
-            key: Some(Key::derive_from(key)),
+            key: Arc::new(Some(Key::derive_from(key))),
         }
     }
     pub fn new() -> Self {

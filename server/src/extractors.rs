@@ -22,17 +22,16 @@ pub struct SessionInner {
 }
 
 impl SessionInner {
-    pub async fn load<B>(request: &Request<B>) -> Result<ShareableSessionInner, impl IntoResponse> {
+    pub async fn load<B>(
+        request: &Request<B>,
+        key: Option<&Key>,
+    ) -> Result<ShareableSessionInner, impl IntoResponse> {
         let cookies = request
             .extensions()
             .get::<Cookies>()
             .expect("tower-cookies must be configured");
 
-        let key = request
-            .extensions()
-            .get::<Arc<Option<Key>>>()
-            .expect("Should have an option of key here");
-        if let Some(key) = &**key {
+        if let Some(key) = key {
             let signed_cookies = cookies.signed(key);
             let cookie = signed_cookies.get(SESSION_KEY);
             Self::parse_cookie(cookie.as_ref())
