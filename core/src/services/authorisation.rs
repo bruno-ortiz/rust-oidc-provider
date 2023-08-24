@@ -19,7 +19,7 @@ use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::services::interaction::begin_interaction;
+use crate::services::interaction::{begin_interaction, InteractionError};
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
@@ -112,20 +112,25 @@ where
     }
 }
 
-fn handle_prompt_err(err: PromptError) -> AuthorisationError {
+fn handle_prompt_err(err: InteractionError) -> AuthorisationError {
     let description = err.to_string();
     match err {
-        PromptError::LoginRequired(req) => AuthorisationError::RedirectableErr {
-            err: OpenIdError::login_required(description),
-            redirect_uri: req.redirect_uri,
-            response_mode: req.response_type.default_response_mode(),
-            state: req.state,
-        },
-        PromptError::ConsentRequired(req) => AuthorisationError::RedirectableErr {
-            err: OpenIdError::consent_required(description),
-            redirect_uri: req.redirect_uri,
-            response_mode: req.response_type.default_response_mode(),
-            state: req.state,
-        },
+        InteractionError::PromptError(PromptError::LoginRequired(req)) => {
+            AuthorisationError::RedirectableErr {
+                err: OpenIdError::login_required(description),
+                redirect_uri: req.redirect_uri,
+                response_mode: req.response_type.default_response_mode(),
+                state: req.state,
+            }
+        }
+        InteractionError::PromptError(PromptError::ConsentRequired(req)) => {
+            AuthorisationError::RedirectableErr {
+                err: OpenIdError::consent_required(description),
+                redirect_uri: req.redirect_uri,
+                response_mode: req.response_type.default_response_mode(),
+                state: req.state,
+            }
+        }
+        _ => AuthorisationError::InternalError(err.into()),
     }
 }

@@ -8,6 +8,12 @@ pub struct Acr(
     #[serde(deserialize_with = "crate::utils::space_delimited_deserializer")] Vec<String>,
 );
 
+impl Acr {
+    pub fn iter(&self) -> impl Iterator<Item = &str> {
+        self.0.iter().map(|it| it.as_str())
+    }
+}
+
 impl From<String> for Acr {
     fn from(s: String) -> Self {
         Acr(s.split(' ').map(|s| s.to_owned()).collect())

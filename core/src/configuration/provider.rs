@@ -107,15 +107,6 @@ pub struct OpenIDProviderConfiguration {
     claims_parameter_supported: bool,
     #[getset(skip)]
     #[get_copy = "pub"]
-    request_parameter_supported: bool,
-    #[getset(skip)]
-    #[get_copy = "pub"]
-    request_uri_parameter_supported: bool,
-    #[getset(skip)]
-    #[get_copy = "pub"]
-    require_request_uri_registration: bool,
-    #[getset(skip)]
-    #[get_copy = "pub"]
     secret_hasher: HasherConfig,
     client_credentials: ClientCredentialConfiguration,
     ttl: TTL,
@@ -352,9 +343,6 @@ impl Default for OpenIDProviderConfiguration {
             claims_locales_supported: None,
             ui_locales_supported: None,
             claims_parameter_supported: false,
-            request_parameter_supported: false,
-            request_uri_parameter_supported: true,
-            require_request_uri_registration: false,
             profile_resolver: Box::new(NoOpProfileResolver),
             enable_userinfo: false,
             request_object: Default::default(),

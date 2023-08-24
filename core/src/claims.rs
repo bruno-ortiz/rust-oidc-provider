@@ -40,18 +40,22 @@ pub(crate) fn get_userinfo_claims<'a>(
 
 fn filter_claims<'a, 'b>(
     profile: &'a ProfileData,
-    requested_claims: &'b HashMap<String, ClaimOptions>,
+    requested_claims: &'b HashMap<String, Option<ClaimOptions>>,
 ) -> Result<HashMap<&'b str, &'a Value>, OpenIdError> {
     let mut claims = HashMap::new();
     if !requested_claims.is_empty() {
         for (claim, options) in requested_claims {
             if let Some(claim_value) = profile.claim(claim.as_str()) {
-                if !options.validate(claim_value) {
-                    return Err(OpenIdError::invalid_grant(
-                        "Requested claims did not match their requirements",
-                    ));
+                match options {
+                    Some(options) if !options.validate(claim_value) => {
+                        return Err(OpenIdError::invalid_grant(
+                            "Requested claims did not match their requirements",
+                        ))
+                    }
+                    _ => {
+                        claims.insert(claim.as_str(), claim_value);
+                    }
                 }
-                claims.insert(claim.as_str(), claim_value);
             }
         }
     }

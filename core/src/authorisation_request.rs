@@ -92,6 +92,17 @@ impl AuthorisationRequest {
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
         let configuration = OpenIDProviderConfiguration::instance();
         let this = self;
+
+        let request_object_config = configuration.request_object();
+        let request_object = if request_object_config.request || request_object_config.request_uri {
+            match process_request_object(configuration, client, &this).await {
+                Ok(ro) => ro,
+                Err(err) => return Err((err, this)),
+            }
+        } else {
+            None
+        };
+
         if let Err(err) = this.validate_response_type(configuration, client) {
             return Err((err, this));
         }
@@ -135,16 +146,12 @@ impl AuthorisationRequest {
                 ));
             }
         }
-
+        //TODO: claims should come from the request or the request_object
         let claims = match parse_claims(configuration, &this) {
             Ok(c) => c,
             Err(err) => return Err((err, this)),
         };
 
-        let request_object = match process_request_object(client, configuration, &this).await {
-            Ok(ro) => ro,
-            Err(err) => return Err((err, this)),
-        };
         Ok(ValidatedAuthorisationRequest {
             response_type: this.response_type.expect("Response type not found"),
             client_id: this
@@ -257,15 +264,16 @@ fn parse_claims(
 }
 
 async fn process_request_object(
-    client: &ClientInformation,
     configuration: &OpenIDProviderConfiguration,
-    this: &AuthorisationRequest,
+    client: &ClientInformation,
+    request: &AuthorisationRequest,
 ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
     let required = configuration.request_object().require_signed_request_object;
-    let request_object = if let Some(ref req) = this.request {
+    let request_object = if let Some(ref req) = request.request {
         let req = GenericJWT::parse(req, client)
             .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
-        //TODO: finish process and validation in request_objects
+        //TODO: finish process and validation in request_objects(Validate params of RequestObjectConfiguration, Mode, etc)
+        // Maybe build a new ValidatedAuthorisationRequest from the values of this request object
         if let Some(alg) = req.alg() {
             if alg.name() == UnsecuredJwsAlgorithm::None.name() && required {
                 return Err(OpenIdError::invalid_request(
@@ -283,6 +291,7 @@ async fn process_request_object(
             ));
         }
     } else {
+        //TODO: get request object from uri if possible
         None
     };
     Ok(request_object)

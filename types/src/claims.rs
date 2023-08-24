@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -30,25 +30,22 @@ impl ClaimOptions {
         }
         true
     }
+
+    pub fn essential(&self) -> bool {
+        self.essential
+    }
+
+    pub fn value(&self) -> Option<&Value> {
+        self.value.as_ref()
+    }
+
+    pub fn values(&self) -> Option<&Vec<Value>> {
+        self.values.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Claims {
-    #[serde(deserialize_with = "deserialize_null_default")]
-    pub userinfo: HashMap<String, ClaimOptions>,
-    #[serde(deserialize_with = "deserialize_null_default")]
-    pub id_token: HashMap<String, ClaimOptions>,
-}
-
-fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<HashMap<String, T>, D::Error>
-where
-    T: Default + Deserialize<'de>,
-    D: Deserializer<'de>,
-{
-    let opt: HashMap<String, Option<T>> = HashMap::deserialize(deserializer)?;
-    let result = opt
-        .into_iter()
-        .map(|(key, value)| (key, value.unwrap_or_default()))
-        .collect();
-    Ok(result)
+    pub userinfo: HashMap<String, Option<ClaimOptions>>,
+    pub id_token: HashMap<String, Option<ClaimOptions>>,
 }

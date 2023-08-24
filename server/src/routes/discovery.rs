@@ -57,9 +57,9 @@ pub async fn discovery<'a>() -> axum::response::Result<Json<OIDCProviderMetadata
         .claim_types_supported(configuration.claim_types_supported().as_ref())
         .claims_parameter_supported(configuration.claims_parameter_supported())
         .tls_client_certificate_bound_access_tokens(false) //todo: implement mtls
-        .request_parameter_supported(configuration.request_parameter_supported())
-        .request_uri_parameter_supported(configuration.request_uri_parameter_supported())
-        .require_request_uri_registration(configuration.require_request_uri_registration())
+        .request_parameter_supported(configuration.request_object().request)
+        .request_uri_parameter_supported(configuration.request_object().request_uri)
+        .require_request_uri_registration(configuration.request_object().require_uri_registration)
         .request_object_signing_alg_values_supported(
             configuration.request_object_signing_alg_values_supported(),
         )

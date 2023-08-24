@@ -26,7 +26,7 @@ use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::AuthorisationService;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
-use crate::user::{find_user_by_session, AuthenticatedUser};
+use crate::user::AuthenticatedUser;
 
 #[derive(Debug, Error)]
 pub enum InteractionError {
@@ -38,6 +38,8 @@ pub enum InteractionError {
     ClientNotFound(ClientID),
     #[error("Unexpected error saving interaction")]
     Persistence(#[from] PersistenceError),
+    #[error("Unexpected prompt error {}", .0)]
+    PromptError(#[from] PromptError),
     #[error("Unexpected error authorizing user")]
     Authorization(anyhow::Error),
     #[error("Unexpected error resolving user interaction")]
@@ -47,24 +49,23 @@ pub enum InteractionError {
 pub async fn begin_interaction(
     session: SessionID,
     request: ValidatedAuthorisationRequest,
-) -> Result<Interaction, PromptError> {
-    let user = find_user_by_session(session).await;
-    let resolvers = PromptDispatcher::default();
+) -> Result<Interaction, InteractionError> {
+    let user = AuthenticatedUser::find_by_session(session).await;
+    let dispatchers = PromptDispatcher::default_dispatchers();
 
-    let mut resolver = None;
-    for checker in resolvers {
+    let mut dispatcher = None;
+    for checker in dispatchers {
         if checker.should_run(user.as_ref(), &request).await {
-            resolver = Some(checker);
+            dispatcher = Some(checker);
             break;
         }
     }
-    let resolver = resolver.unwrap_or(PromptDispatcher::None(NoneResolver));
+    let resolver = dispatcher.unwrap_or(PromptDispatcher::None(NoneResolver));
     let interaction = resolver
         .resolve(session, user, request)
         .await?
         .save()
-        .await
-        .unwrap(); //TODO:resolve unwrap
+        .await?;
     Ok(interaction)
 }
 
@@ -84,7 +85,7 @@ pub async fn complete_login(
                 session,
                 subject,
                 clock.now(),
-                configuration.auth_max_age(),
+                request.max_age.unwrap_or(configuration.auth_max_age()),
                 interaction_id,
                 acr,
                 amr,
@@ -180,13 +181,13 @@ mod macros {
                         oidc_types::claims::Claims::default()
                     };
                     if request.$opt.is_some() {
-                        c.id_token.insert($claim.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
-                        c.userinfo.insert($claim.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
+                        c.id_token.insert($claim.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
+                        c.userinfo.insert($claim.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
                     }
                     $(
                       if request.$opt2.is_some() {
-                        c.id_token.insert($claim2.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
-                        c.userinfo.insert($claim2.to_owned(), oidc_types::claims::ClaimOptions::voluntary());
+                        c.id_token.insert($claim2.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
+                        c.userinfo.insert($claim2.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
                       }
                     )*
                     Some(c)

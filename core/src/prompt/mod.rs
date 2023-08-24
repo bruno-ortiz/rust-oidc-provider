@@ -50,7 +50,7 @@ pub enum PromptDispatcher {
 }
 
 impl PromptDispatcher {
-    pub fn default() -> [PromptDispatcher; 3] {
+    pub fn default_dispatchers() -> [PromptDispatcher; 3] {
         [
             PromptDispatcher::Login(LoginResolver::default()),
             PromptDispatcher::Consent(ConsentResolver),

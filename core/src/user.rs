@@ -54,6 +54,9 @@ impl AuthenticatedUser {
     pub fn auth_time(&self) -> OffsetDateTime {
         self.auth_time
     }
+    pub fn max_age(&self) -> u64 {
+        self.max_age
+    }
     pub fn acr(&self) -> &Acr {
         &self.acr
     }
@@ -81,15 +84,15 @@ impl AuthenticatedUser {
         let configuration = OpenIDProviderConfiguration::instance();
         configuration.adapters().user().save(self).await
     }
+
+    pub async fn find_by_session(session: SessionID) -> Option<AuthenticatedUser> {
+        let config = OpenIDProviderConfiguration::instance();
+        config.adapters().user().find(&session).await
+    }
 }
 
 impl Identifiable<SessionID> for AuthenticatedUser {
     fn id(&self) -> &SessionID {
         &self.session
     }
-}
-
-pub async fn find_user_by_session(session: SessionID) -> Option<AuthenticatedUser> {
-    let config = OpenIDProviderConfiguration::instance();
-    config.adapters().user().find(&session).await
 }

@@ -240,5 +240,6 @@ fn convert_err(err: InteractionError) -> Status {
         InteractionError::Internal(_) => Status::internal(err.to_string()),
         InteractionError::Persistence(_) => Status::internal(err.to_string()),
         InteractionError::Authorization(_) => Status::internal(err.to_string()),
+        InteractionError::PromptError(_) => Status::internal(err.to_string()),
     }
 }

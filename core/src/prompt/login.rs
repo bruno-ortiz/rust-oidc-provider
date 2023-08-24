@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
-use crate::prompt::checks::{check_login_is_requested, check_max_age};
+use crate::prompt::checks::{
+    check_acr_value, check_acr_values, check_login_is_requested, check_max_age,
+};
 use crate::prompt::{PromptChecker, PromptError, PromptResolver};
 use crate::services::types::Interaction;
 use crate::session::SessionID;
@@ -17,7 +19,6 @@ impl PromptChecker for LoginResolver {
         request: &ValidatedAuthorisationRequest,
     ) -> bool {
         if let Some(user) = user {
-            //check acr
             //check id_token_hint
             //check sub in id_token claim
             self.0.iter().any(|check| check(user, request))
@@ -41,6 +42,11 @@ impl PromptResolver for LoginResolver {
 
 impl Default for LoginResolver {
     fn default() -> Self {
-        Self(vec![check_login_is_requested, check_max_age])
+        Self(vec![
+            check_login_is_requested,
+            check_max_age,
+            check_acr_values,
+            check_acr_value,
+        ])
     }
 }
