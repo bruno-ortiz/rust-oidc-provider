@@ -20,6 +20,7 @@ use oidc_types::jose::jwe::alg::EncryptionAlgorithm;
 use oidc_types::jose::jwe::enc::ContentEncryptionAlgorithm;
 use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::password_hasher::HasherConfig;
+use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::ResponseType;
 use oidc_types::response_type::ResponseTypeValue::{Code, IdToken};
@@ -39,7 +40,15 @@ use crate::error::OpenIdError;
 use crate::grant_type::RTContext;
 use crate::keystore::KeyStore;
 use crate::models::client::AuthenticatedClient;
+use crate::named_check;
 use crate::profile::{NoOpProfileResolver, ProfileResolver};
+use crate::prompt::checks::{
+    check_acr_value, check_acr_values, check_max_age, check_prompt_is_requested,
+    check_user_is_authenticated,
+};
+use crate::prompt::consent::ConsentResolver;
+use crate::prompt::login::LoginResolver;
+use crate::prompt::PromptImpl;
 use crate::services::types::Interaction;
 
 static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();
@@ -123,6 +132,7 @@ pub struct OpenIDProviderConfiguration {
     enable_userinfo: bool,
     request_object: RequestObjectConfiguration,
     clock_provider: ClockProvider,
+    prompts: Vec<PromptImpl>,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -347,6 +357,25 @@ impl Default for OpenIDProviderConfiguration {
             enable_userinfo: false,
             request_object: Default::default(),
             clock_provider: Default::default(),
+            prompts: vec![
+                PromptImpl::new(
+                    Prompt::Login,
+                    vec![
+                        named_check!(check_prompt_is_requested),
+                        named_check!(check_user_is_authenticated),
+                        named_check!(check_max_age),
+                        named_check!(check_acr_values),
+                        named_check!(check_acr_value),
+                    ],
+                    Box::new(LoginResolver),
+                ),
+                PromptImpl::new(
+                    Prompt::Consent,
+                    vec![named_check!(check_prompt_is_requested)],
+                    Box::new(ConsentResolver),
+                ),
+                PromptImpl::default(),
+            ],
         }
     }
 }

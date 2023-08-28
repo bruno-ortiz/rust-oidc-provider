@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::acr;
+use crate::acr::Acr;
+
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ClaimOptions {
     essential: bool,
@@ -11,8 +14,20 @@ pub struct ClaimOptions {
 }
 
 impl ClaimOptions {
-    pub fn voluntary() -> ClaimOptions {
-        Self::default()
+    pub fn voluntary(value: Option<Value>, values: Option<Vec<Value>>) -> ClaimOptions {
+        Self {
+            essential: false,
+            value,
+            values,
+        }
+    }
+
+    pub fn essential(value: Option<Value>, values: Option<Vec<Value>>) -> ClaimOptions {
+        Self {
+            essential: true,
+            value,
+            values,
+        }
     }
 
     pub fn validate(&self, value: &Value) -> bool {
@@ -31,7 +46,7 @@ impl ClaimOptions {
         true
     }
 
-    pub fn essential(&self) -> bool {
+    pub fn is_essential(&self) -> bool {
         self.essential
     }
 
@@ -48,4 +63,21 @@ impl ClaimOptions {
 pub struct Claims {
     pub userinfo: HashMap<String, Option<ClaimOptions>>,
     pub id_token: HashMap<String, Option<ClaimOptions>>,
+}
+
+impl Claims {
+    pub fn handle_acr_values_parameter(&mut self, param: Option<&Acr>) {
+        if let Some(acr_values) = param {
+            if !self.id_token.contains_key(acr::CLAIM_KEY) {
+                let (value, values) = acr_values.to_values();
+                let co = ClaimOptions::voluntary(value, values);
+                self.id_token.insert(acr::CLAIM_KEY.to_owned(), Some(co));
+            }
+            if !self.userinfo.contains_key(acr::CLAIM_KEY) {
+                let (value, values) = acr_values.to_values();
+                let co = ClaimOptions::voluntary(value, values);
+                self.userinfo.insert(acr::CLAIM_KEY.to_owned(), Some(co));
+            }
+        }
+    }
 }

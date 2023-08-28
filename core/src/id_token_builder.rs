@@ -56,6 +56,7 @@ pub struct IdTokenBuilder<'a> {
     s_hash: Option<String>,
     c_hash: Option<String>,
     at_hash: Option<String>,
+    auth_time: Option<OffsetDateTime>,
     custom_claims: HashMap<&'a str, Cow<'a, Value>>,
 }
 
@@ -73,6 +74,7 @@ impl<'a> IdTokenBuilder<'a> {
             s_hash: None,
             c_hash: None,
             at_hash: None,
+            auth_time: None,
             custom_claims: HashMap::new(),
         }
     }
@@ -113,6 +115,11 @@ impl<'a> IdTokenBuilder<'a> {
 
     pub fn with_claim<T: Into<Value>>(mut self, key: &'a str, value: T) -> Self {
         self.custom_claims.insert(key, Cow::Owned(value.into()));
+        self
+    }
+
+    pub fn with_auth_time(mut self, auth_time: OffsetDateTime) -> Self {
+        self.auth_time = Some(auth_time);
         self
     }
 
@@ -157,6 +164,7 @@ impl<'a> IdTokenBuilder<'a> {
         payload.set_subject(self.sub.required("sub")?);
         payload.set_expires_at(&self.expires_at.required("expires_at")?.into());
         payload.set_issued_at(&self.issued_at.required("issued_at")?.into());
+        payload.set_auth_time(self.auth_time);
 
         payload.set_nonce(self.nonce.cloned());
         payload.set_azp(self.azp);

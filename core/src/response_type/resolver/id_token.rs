@@ -58,7 +58,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let claims = get_id_token_claims(&profile, context.grant.claims().as_ref())?;
 
         let ttl = configuration.ttl();
-        let id_token = IdTokenBuilder::new(signing_key)
+        let mut id_token_builder = IdTokenBuilder::new(signing_key)
             .with_issuer(configuration.issuer())
             .with_sub(context.user.sub())
             .with_audience(vec![context.client.id().into()])
@@ -68,12 +68,16 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
             .with_s_hash(context.request.state.as_ref())?
             .with_c_hash(self.code)?
             .with_at_hash(self.token)?
-            .with_custom_claims(claims)
-            .build()
-            .map_err(|err| {
-                error!("{:?}", err);
-                OpenIdError::server_error(err)
-            })?;
+            .with_custom_claims(claims);
+
+        if context.request.max_age.is_some() {
+            id_token_builder = id_token_builder.with_auth_time(context.user.auth_time())
+        }
+
+        let id_token = id_token_builder.build().map_err(|err| {
+            error!("{:?}", err);
+            OpenIdError::server_error(err)
+        })?;
 
         id_token
             .return_or_encrypt_simple_id_token(&context.client)

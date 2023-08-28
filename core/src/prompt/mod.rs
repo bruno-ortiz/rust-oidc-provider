@@ -1,20 +1,23 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use thiserror::Error;
+use tracing::info;
 
 use oidc_types::prompt::Prompt;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
-use crate::prompt::consent::ConsentResolver;
-use crate::prompt::login::LoginResolver;
+use crate::named_check;
+use crate::prompt::checks::{check_prompt_is_requested, CheckContext, PromptCheck};
 use crate::prompt::none::NoneResolver;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
 
-mod checks;
-mod consent;
-mod login;
-pub(crate) mod none;
+pub mod checks;
+pub mod consent;
+pub mod login;
+pub mod none;
 
 #[derive(Debug, Error)]
 pub enum PromptError {
@@ -23,16 +26,6 @@ pub enum PromptError {
     #[error("User has not consented")]
     ConsentRequired(ValidatedAuthorisationRequest),
 }
-
-#[async_trait]
-pub trait PromptChecker: PromptResolver {
-    async fn should_run(
-        &self,
-        user: Option<&AuthenticatedUser>,
-        request: &ValidatedAuthorisationRequest,
-    ) -> bool;
-}
-
 #[async_trait]
 pub trait PromptResolver {
     async fn resolve(
@@ -43,59 +36,64 @@ pub trait PromptResolver {
     ) -> Result<Interaction, PromptError>;
 }
 
-pub enum PromptDispatcher {
-    Login(LoginResolver),
-    Consent(ConsentResolver),
-    None(NoneResolver),
+pub struct PromptImpl {
+    prompt: Prompt,
+    checks: Vec<(String, PromptCheck)>,
+    resolver: Box<dyn PromptResolver + Send + Sync>,
 }
 
-impl PromptDispatcher {
-    pub fn default_dispatchers() -> [PromptDispatcher; 3] {
-        [
-            PromptDispatcher::Login(LoginResolver::default()),
-            PromptDispatcher::Consent(ConsentResolver),
-            PromptDispatcher::None(NoneResolver),
-        ]
+impl PromptImpl {
+    pub fn new(
+        prompt: Prompt,
+        checks: Vec<(String, PromptCheck)>,
+        resolver: Box<dyn PromptResolver + Send + Sync>,
+    ) -> Self {
+        Self {
+            prompt,
+            checks,
+            resolver,
+        }
     }
-}
 
-#[async_trait]
-impl PromptResolver for PromptDispatcher {
-    async fn resolve(
+    pub async fn should_run(
+        &self,
+        user: Option<Arc<AuthenticatedUser>>,
+        request: Arc<ValidatedAuthorisationRequest>,
+    ) -> bool {
+        //check id_token_hint
+        //check sub in id_token claim
+        for (name, check) in &self.checks {
+            let ctx = CheckContext {
+                prompt: self.prompt,
+                request: request.clone(),
+                user: user.clone(),
+            };
+            if check(ctx).await {
+                info!(
+                    "Prompt {} will be executed because of positive check: {}",
+                    self.prompt, name
+                );
+                return true;
+            }
+        }
+        false
+    }
+    pub async fn resolve(
         &self,
         session: SessionID,
         user: Option<AuthenticatedUser>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<Interaction, PromptError> {
-        match self {
-            PromptDispatcher::Login(inner) => inner.resolve(session, user, request).await,
-            PromptDispatcher::Consent(inner) => inner.resolve(session, user, request).await,
-            PromptDispatcher::None(inner) => inner.resolve(session, user, request).await,
-        }
+        self.resolver.resolve(session, user, request).await
     }
 }
 
-#[async_trait]
-impl PromptChecker for PromptDispatcher {
-    async fn should_run(
-        &self,
-        user: Option<&AuthenticatedUser>,
-        request: &ValidatedAuthorisationRequest,
-    ) -> bool {
-        let none_requested = request
-            .prompt
-            .as_ref()
-            .map(|it| it.contains(&Prompt::None))
-            .unwrap_or(false);
-        match self {
-            PromptDispatcher::Login(inner) if !none_requested => {
-                inner.should_run(user, request).await
-            }
-            PromptDispatcher::Consent(inner) if !none_requested => {
-                inner.should_run(user, request).await
-            }
-            PromptDispatcher::None(_) => true,
-            _ => false,
+impl Default for PromptImpl {
+    fn default() -> Self {
+        PromptImpl {
+            prompt: Prompt::None,
+            checks: vec![named_check!(check_prompt_is_requested)],
+            resolver: Box::new(NoneResolver),
         }
     }
 }

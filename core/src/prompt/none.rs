@@ -1,10 +1,11 @@
+use async_trait::async_trait;
+
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::models::grant::Grant;
 use crate::prompt::{PromptError, PromptResolver};
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
-use async_trait::async_trait;
 
 pub struct NoneResolver;
 

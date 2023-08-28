@@ -49,6 +49,7 @@ pub mod test_utils {
 
     use oidc_types::application_type::ApplicationType;
     use oidc_types::auth_method::AuthMethod;
+    use oidc_types::claims::Claims;
     use oidc_types::client::{ClientID, ClientMetadata};
     use oidc_types::jose::jwk_set::JwkSet;
     use oidc_types::nonce::Nonce;
@@ -70,7 +71,6 @@ pub mod test_utils {
     use crate::keystore::KeyStore;
     use crate::models::client::ClientInformation;
     use crate::models::grant::GrantBuilder;
-    use crate::prepare_claims;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
 
@@ -179,11 +179,7 @@ pub mod test_utils {
             .max_age(request.max_age)
             .redirect_uri(request.redirect_uri.clone())
             .rejected_claims(HashSet::new())
-            .claims(prepare_claims!(
-                request,
-                (acr_values, "acr"),
-                (max_age, "auth_time")
-            ))
+            .claims(Claims::default())
             .build()
             .expect("Should always build successfully")
             .save()

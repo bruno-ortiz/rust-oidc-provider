@@ -2,6 +2,9 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 
 use serde::Deserialize;
+use serde_json::Value;
+
+pub const CLAIM_KEY: &str = "acr";
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
 pub struct Acr(
@@ -9,8 +12,32 @@ pub struct Acr(
 );
 
 impl Acr {
-    pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.0.iter().map(|it| it.as_str())
+    pub fn new(values: Vec<String>) -> Self {
+        Self(values)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &String> {
+        self.0.iter()
+    }
+
+    pub fn contains(&self, v: &String) -> bool {
+        self.0.contains(v)
+    }
+
+    pub fn to_values(&self) -> (Option<Value>, Option<Vec<Value>>) {
+        match self.0.len() {
+            0 => (None, None),
+            1 => (
+                Some(Value::String(
+                    self.0.first().expect("Must have at least 1 value").clone(),
+                )),
+                None,
+            ),
+            _ => (
+                None,
+                Some(self.0.iter().map(|it| Value::String(it.clone())).collect()),
+            ),
+        }
     }
 }
 

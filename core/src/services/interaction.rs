@@ -6,8 +6,10 @@ use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
 
+use oidc_types::acr;
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
+use oidc_types::claims::{ClaimOptions, Claims};
 use oidc_types::client::ClientID;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
@@ -18,9 +20,7 @@ use crate::client::retrieve_client_info;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::grant::GrantBuilder;
-use crate::prepare_claims;
-use crate::prompt::none::NoneResolver;
-use crate::prompt::{PromptChecker, PromptDispatcher, PromptError, PromptResolver};
+use crate::prompt::PromptError;
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::AuthorisationService;
@@ -50,23 +50,38 @@ pub async fn begin_interaction(
     session: SessionID,
     request: ValidatedAuthorisationRequest,
 ) -> Result<Interaction, InteractionError> {
-    let user = AuthenticatedUser::find_by_session(session).await;
-    let dispatchers = PromptDispatcher::default_dispatchers();
-
+    let config = OpenIDProviderConfiguration::instance();
+    let user = AuthenticatedUser::find_by_session(session)
+        .await
+        .map(Arc::new);
+    let request = Arc::new(request);
     let mut dispatcher = None;
-    for checker in dispatchers {
-        if checker.should_run(user.as_ref(), &request).await {
-            dispatcher = Some(checker);
-            break;
+
+    let (user, request) = {
+        let prompt_checks = config.prompts();
+        for checker in prompt_checks {
+            if checker.should_run(user.clone(), request.clone()).await {
+                dispatcher = Some(checker);
+                break;
+            }
         }
+        (user.and_then(Arc::into_inner), Arc::into_inner(request))
+    };
+
+    let request = request.ok_or(InteractionError::Internal(anyhow!("Err")))?;
+    if let Some(resolver) = dispatcher {
+        let interaction = resolver
+            .resolve(session, user, request)
+            .await?
+            .save()
+            .await?;
+        Ok(interaction)
+    } else {
+        Err(InteractionError::Internal(anyhow!(
+            "Unable to resolve prompt: {:?}",
+            request.prompt
+        )))
     }
-    let resolver = dispatcher.unwrap_or(PromptDispatcher::None(NoneResolver));
-    let interaction = resolver
-        .resolve(session, user, request)
-        .await?
-        .save()
-        .await?;
-    Ok(interaction)
 }
 
 pub async fn complete_login(
@@ -114,6 +129,7 @@ where
 {
     match Interaction::find(interaction_id).await {
         Some(Interaction::Consent { request, user, .. }) => {
+            let claims = prepare_grant_claims(&request);
             let grant = GrantBuilder::new()
                 .subject(user.sub().clone())
                 .scopes(scopes)
@@ -124,11 +140,7 @@ where
                 .max_age(request.max_age)
                 .redirect_uri(request.redirect_uri.clone())
                 .rejected_claims(HashSet::new()) //todo: implement rejected claims
-                .claims(prepare_claims!(
-                    request,
-                    (acr_values, "acr"),
-                    (max_age, "auth_time")
-                ))
+                .claims(claims)
                 .build()
                 .expect("Should always build successfully")
                 .save()
@@ -168,33 +180,239 @@ async fn finalize_interaction(
         .ok_or_else(|| InteractionError::Internal(anyhow!("Unable to consume this interaction")))
 }
 
-mod macros {
-    #[macro_export]
-    macro_rules! prepare_claims {
-        ($req:ident, ($opt:ident, $claim:expr)$(,($opt2:ident, $claim2:expr))* ) => {
-            {
-                let request = &$req;
-                if request.$opt.is_some() $(|| request.$opt2.is_some())*  {
-                    let mut c = if let Some(claims) = &request.claims {
-                        claims.clone()
-                    } else {
-                        oidc_types::claims::Claims::default()
-                    };
-                    if request.$opt.is_some() {
-                        c.id_token.insert($claim.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
-                        c.userinfo.insert($claim.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
-                    }
-                    $(
-                      if request.$opt2.is_some() {
-                        c.id_token.insert($claim2.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
-                        c.userinfo.insert($claim2.to_owned(), Some(oidc_types::claims::ClaimOptions::voluntary()));
-                      }
-                    )*
-                    Some(c)
-                } else {
-                    request.claims.clone()
-                }
-            }
+fn prepare_grant_claims(request: &ValidatedAuthorisationRequest) -> Claims {
+    let mut claims = if let Some(claims) = &request.claims {
+        claims.clone()
+    } else {
+        Claims::default()
+    };
+
+    claims.handle_acr_values_parameter(request.acr_values.as_ref());
+    claims
+}
+
+#[cfg(test)]
+mod tests {
+    use indexmap::IndexSet;
+    use time::{Duration, OffsetDateTime};
+    use tracing::info;
+    use url::Url;
+    use uuid::Uuid;
+
+    use oidc_types::acr::Acr;
+    use oidc_types::claims::{ClaimOptions, Claims};
+    use oidc_types::client::ClientID;
+    use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
+    use oidc_types::prompt::Prompt;
+    use oidc_types::response_type::ResponseTypeValue;
+    use oidc_types::subject::Subject;
+    use oidc_types::{acr, response_type, scopes};
+
+    use crate::authorisation_request::ValidatedAuthorisationRequest;
+    use crate::services::interaction::begin_interaction;
+    use crate::services::types::Interaction;
+    use crate::session::SessionID;
+    use crate::user::AuthenticatedUser;
+
+    #[tokio::test]
+    async fn test_begin_login_interaction_successful() {
+        let session_id = SessionID::new();
+        let auth_request = create_request(None, None);
+        let result = begin_interaction(session_id, auth_request).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, .. }) = result else {
+            panic!("Expected login interactions")
         };
+        assert_eq!(session, session_id)
+    }
+
+    #[tokio::test]
+    async fn test_begin_login_interaction_due_to_user_max_age_expired() {
+        init_logging();
+        let session_id = SessionID::new();
+        let auth_request = create_request(None, None);
+
+        let result = begin_interaction(session_id, auth_request.clone()).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+
+        let auth_time = OffsetDateTime::now_utc() - Duration::minutes(5);
+        let max_age = Duration::minutes(2);
+        let user = AuthenticatedUser::new(
+            session,
+            Subject::new("sub"),
+            auth_time,
+            max_age.whole_seconds() as u64,
+            id,
+            None,
+            None,
+        )
+        .save()
+        .await
+        .expect("User should be saved");
+
+        let result = begin_interaction(session_id, auth_request).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+        assert_eq!(session_id, session);
+        assert_ne!(user.interaction_id(), id);
+    }
+
+    #[tokio::test]
+    async fn test_begin_login_interaction_due_to_prompt_request() {
+        init_logging();
+        let session_id = SessionID::new();
+        let auth_request = create_request(None, None);
+
+        let result = begin_interaction(session_id, auth_request.clone()).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+
+        let auth_time = OffsetDateTime::now_utc();
+        let max_age = Duration::minutes(2);
+        let user = AuthenticatedUser::new(
+            session,
+            Subject::new("sub"),
+            auth_time,
+            max_age.whole_seconds() as u64,
+            id,
+            None,
+            None,
+        )
+        .save()
+        .await
+        .expect("User should be saved");
+
+        let request_with_prompt = create_request(Some(IndexSet::from([Prompt::Login])), None);
+        let result = begin_interaction(session_id, request_with_prompt).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+        assert_eq!(session_id, session);
+        assert_ne!(user.interaction_id(), id);
+    }
+
+    #[tokio::test]
+    async fn test_begin_login_interaction_due_to_wrong_acr_values() {
+        init_logging();
+        let session_id = SessionID::new();
+        let auth_request = create_request(None, None);
+
+        let result = begin_interaction(session_id, auth_request.clone()).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+
+        let auth_time = OffsetDateTime::now_utc();
+        let max_age = Duration::minutes(2);
+        let user = AuthenticatedUser::new(
+            session,
+            Subject::new("sub"),
+            auth_time,
+            max_age.whole_seconds() as u64,
+            id,
+            None,
+            None,
+        )
+        .save()
+        .await
+        .expect("User should be saved");
+
+        let request_with_acr = create_request(
+            None,
+            Some(Acr::new(vec![
+                "acr:test:xpto".into(),
+                "acr:test:xpto2".into(),
+            ])),
+        );
+        let result = begin_interaction(session_id, request_with_acr).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+        assert_eq!(session_id, session);
+        assert_ne!(user.interaction_id(), id);
+    }
+
+    #[tokio::test]
+    async fn test_begin_login_interaction_due_to_wrong_acr_value() {
+        init_logging();
+        let session_id = SessionID::new();
+        let auth_request = create_request(None, None);
+
+        let result = begin_interaction(session_id, auth_request.clone()).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+
+        let auth_time = OffsetDateTime::now_utc();
+        let max_age = Duration::minutes(2);
+        let user = AuthenticatedUser::new(
+            session,
+            Subject::new("sub"),
+            auth_time,
+            max_age.whole_seconds() as u64,
+            id,
+            None,
+            None,
+        )
+        .save()
+        .await
+        .expect("User should be saved");
+
+        let request_with_acr = create_request(None, Some(Acr::new(vec!["acr:test:xpto".into()])));
+        let result = begin_interaction(session_id, request_with_acr).await;
+        assert!(result.is_ok());
+        let Ok(Interaction::Login { session, id, .. }) = result else {
+            panic!("Expected login interactions")
+        };
+        assert_eq!(session_id, session);
+        assert_ne!(user.interaction_id(), id);
+    }
+
+    fn create_request(
+        prompt: Option<IndexSet<Prompt>>,
+        acr: Option<Acr>,
+    ) -> ValidatedAuthorisationRequest {
+        let mut claims = Claims::default();
+        if let Some(acr) = &acr {
+            let (v, vs) = acr.to_values();
+            let c = ClaimOptions::essential(v, vs);
+            claims.id_token.insert(acr::CLAIM_KEY.into(), Some(c));
+        }
+        ValidatedAuthorisationRequest {
+            client_id: ClientID::new(Uuid::new_v4()),
+            response_type: response_type!(ResponseTypeValue::Code),
+            redirect_uri: Url::parse("https://test.com/callback").unwrap(),
+            scope: scopes!("openid", "test"),
+            state: None,
+            nonce: None,
+            response_mode: None,
+            code_challenge: Some(CodeChallenge::new("some code here")),
+            code_challenge_method: Some(CodeChallengeMethod::Plain),
+            resource: None,
+            include_granted_scopes: None,
+            request_uri: None,
+            request: None,
+            prompt,
+            acr_values: acr,
+            claims: Some(claims),
+            max_age: None,
+        }
+    }
+
+    fn init_logging() {
+        if tracing_subscriber::fmt::try_init().is_ok() {
+            info!("Log initialized")
+        }
     }
 }
