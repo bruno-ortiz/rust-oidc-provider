@@ -6,10 +6,9 @@ use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
 
-use oidc_types::acr;
 use oidc_types::acr::Acr;
 use oidc_types::amr::Amr;
-use oidc_types::claims::{ClaimOptions, Claims};
+use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
@@ -60,7 +59,7 @@ pub async fn begin_interaction(
     let (user, request) = {
         let prompt_checks = config.prompts();
         for checker in prompt_checks {
-            if checker.should_run(user.clone(), request.clone()).await {
+            if checker.should_run(user.clone(), request.clone()).await? {
                 dispatcher = Some(checker);
                 break;
             }
@@ -68,13 +67,11 @@ pub async fn begin_interaction(
         (user.and_then(Arc::into_inner), Arc::into_inner(request))
     };
 
-    let request = request.ok_or(InteractionError::Internal(anyhow!("Err")))?;
+    let request = request.ok_or(InteractionError::Internal(anyhow!(
+        "Err getting request back from checks execution, did you spawn a long running task?"
+    )))?;
     if let Some(resolver) = dispatcher {
-        let interaction = resolver
-            .resolve(session, user, request)
-            .await?
-            .save()
-            .await?;
+        let interaction = resolver.resolve(session, user, request)?.save().await?;
         Ok(interaction)
     } else {
         Err(InteractionError::Internal(anyhow!(

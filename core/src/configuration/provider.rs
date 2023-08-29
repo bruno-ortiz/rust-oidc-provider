@@ -44,11 +44,9 @@ use crate::named_check;
 use crate::profile::{NoOpProfileResolver, ProfileResolver};
 use crate::prompt::checks::{
     check_acr_value, check_acr_values, check_max_age, check_prompt_is_requested,
-    check_user_is_authenticated,
+    check_user_has_consented, check_user_is_authenticated, check_user_must_be_authenticated,
 };
-use crate::prompt::consent::ConsentResolver;
-use crate::prompt::login::LoginResolver;
-use crate::prompt::PromptImpl;
+use crate::prompt::PromptResolver;
 use crate::services::types::Interaction;
 
 static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();
@@ -132,7 +130,7 @@ pub struct OpenIDProviderConfiguration {
     enable_userinfo: bool,
     request_object: RequestObjectConfiguration,
     clock_provider: ClockProvider,
-    prompts: Vec<PromptImpl>,
+    prompts: Vec<PromptResolver>,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -358,7 +356,7 @@ impl Default for OpenIDProviderConfiguration {
             request_object: Default::default(),
             clock_provider: Default::default(),
             prompts: vec![
-                PromptImpl::new(
+                PromptResolver::new(
                     Prompt::Login,
                     vec![
                         named_check!(check_prompt_is_requested),
@@ -367,14 +365,16 @@ impl Default for OpenIDProviderConfiguration {
                         named_check!(check_acr_values),
                         named_check!(check_acr_value),
                     ],
-                    Box::new(LoginResolver),
                 ),
-                PromptImpl::new(
+                PromptResolver::new(
                     Prompt::Consent,
-                    vec![named_check!(check_prompt_is_requested)],
-                    Box::new(ConsentResolver),
+                    vec![
+                        named_check!(check_user_must_be_authenticated),
+                        named_check!(check_prompt_is_requested),
+                        named_check!(check_user_has_consented),
+                    ],
                 ),
-                PromptImpl::default(),
+                PromptResolver::default(),
             ],
         }
     }

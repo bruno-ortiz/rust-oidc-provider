@@ -115,22 +115,26 @@ where
 fn handle_prompt_err(err: InteractionError) -> AuthorisationError {
     let description = err.to_string();
     match err {
-        InteractionError::PromptError(PromptError::LoginRequired(req)) => {
-            AuthorisationError::RedirectableErr {
-                err: OpenIdError::login_required(description),
-                redirect_uri: req.redirect_uri,
-                response_mode: req.response_type.default_response_mode(),
-                state: req.state,
-            }
-        }
-        InteractionError::PromptError(PromptError::ConsentRequired(req)) => {
-            AuthorisationError::RedirectableErr {
-                err: OpenIdError::consent_required(description),
-                redirect_uri: req.redirect_uri,
-                response_mode: req.response_type.default_response_mode(),
-                state: req.state,
-            }
-        }
+        InteractionError::PromptError(PromptError::LoginRequired {
+            redirect_uri,
+            response_mode,
+            state,
+        }) => AuthorisationError::RedirectableErr {
+            err: OpenIdError::login_required(description),
+            redirect_uri,
+            response_mode,
+            state,
+        },
+        InteractionError::PromptError(PromptError::ConsentRequired {
+            redirect_uri,
+            response_mode,
+            state,
+        }) => AuthorisationError::RedirectableErr {
+            err: OpenIdError::consent_required(description),
+            redirect_uri,
+            response_mode,
+            state,
+        },
         _ => AuthorisationError::InternalError(err.into()),
     }
 }
