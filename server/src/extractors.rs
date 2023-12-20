@@ -2,9 +2,9 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use axum::extract::{Extension, FromRequestParts};
+use axum::extract::{Extension, FromRequestParts, Request};
 use axum::http::request::Parts;
-use axum::http::{Request, StatusCode};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use time::Duration;
 use tower_cookies::{Cookie, Cookies, Key};
@@ -22,10 +22,10 @@ pub struct SessionInner {
 }
 
 impl SessionInner {
-    pub async fn load<B>(
-        request: &Request<B>,
+    pub async fn load(
+        request: Request,
         key: Option<&Key>,
-    ) -> Result<ShareableSessionInner, impl IntoResponse> {
+    ) -> Result<(Request, ShareableSessionInner), impl IntoResponse> {
         let cookies = request
             .extensions()
             .get::<Cookies>()
@@ -34,10 +34,10 @@ impl SessionInner {
         if let Some(key) = key {
             let signed_cookies = cookies.signed(key);
             let cookie = signed_cookies.get(SESSION_KEY);
-            Self::parse_cookie(cookie.as_ref())
+            Self::parse_cookie(cookie.as_ref()).map(|si| (request, si))
         } else {
             let cookie = cookies.get(SESSION_KEY);
-            Self::parse_cookie(cookie.as_ref())
+            Self::parse_cookie(cookie.as_ref()).map(|si| (request, si))
         }
     }
 

@@ -1,10 +1,10 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{body, Json};
-use oidc_core::error::{OpenIdError, OpenIdErrorType};
+use axum::Json;
 use thiserror::Error;
 use tracing::error;
 
+use oidc_core::error::{OpenIdError, OpenIdErrorType};
 use oidc_core::services::authorisation::AuthorisationError;
 
 #[derive(Error, Debug)]
@@ -13,24 +13,19 @@ pub struct AuthorisationErrorWrapper(#[from] AuthorisationError);
 
 impl IntoResponse for AuthorisationErrorWrapper {
     fn into_response(self) -> Response {
-        let body = body::boxed(body::Full::from(self.0.to_string()));
-
         match self.0 {
             AuthorisationError::InvalidRedirectUri
             | AuthorisationError::MissingRedirectUri
             | AuthorisationError::InvalidClient(_)
-            | AuthorisationError::MissingClient => Response::builder()
-                .status(StatusCode::BAD_REQUEST)
-                .body(body)
-                .unwrap(),
-            AuthorisationError::InternalError(_) => Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(body)
-                .unwrap(),
-            AuthorisationError::RedirectableErr { .. } => Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(body)
-                .unwrap(),
+            | AuthorisationError::MissingClient => {
+                (StatusCode::BAD_REQUEST, self.0.to_string()).into_response()
+            }
+            AuthorisationError::InternalError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_string()).into_response()
+            }
+            AuthorisationError::RedirectableErr { .. } => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_string()).into_response()
+            }
         }
     }
 }

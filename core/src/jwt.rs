@@ -130,18 +130,18 @@ where
 
 impl ValidJWT<GenericJWT> {
     pub async fn validate(
-        jwt: &GenericJWT,
+        jwt: GenericJWT,
         client: &ClientInformation,
     ) -> Result<ValidJWT<GenericJWT>, JWTError> {
         let valid = match jwt {
-            GenericJWT::Encrypted(_) => ValidJWT(jwt.clone()),
+            GenericJWT::Encrypted(_) => ValidJWT(jwt),
             GenericJWT::Signed(ref inner) => {
                 validate_signature(client, inner).await?;
-                ValidJWT(jwt.clone())
+                ValidJWT(jwt)
             }
             GenericJWT::SignedAndEncrypted(ref inner) => {
                 validate_signature(client, inner.signed_payload()).await?;
-                ValidJWT(jwt.clone())
+                ValidJWT(jwt)
             }
         };
         Ok(valid)

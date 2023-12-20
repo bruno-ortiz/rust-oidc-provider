@@ -280,7 +280,7 @@ async fn process_request_object(
                     "Request object must be signed",
                 ));
             } else {
-                let result = ValidJWT::validate(&req, client)
+                let result = ValidJWT::validate(req, client)
                     .await
                     .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
                 Some(result)

@@ -1,10 +1,9 @@
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use axum::http::Request;
+use axum::extract::Request;
 use axum::response::{IntoResponse, Response};
 use futures::future::BoxFuture;
-use hyper::Body;
 use tower::{Layer, Service};
 use tower_cookies::{Cookie, Cookies, Key};
 
@@ -22,9 +21,9 @@ impl<S> SessionManager<S> {
     }
 }
 
-impl<S> Service<Request<Body>> for SessionManager<S>
+impl<S> Service<Request> for SessionManager<S>
 where
-    S: Service<Request<Body>, Response = Response> + Clone + Send + 'static,
+    S: Service<Request, Response = Response> + Clone + Send + 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
@@ -35,7 +34,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request) -> Self::Future {
         let cookies = req
             .extensions()
             .get::<Cookies>()
@@ -47,20 +46,20 @@ where
 
         let cloned_key = self.key.clone();
         Box::pin(async move {
-            match SessionInner::load(&req, cloned_key.as_ref().as_ref()).await {
-                Ok(session_inner) => {
+            match SessionInner::load(req, cloned_key.as_ref().as_ref()).await {
+                Ok((mut req, session_inner)) => {
                     req.extensions_mut().insert(session_inner.clone());
                     let res: Response = service.call(req).await?;
                     let session = SessionHolder::new(session_inner.clone());
-                    let mut cookie = Cookie::build(SESSION_KEY, session.session_id().to_string())
+                    let mut cookie = Cookie::build((SESSION_KEY, session.session_id().to_string()))
                         .http_only(true);
                     if let Some(duration) = session.duration() {
                         cookie = cookie.max_age(duration);
                     }
                     if let Some(key) = &*cloned_key {
-                        cookies.signed(key).add(cookie.finish());
+                        cookies.signed(key).add(cookie.build());
                     } else {
-                        cookies.add(cookie.finish());
+                        cookies.add(cookie.build());
                     }
                     Ok(res)
                 }

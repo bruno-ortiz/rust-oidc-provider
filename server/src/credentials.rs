@@ -3,9 +3,9 @@ use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use axum::body::Bytes;
-use axum::headers::authorization::Basic;
-use axum::headers::{Authorization, HeaderMapExt};
 use axum::http::StatusCode;
+use axum_extra::headers::authorization::Basic;
+use axum_extra::headers::{Authorization, HeaderMapExt};
 use hyper::HeaderMap;
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;

@@ -1,7 +1,8 @@
-use axum::headers::authorization::Bearer;
-use axum::headers::Authorization;
 use axum::response::Result;
-use axum::{Json, TypedHeader};
+use axum::Json;
+use axum_extra::headers::authorization::Bearer;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 
 use oidc_core::error::OpenIdError;
 use oidc_core::models::access_token::AccessToken;

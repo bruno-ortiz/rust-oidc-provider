@@ -2,18 +2,21 @@ use std::net::SocketAddr;
 
 use axum::Router;
 use thiserror::Error;
+use tokio::io;
+use tokio::net::TcpListener;
 use tracing::info;
 
-use crate::routes::oidc_router;
 use oidc_admin::{AdminServer, AdminServerError};
 use oidc_core::configuration::OpenIDProviderConfiguration;
 
+use crate::routes::oidc_router;
+
 #[derive(Debug, Error)]
 pub enum ServerError {
-    #[error("Error running oidc server {}", .0)]
-    OpenId(#[from] hyper::Error),
     #[error("Error running admin server {}", .0)]
     Admin(#[from] AdminServerError),
+    #[error("Error running oidc server {}", .0)]
+    Io(#[from] io::Error),
 }
 
 #[derive(Default)]
@@ -48,11 +51,10 @@ impl OidcServer {
         server_ready.await.expect("Admin server should be ready");
         let oidc_router = oidc_router(self.custom_routes).await;
         let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+        let tcp_listener = TcpListener::bind(addr).await?;
         info!("OpenId Server listening on {}", addr);
-        axum::Server::bind(&addr)
-            .serve(oidc_router.into_make_service())
-            .await
-            .map_err(ServerError::OpenId)?;
+
+        axum::serve(tcp_listener, oidc_router.into_make_service()).await?;
         let _ = tx.send(());
         Ok(())
     }
