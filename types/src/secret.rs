@@ -47,10 +47,13 @@ impl Display for PlainTextSecret {
 pub struct HashedSecret(String);
 
 impl HashedSecret {
+    pub fn from_string<H: PasswordHasher>(hasher: H, secret: &str) -> Result<Self, HashingError> {
+        Ok(Self(hasher.hash(secret.as_bytes())?))
+    }
+
     pub fn random<H: PasswordHasher>(hasher: H) -> Result<(Self, PlainTextSecret), HashingError> {
-        let plain_secret = PlainTextSecret::random();
-        let hashed_secret = Self(hasher.hash(plain_secret.0.as_bytes())?);
-        Ok((hashed_secret, plain_secret))
+        let random_secret = random_pwd(CHARSET, MIN_SECRET_LEN);
+        Self::from_string(hasher, &random_secret).map(|hash| (hash, PlainTextSecret(random_secret)))
     }
 
     pub fn verify<H: PasswordHasher, P: AsRef<[u8]>>(&self, hasher: H, pwd: P) -> bool {
@@ -72,6 +75,12 @@ impl Display for HashedSecret {
 impl PartialEq<String> for HashedSecret {
     fn eq(&self, other: &String) -> bool {
         *other == self.0
+    }
+}
+
+impl AsRef<[u8]> for HashedSecret {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 

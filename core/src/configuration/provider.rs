@@ -43,8 +43,8 @@ use crate::models::client::AuthenticatedClient;
 use crate::named_check;
 use crate::profile::{NoOpProfileResolver, ProfileResolver};
 use crate::prompt::checks::{
-    check_acr_value, check_acr_values, check_max_age, check_prompt_is_requested,
-    check_user_has_consented, check_user_is_authenticated, check_user_must_be_authenticated,
+    check_acr_value, check_acr_values, check_max_age, check_user_has_consented,
+    check_user_is_authenticated, check_user_must_be_authenticated,
 };
 use crate::prompt::PromptResolver;
 use crate::services::types::Interaction;
@@ -359,7 +359,6 @@ impl Default for OpenIDProviderConfiguration {
                 PromptResolver::new(
                     Prompt::Login,
                     vec![
-                        named_check!(check_prompt_is_requested),
                         named_check!(check_user_is_authenticated),
                         named_check!(check_max_age),
                         named_check!(check_acr_values),
@@ -370,7 +369,6 @@ impl Default for OpenIDProviderConfiguration {
                     Prompt::Consent,
                     vec![
                         named_check!(check_user_must_be_authenticated),
-                        named_check!(check_prompt_is_requested),
                         named_check!(check_user_has_consented),
                     ],
                 ),

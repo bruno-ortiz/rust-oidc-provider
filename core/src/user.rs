@@ -16,7 +16,6 @@ pub struct AuthenticatedUser {
     session: SessionID,
     subject: Subject,
     auth_time: OffsetDateTime,
-    max_age: u64,
     grant_id: Option<GrantID>,
     interaction_id: Uuid,
     acr: Acr,
@@ -28,7 +27,6 @@ impl AuthenticatedUser {
         session: SessionID,
         subject: Subject,
         auth_time: OffsetDateTime,
-        max_age: u64,
         interaction_id: Uuid,
         acr: Option<Acr>,
         amr: Option<Amr>,
@@ -37,7 +35,6 @@ impl AuthenticatedUser {
             session,
             subject,
             auth_time,
-            max_age,
             interaction_id,
             amr,
             acr: acr.unwrap_or_default(),
@@ -53,9 +50,6 @@ impl AuthenticatedUser {
     }
     pub fn auth_time(&self) -> OffsetDateTime {
         self.auth_time
-    }
-    pub fn max_age(&self) -> u64 {
-        self.max_age
     }
     pub fn acr(&self) -> &Acr {
         &self.acr

@@ -7,10 +7,12 @@ use time::Duration;
 
 use oidc_types::claims::ClaimOptions;
 use oidc_types::prompt::Prompt;
+use oidc_types::subject_type::SubjectType;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
 use crate::prompt::PromptError;
 use crate::user::AuthenticatedUser;
@@ -25,6 +27,7 @@ pub struct CheckContext {
     pub prompt: Prompt,
     pub user: Option<Arc<AuthenticatedUser>>,
     pub request: Arc<ValidatedAuthorisationRequest>,
+    pub client: Arc<ClientInformation>,
 }
 
 pub fn boxed_check<N, F>(
@@ -102,12 +105,32 @@ pub async fn check_user_must_have_consented(
     }
 }
 
+pub async fn check_id_token_hint(
+    CheckContext {
+        user,
+        request,
+        client,
+        ..
+    }: CheckContext,
+) -> Result<bool, PromptError> {
+    if let Some(hint) = &request.id_token_hint {
+        if client.metadata().subject_type == SubjectType::Pairwise {
+            todo!("Implement pairwise")
+        }
+
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 pub async fn check_max_age(
     CheckContext { user, request, .. }: CheckContext,
 ) -> Result<bool, PromptError> {
-    let clock = OpenIDProviderConfiguration::clock();
+    let config = OpenIDProviderConfiguration::instance();
+    let clock = config.clock_provider();
     let user = user.ok_or(PromptError::login_required(&request))?;
-    let max_age = user.max_age();
+    let max_age = request.max_age.unwrap_or_else(|| config.auth_max_age());
     let auth_limit = user.auth_time() + Duration::seconds(max_age as i64);
     Ok(clock.now() > auth_limit)
 }

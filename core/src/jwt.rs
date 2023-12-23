@@ -60,7 +60,7 @@ impl GenericJWT {
                 .map_err(JWTError::DecryptError)?;
 
             match header.content_type() {
-                Some(cty) if cty == "JWT" => {
+                Some("JWT") => {
                     let content = str::from_utf8(&content)?;
                     let payload = SignedJWT::decode_no_verify(content)?;
                     Ok(GenericJWT::SignedAndEncrypted(EncryptedJWT::new_signed(

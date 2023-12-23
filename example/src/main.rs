@@ -30,6 +30,7 @@ use oidc_types::jose::ES256;
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use oidc_types::scopes;
+use oidc_types::secret::HashedSecret;
 use ResponseTypeValue::Code;
 
 use crate::profile::MockProfileResolver;
@@ -62,7 +63,7 @@ async fn main() {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://b079-200-158-52-149.ngrok-free.app")
+        .issuer("https://a323-200-158-52-254.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .build()
@@ -123,10 +124,12 @@ async fn create_client(
         .build()
         .expect("Valid client metadata");
 
+    let secret1 =
+        HashedSecret::from_string(config.secret_hasher(), secret).expect("Expected hashed secret");
     let client = ClientInformation::new(
         ClientID::from_str(id).unwrap(),
         OffsetDateTime::now_utc(),
-        secret.to_owned().into(),
+        secret1,
         None,
         client_metadata,
     );

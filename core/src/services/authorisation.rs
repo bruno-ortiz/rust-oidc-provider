@@ -66,7 +66,7 @@ where
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let interaction = begin_interaction(session, request)
+        let interaction = begin_interaction(session, request, client.clone())
             .await
             .map_err(handle_prompt_err)?;
         match interaction {

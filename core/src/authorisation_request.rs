@@ -37,6 +37,7 @@ pub struct ValidatedAuthorisationRequest {
     pub code_challenge_method: Option<CodeChallengeMethod>,
     pub max_age: Option<u64>,
     pub resource: Option<Url>,
+    pub id_token_hint: Option<ValidJWT<GenericJWT>>,
     //rfc8707
     pub include_granted_scopes: Option<bool>,
     pub request_uri: Option<Url>,
@@ -83,6 +84,7 @@ pub struct AuthorisationRequest {
     pub prompt: Option<String>,
     pub acr_values: Option<Acr>,
     pub claims: Option<String>,
+    pub id_token_hint: Option<String>,
 }
 
 impl AuthorisationRequest {
@@ -152,6 +154,11 @@ impl AuthorisationRequest {
             Err(err) => return Err((err, this)),
         };
 
+        let id_token_hint = match this.validate_id_token_hint(client).await {
+            Ok(validated_jwt) => validated_jwt,
+            Err(err) => return Err((err, this)),
+        };
+
         Ok(ValidatedAuthorisationRequest {
             response_type: this.response_type.expect("Response type not found"),
             client_id: this
@@ -162,6 +169,7 @@ impl AuthorisationRequest {
             scope: this.scope.expect("Scope not found"),
             state: this.state,
             nonce: this.nonce,
+            id_token_hint,
             response_mode: this.response_mode,
             code_challenge: this.code_challenge.map(CodeChallenge::new),
             code_challenge_method: this.code_challenge_method,
@@ -174,6 +182,21 @@ impl AuthorisationRequest {
             prompt,
             claims,
         })
+    }
+
+    async fn validate_id_token_hint(
+        &self,
+        client: &ClientInformation,
+    ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
+        if let Some(hint) = &self.id_token_hint {
+            let jwt = GenericJWT::parse(hint, client).map_err(OpenIdError::server_error)?;
+            let valid_jwt = ValidJWT::validate(jwt, client)
+                .await
+                .map_err(OpenIdError::server_error)?;
+            Ok(Some(valid_jwt))
+        } else {
+            Ok(None)
+        }
     }
 
     fn validate_response_type(

@@ -10,7 +10,7 @@ use oidc_types::grant_type::GrantType;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::jose::Algorithm;
-use oidc_types::secret::PlainTextSecret;
+use oidc_types::secret::HashedSecret;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::keystore;
@@ -23,7 +23,7 @@ pub struct ClientInformation {
     #[get_copy = "pub"]
     issue_date: OffsetDateTime,
     #[get = "pub"]
-    secret: PlainTextSecret,
+    secret: HashedSecret,
     #[get_copy = "pub"]
     secret_expires_at: Option<OffsetDateTime>,
     #[get = "pub"]
@@ -34,7 +34,7 @@ impl ClientInformation {
     pub fn new(
         id: ClientID,
         issue_date: OffsetDateTime,
-        secret: PlainTextSecret,
+        secret: HashedSecret,
         secret_expires_at: Option<OffsetDateTime>,
         metadata: ClientMetadata,
     ) -> Self {

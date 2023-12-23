@@ -8,6 +8,7 @@ use crate::client_credentials::{
     ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, PrivateKeyJWTCredential,
     SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
 };
+use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::{AuthenticatedClient, ClientInformation};
 
 #[derive(Debug, Error)]
@@ -48,14 +49,18 @@ impl ClientAuthenticator for ClientSecretCredential {
         self,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let secret = PlainTextSecret::from(self.secret());
-        if secret.size() < MIN_SECRET_LEN {
-            return Err(ClientAuthenticationError::InvalidSecret(secret));
+        let config = OpenIDProviderConfiguration::instance();
+        let secret = self.secret();
+        if secret.len() < MIN_SECRET_LEN {
+            return Err(ClientAuthenticationError::InvalidSecret(secret.into()));
         }
-        if *client.secret() == secret {
+        if client
+            .secret()
+            .verify(config.secret_hasher(), secret.as_str())
+        {
             Ok(AuthenticatedClient::new(client))
         } else {
-            Err(ClientAuthenticationError::InvalidSecret(secret))
+            Err(ClientAuthenticationError::InvalidSecret(secret.into()))
         }
     }
 }

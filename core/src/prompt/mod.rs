@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use thiserror::Error;
-use tracing::info;
+use tracing::debug;
 use url::Url;
 
 use oidc_types::prompt::Prompt;
@@ -9,6 +9,7 @@ use oidc_types::response_mode::ResponseMode;
 use oidc_types::state::State;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
+use crate::models::client::ClientInformation;
 use crate::named_check;
 use crate::prompt::checks::{
     always_run, check_prompt_is_requested, check_user_must_be_authenticated,
@@ -65,10 +66,15 @@ impl PromptResolver {
         Self { prompt, checks }
     }
 
+    pub fn prompt(&self) -> Prompt {
+        self.prompt
+    }
+
     pub async fn should_run(
         &self,
         user: Option<Arc<AuthenticatedUser>>,
         request: Arc<ValidatedAuthorisationRequest>,
+        client: Arc<ClientInformation>,
     ) -> Result<bool, PromptError> {
         //check id_token_hint
         //check sub in id_token claim
@@ -77,9 +83,10 @@ impl PromptResolver {
                 prompt: self.prompt,
                 request: request.clone(),
                 user: user.clone(),
+                client: client.clone(),
             };
             if check(ctx).await? {
-                info!(
+                debug!(
                     "Prompt {} will be executed because of positive check: {}",
                     self.prompt, name
                 );

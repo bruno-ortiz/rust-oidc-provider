@@ -74,6 +74,7 @@ pub mod test_utils {
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
 
+    //noinspection DuplicatedCode
     pub async fn setup_context(
         response_type: ResponseType,
         state: Option<State>,
@@ -98,8 +99,9 @@ pub mod test_utils {
             acr_values: None,
             claims: None,
             max_age: None,
+            id_token_hint: None,
         };
-        let (_, plain) = HashedSecret::random(HasherConfig::Sha256).unwrap();
+        let (hashed, _) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let metadata = ClientMetadata {
             redirect_uris: vec![],
             token_endpoint_auth_method: AuthMethod::None,
@@ -137,13 +139,12 @@ pub mod test_utils {
         };
 
         let client =
-            ClientInformation::new(client_id, OffsetDateTime::now_utc(), plain, None, metadata);
+            ClientInformation::new(client_id, OffsetDateTime::now_utc(), hashed, None, metadata);
 
         let user = AuthenticatedUser::new(
             SessionID::default(),
             Subject::new("some-id"),
             OffsetDateTime::now_utc(),
-            120,
             Uuid::new_v4(),
             None,
             None,

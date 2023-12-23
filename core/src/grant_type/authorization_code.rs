@@ -80,7 +80,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                     let error = anyhow!("Missing signing key");
                     OpenIdError::server_error(error)
                 })?;
-            let id_token = IdTokenBuilder::new(signing_key)
+            let mut id_token_builder = IdTokenBuilder::new(signing_key)
                 .with_issuer(configuration.issuer())
                 .with_sub(grant.subject())
                 .with_audience(vec![client.id().into()])
@@ -90,9 +90,16 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .with_s_hash(code.state.as_ref())?
                 .with_c_hash(Some(&code.code))?
                 .with_at_hash(Some(&access_token))?
-                .with_custom_claims(claims)
+                .with_custom_claims(claims);
+
+            if grant.max_age().is_some() {
+                id_token_builder = id_token_builder.with_auth_time(*grant.auth_time())
+            }
+
+            let id_token = id_token_builder
                 .build()
                 .map_err(OpenIdError::server_error)?;
+
             simple_id_token = Some(
                 id_token
                     .return_or_encrypt_simple_id_token(&client)

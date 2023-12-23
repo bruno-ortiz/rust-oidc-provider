@@ -14,6 +14,7 @@ pub mod id_token_builder;
 mod jwt;
 pub mod keystore;
 pub mod models;
+mod pairwise;
 pub mod profile;
 mod prompt;
 pub mod response_mode;

@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Hash)]
 pub struct Subject(String);
 
 impl Subject {
@@ -19,6 +19,12 @@ impl From<&Subject> for String {
 impl AsRef<str> for Subject {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl AsRef<[u8]> for Subject {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 
