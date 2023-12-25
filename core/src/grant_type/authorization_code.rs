@@ -20,6 +20,7 @@ use crate::models::grant::Grant;
 use crate::models::refresh_token::RefreshTokenBuilder;
 use crate::models::Status;
 use crate::profile::ProfileData;
+use crate::utils::resolve_sub;
 
 #[async_trait]
 impl GrantTypeResolver for AuthorisationCodeGrant {
@@ -80,9 +81,11 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                     let error = anyhow!("Missing signing key");
                     OpenIdError::server_error(error)
                 })?;
+            let sub = resolve_sub(configuration, grant.subject(), &client)
+                .map_err(OpenIdError::server_error)?;
             let mut id_token_builder = IdTokenBuilder::new(signing_key)
                 .with_issuer(configuration.issuer())
-                .with_sub(grant.subject())
+                .with_sub(&sub)
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
                 .with_iat(now)

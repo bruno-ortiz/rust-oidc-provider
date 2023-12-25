@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use thiserror::Error;
 use tracing::debug;
 use url::Url;
@@ -9,8 +7,10 @@ use oidc_types::response_mode::ResponseMode;
 use oidc_types::state::State;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
+use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
 use crate::named_check;
+use crate::pairwise::PairwiseError;
 use crate::prompt::checks::{
     always_run, check_prompt_is_requested, check_user_must_be_authenticated,
     check_user_must_have_consented, CheckContext, PromptCheck,
@@ -36,6 +36,8 @@ pub enum PromptError {
         response_mode: ResponseMode,
         state: Option<State>,
     },
+    #[error("Error resolving prompt pairwise subject: {}", .0)]
+    Pairwise(#[from] PairwiseError),
 }
 
 impl PromptError {
@@ -72,18 +74,18 @@ impl PromptResolver {
 
     pub async fn should_run(
         &self,
-        user: Option<Arc<AuthenticatedUser>>,
-        request: Arc<ValidatedAuthorisationRequest>,
-        client: Arc<ClientInformation>,
+        config: &OpenIDProviderConfiguration,
+        user: Option<&AuthenticatedUser>,
+        request: &ValidatedAuthorisationRequest,
+        client: &ClientInformation,
     ) -> Result<bool, PromptError> {
-        //check id_token_hint
-        //check sub in id_token claim
         for (name, check) in &self.checks {
             let ctx = CheckContext {
+                config,
                 prompt: self.prompt,
-                request: request.clone(),
-                user: user.clone(),
-                client: client.clone(),
+                request,
+                user,
+                client,
             };
             if check(ctx).await? {
                 debug!(

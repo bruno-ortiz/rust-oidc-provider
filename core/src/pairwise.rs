@@ -9,6 +9,8 @@ use oidc_types::subject::Subject;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
 
+const DEFAULT_CACHE_CAPACITY: usize = 10000;
+
 #[derive(Debug, Error, Clone)]
 pub enum PairwiseError {
     #[error("Unable to determine the sector identifier for client: {}", .0)]
@@ -20,7 +22,13 @@ pub enum PairwiseError {
 }
 
 #[derive(Clone)]
-struct PairwiseSubject(Subject);
+pub struct PairwiseSubject(Subject);
+
+impl PairwiseSubject {
+    pub fn into_subject(self) -> Subject {
+        self.0
+    }
+}
 
 impl PartialEq<Subject> for PairwiseSubject {
     fn eq(&self, other: &Subject) -> bool {
@@ -28,17 +36,24 @@ impl PartialEq<Subject> for PairwiseSubject {
     }
 }
 
-struct PairwiseResolver {
+impl PartialEq<str> for PairwiseSubject {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == *other
+    }
+}
+
+#[derive(Debug)]
+pub struct PairwiseResolver {
     cache: Cache<Subject, PairwiseSubject>,
 }
 
 impl PairwiseResolver {
-    fn calculate_pairwise_identifier(
+    pub fn calculate_pairwise_identifier(
         &self,
-        subject: Subject,
+        subject: &Subject,
         client: &ClientInformation,
     ) -> Result<PairwiseSubject, PairwiseError> {
-        self.cache.get_or_insert_with(&subject, || {
+        self.cache.get_or_insert_with(subject, || {
             let config = OpenIDProviderConfiguration::instance();
             let hasher = config.secret_hasher();
             let sector_identifier = select_sector_identifier(client)?;
@@ -46,6 +61,14 @@ impl PairwiseResolver {
             let hash = hasher.hash(&sub).expect("Fix later");
             Ok(PairwiseSubject(Subject::new(hash)))
         })
+    }
+}
+
+impl Default for PairwiseResolver {
+    fn default() -> Self {
+        PairwiseResolver {
+            cache: Cache::new(DEFAULT_CACHE_CAPACITY),
+        }
     }
 }
 

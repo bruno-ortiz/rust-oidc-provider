@@ -16,6 +16,7 @@ use crate::models::client::AuthenticatedClient;
 use crate::models::grant::Grant;
 use crate::models::refresh_token::RefreshToken;
 use crate::profile::ProfileData;
+use crate::utils::resolve_sub;
 
 #[async_trait]
 impl GrantTypeResolver for RefreshTokenGrant {
@@ -76,8 +77,10 @@ impl GrantTypeResolver for RefreshTokenGrant {
                 .first()
                 .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
             let now = clock.now();
+            let sub = resolve_sub(configuration, grant.subject(), &client)
+                .map_err(OpenIdError::server_error)?;
             let id_token = IdTokenBuilder::new(signing_key)
-                .with_sub(grant.subject())
+                .with_sub(&sub)
                 .with_issuer(configuration.issuer())
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)

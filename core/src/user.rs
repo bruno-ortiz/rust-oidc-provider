@@ -70,10 +70,6 @@ impl AuthenticatedUser {
         self
     }
 
-    pub fn matches_acr(&self, acr: &Acr) -> bool {
-        todo!()
-    }
-
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
         configuration.adapters().user().save(self).await

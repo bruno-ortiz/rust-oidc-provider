@@ -63,7 +63,7 @@ async fn main() {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://a323-200-158-52-254.ngrok-free.app")
+        .issuer("https://9b10-201-71-38-214.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .build()

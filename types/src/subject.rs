@@ -22,6 +22,12 @@ impl AsRef<str> for Subject {
     }
 }
 
+impl PartialEq<str> for Subject {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
 impl AsRef<[u8]> for Subject {
     fn as_ref(&self) -> &[u8] {
         self.0.as_bytes()

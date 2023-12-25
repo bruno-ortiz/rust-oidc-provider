@@ -54,7 +54,7 @@ pub async fn begin_interaction(
     let config = OpenIDProviderConfiguration::instance();
     let user = AuthenticatedUser::find_by_session(session).await;
     let (user, request, prompt_resolver) =
-        select_prompt_resolver(config, user, request, client).await?;
+        select_prompt_resolver(config, user, request, &client).await?;
 
     if let Some(resolver) = prompt_resolver {
         let interaction = resolver.resolve(session, user, request)?.save().await?;
@@ -71,14 +71,12 @@ type PromptReturn<'a> = (
     ValidatedAuthorisationRequest,
     Option<&'a PromptResolver>,
 );
-async fn select_prompt_resolver(
-    config: &OpenIDProviderConfiguration,
+async fn select_prompt_resolver<'a>(
+    config: &'a OpenIDProviderConfiguration,
     user: Option<AuthenticatedUser>,
     request: ValidatedAuthorisationRequest,
-    client: Arc<ClientInformation>,
-) -> Result<PromptReturn<'_>, InteractionError> {
-    let user = user.map(Arc::new);
-    let request = Arc::new(request);
+    client: &ClientInformation,
+) -> Result<PromptReturn<'a>, InteractionError> {
     let mut prompt_resolver: Option<&PromptResolver> = None;
     if let Some(requested_prompt) = &request.prompt {
         prompt_resolver = config
@@ -89,7 +87,7 @@ async fn select_prompt_resolver(
         let prompt_checks = config.prompts();
         for checker in prompt_checks {
             if checker
-                .should_run(user.clone(), request.clone(), client.clone())
+                .should_run(config, user.as_ref(), &request, client)
                 .await?
             {
                 prompt_resolver = Some(checker);
@@ -97,12 +95,7 @@ async fn select_prompt_resolver(
             }
         }
     }
-    let request = Arc::into_inner(request).ok_or_else(|| {
-        InteractionError::Internal(anyhow!(
-            "Err getting request back from checks execution, did you spawn a long running task?"
-        ))
-    })?;
-    Ok((user.and_then(Arc::into_inner), request, prompt_resolver))
+    Ok((user, request, prompt_resolver))
 }
 
 pub async fn complete_login(

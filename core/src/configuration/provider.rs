@@ -41,10 +41,12 @@ use crate::grant_type::RTContext;
 use crate::keystore::KeyStore;
 use crate::models::client::AuthenticatedClient;
 use crate::named_check;
+use crate::pairwise::PairwiseResolver;
 use crate::profile::{NoOpProfileResolver, ProfileResolver};
 use crate::prompt::checks::{
-    check_acr_value, check_acr_values, check_max_age, check_user_has_consented,
-    check_user_is_authenticated, check_user_must_be_authenticated,
+    check_acr_value, check_acr_values, check_id_token_hint, check_max_age,
+    check_sub_id_token_claim, check_user_has_consented, check_user_is_authenticated,
+    check_user_must_be_authenticated,
 };
 use crate::prompt::PromptResolver;
 use crate::services::types::Interaction;
@@ -131,6 +133,8 @@ pub struct OpenIDProviderConfiguration {
     request_object: RequestObjectConfiguration,
     clock_provider: ClockProvider,
     prompts: Vec<PromptResolver>,
+    #[builder(setter(skip))]
+    pairwise_resolver: PairwiseResolver,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -361,6 +365,8 @@ impl Default for OpenIDProviderConfiguration {
                     vec![
                         named_check!(check_user_is_authenticated),
                         named_check!(check_max_age),
+                        named_check!(check_id_token_hint),
+                        named_check!(check_sub_id_token_claim),
                         named_check!(check_acr_values),
                         named_check!(check_acr_value),
                     ],
@@ -374,6 +380,7 @@ impl Default for OpenIDProviderConfiguration {
                 ),
                 PromptResolver::default(),
             ],
+            pairwise_resolver: PairwiseResolver::default(),
         }
     }
 }

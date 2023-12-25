@@ -16,6 +16,7 @@ use crate::keystore::KeyUse;
 use crate::models::access_token::AccessToken;
 use crate::profile::ProfileData;
 use crate::response_type::resolver::ResponseTypeResolver;
+use crate::utils::resolve_sub;
 
 pub struct IDTokenResolver<'a> {
     code: Option<&'a Code>,
@@ -58,9 +59,12 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let claims = get_id_token_claims(&profile, context.grant.claims().as_ref())?;
 
         let ttl = configuration.ttl();
+
+        let sub = resolve_sub(configuration, context.user.sub(), &client)
+            .map_err(OpenIdError::server_error)?;
         let mut id_token_builder = IdTokenBuilder::new(signing_key)
             .with_issuer(configuration.issuer())
-            .with_sub(context.user.sub())
+            .with_sub(&sub)
             .with_audience(vec![context.client.id().into()])
             .with_exp(clock.now() + ttl.id_token)
             .with_iat(clock.now())

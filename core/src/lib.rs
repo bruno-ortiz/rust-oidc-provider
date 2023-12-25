@@ -23,6 +23,7 @@ pub mod services;
 pub mod session;
 pub mod user;
 pub mod userinfo;
+mod utils;
 
 mod macros {
     macro_rules! true_or_return {
