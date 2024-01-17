@@ -1,7 +1,8 @@
-use base64::Engine;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
+use base64::engine::general_purpose::{URL_SAFE_NO_PAD as base64_engine, URL_SAFE_NO_PAD};
+use base64::Engine;
 use josekit::jwe::{JweContext, JweHeader};
 use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
@@ -10,8 +11,6 @@ use josekit::jwt::JwtPayload;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
-
-use base64::engine::general_purpose::URL_SAFE_NO_PAD as base64_engine;
 
 use crate::jose::error::JWTError;
 use crate::jose::jwe::enc::ContentEncryptionAlgorithm;
@@ -60,9 +59,19 @@ impl SignedJWT {
         let verifier = key
             .get_verifier()
             .map_err(JWTError::VerifierCreationError)?;
-        let parts = self.serialized_repr.split('.').collect::<Vec<_>>();
+        let jwt_bytes = self.serialized_repr.as_bytes();
+        let indexes: Vec<usize> = jwt_bytes
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| **b == b'.')
+            .map(|(pos, _)| pos)
+            .collect();
+
+        let header_and_payload = &jwt_bytes[..indexes[1]];
+        let signature = &jwt_bytes[(indexes[1] + 1)..];
+        let decoded_signature = URL_SAFE_NO_PAD.decode(signature)?;
         verifier
-            .verify(parts[1].as_bytes(), parts[2].as_bytes())
+            .verify(header_and_payload, &decoded_signature)
             .map_err(JWTError::InvalidSignature)
     }
 
@@ -307,6 +316,8 @@ mod tests {
         }
         "#).expect("parsed jwk");
         let jwt = SignedJWT::new(jwt_header, jwt_payload, &rsa_key).unwrap();
+
+        jwt.verify(&rsa_key).expect("Error validating JWT");
 
         assert_eq!(expected_issuer, jwt.payload.issuer().unwrap());
         assert_eq!(expected_token_type, jwt.header.token_type().unwrap());

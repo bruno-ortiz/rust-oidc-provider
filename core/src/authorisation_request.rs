@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use std::str::FromStr;
 
 use indexmap::IndexSet;
@@ -11,6 +12,7 @@ use oidc_types::acr::Acr;
 use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::grant_type::GrantType;
+use oidc_types::jose::error::JWTError;
 use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;
@@ -190,7 +192,11 @@ impl AuthorisationRequest {
     ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
         if let Some(hint) = &self.id_token_hint {
             let jwt = GenericJWT::parse(hint, client).map_err(OpenIdError::server_error)?;
-            let valid_jwt = ValidJWT::validate(jwt, client)
+            let alg = jwt.alg().ok_or(OpenIdError::server_error(anyhow!(
+                "JWK alg not found in id_token_hint"
+            )))?;
+            let keystore = client.server_keystore(&alg);
+            let valid_jwt = ValidJWT::validate(jwt, &keystore)
                 .await
                 .map_err(OpenIdError::server_error)?;
             Ok(Some(valid_jwt))
@@ -303,7 +309,11 @@ async fn process_request_object(
                     "Request object must be signed",
                 ));
             } else {
-                let result = ValidJWT::validate(req, client)
+                let keystore = client
+                    .keystore(&alg)
+                    .await
+                    .map_err(OpenIdError::server_error)?;
+                let result = ValidJWT::validate(req, &keystore)
                     .await
                     .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
                 Some(result)

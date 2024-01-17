@@ -14,7 +14,7 @@ use oidc_types::jose::jwk_ext::JwkExt;
 use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT, JWT};
 
-use crate::keystore::KeyUse;
+use crate::keystore::{KeyStore, KeyUse};
 use crate::models::client::ClientInformation;
 
 #[derive(Debug, Clone)]
@@ -131,16 +131,16 @@ where
 impl ValidJWT<GenericJWT> {
     pub async fn validate(
         jwt: GenericJWT,
-        client: &ClientInformation,
+        keystore: &KeyStore,
     ) -> Result<ValidJWT<GenericJWT>, JWTError> {
         let valid = match jwt {
             GenericJWT::Encrypted(_) => ValidJWT(jwt),
             GenericJWT::Signed(ref inner) => {
-                validate_signature(client, inner).await?;
+                validate_signature(keystore, inner).await?;
                 ValidJWT(jwt)
             }
             GenericJWT::SignedAndEncrypted(ref inner) => {
-                validate_signature(client, inner.signed_payload()).await?;
+                validate_signature(keystore, inner.signed_payload()).await?;
                 ValidJWT(jwt)
             }
         };
@@ -171,13 +171,9 @@ where
     }
 }
 
-async fn validate_signature(client: &ClientInformation, jwt: &SignedJWT) -> Result<(), JWTError> {
+async fn validate_signature(keystore: &KeyStore, jwt: &SignedJWT) -> Result<(), JWTError> {
     let alg = jwt.alg().ok_or(JWTError::JWKAlgorithmNotFound)?;
     if alg.name() != UnsecuredJwsAlgorithm::None.name() {
-        let keystore = client
-            .keystore(&alg)
-            .await
-            .map_err(JWTError::KeystoreCreation)?;
         let jwk = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())

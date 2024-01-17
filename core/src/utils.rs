@@ -13,7 +13,7 @@ pub fn resolve_sub(
         let pairwise_resolver = configuration.pairwise_resolver();
 
         Ok(pairwise_resolver
-            .calculate_pairwise_identifier(subject, &client)?
+            .calculate_pairwise_identifier(subject, client)?
             .into_subject())
     } else {
         Ok(subject.clone())
