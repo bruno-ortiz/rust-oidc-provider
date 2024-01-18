@@ -61,7 +61,9 @@ impl ClaimOptions {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Claims {
+    #[serde(default)]
     pub userinfo: HashMap<String, Option<ClaimOptions>>,
+    #[serde(default)]
     pub id_token: HashMap<String, Option<ClaimOptions>>,
 }
 

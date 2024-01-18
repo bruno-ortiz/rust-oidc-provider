@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use std::str::FromStr;
 
+use anyhow::anyhow;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
@@ -12,7 +12,6 @@ use oidc_types::acr::Acr;
 use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::grant_type::GrantType;
-use oidc_types::jose::error::JWTError;
 use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;

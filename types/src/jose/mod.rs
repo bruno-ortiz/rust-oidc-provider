@@ -11,6 +11,7 @@ pub use josekit::jwe::alg::rsaes::RsaesJweAlgorithm::{
 };
 pub use josekit::jwe::enc::*;
 pub use josekit::jws::*;
+pub use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use josekit::jwt::JwtPayload;
 use serde_json::Value;
 use std::collections::HashMap;

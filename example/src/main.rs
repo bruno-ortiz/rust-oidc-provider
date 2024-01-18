@@ -21,12 +21,12 @@ use oidc_core::configuration::claims::ClaimsSupported;
 use oidc_core::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_core::models::client::ClientInformation;
 use oidc_server::server::OidcServer;
-use oidc_types::acr::Acr;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadataBuilder};
 use oidc_types::grant_type::GrantType;
 use oidc_types::jose::jwk_set::JwkSet;
-use oidc_types::jose::ES256;
+use oidc_types::jose::jws::SigningAlgorithm;
+use oidc_types::jose::{EdDSA, UnsecuredJwsAlgorithm, ES256, PS256, RS256};
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use oidc_types::scopes;
@@ -63,9 +63,17 @@ async fn main() {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://9b10-201-71-38-214.ngrok-free.app")
+        .issuer("https://d451-201-1-66-182.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
+        .request_object_signing_alg_values_supported(vec![
+            SigningAlgorithm::from(RS256),
+            SigningAlgorithm::from(PS256),
+            SigningAlgorithm::from(ES256),
+            SigningAlgorithm::from(EdDSA),
+            SigningAlgorithm::from(UnsecuredJwsAlgorithm::None),
+        ])
+        .claims_parameter_supported(true)
         .build()
         .expect("Expected valid configuration");
 
@@ -194,10 +202,20 @@ async fn login(
         return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
     }
 
+    let interaction_info = interaction_client
+        .get_interaction_info(GrpcRequest::new(InteractionInfoRequest {
+            interaction_id: req.interaction_id.clone(),
+        }))
+        .await
+        .unwrap()
+        .into_inner();
+    let auth_request = interaction_info
+        .request
+        .expect("Should have an auth request");
     let request = GrpcRequest::new(CompleteLoginRequest {
         sub: "some-user-id".to_string(),
         interaction_id: req.interaction_id,
-        acr: Some(Acr::default().to_string()),
+        acr: auth_request.requested_acr.last().cloned(),
         amr: None,
     });
     let res = interaction_client

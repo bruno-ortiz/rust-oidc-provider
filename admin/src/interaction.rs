@@ -182,7 +182,10 @@ impl From<ValidatedAuthorisationRequest> for AuthorisationRequestInfo {
                     .collect::<Vec<String>>()
                     .join(" ")
             }),
-            requested_acr: req.acr_values.map(|it| it.to_string()),
+            requested_acr: req
+                .acr_values
+                .map(|it| it.iter().cloned().collect::<Vec<_>>())
+                .unwrap_or_default(),
         }
     }
 }
