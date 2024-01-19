@@ -23,15 +23,14 @@ impl GrantTypeResolver for RefreshTokenGrant {
     async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
         let configuration = OpenIDProviderConfiguration::instance();
         let clock = configuration.clock_provider();
-        let grant = self;
+        let grant_type = self;
 
         let mut refresh_token = configuration
             .adapters()
             .refresh()
-            .find(&grant.refresh_token)
+            .find(&grant_type.refresh_token)
             .await
-            .ok_or_else(|| OpenIdError::invalid_grant("Refresh token not found"))?
-            .validate()?;
+            .ok_or_else(|| OpenIdError::invalid_grant("Refresh token not found"))?;
 
         let grant = Grant::find(refresh_token.grant_id)
             .await
@@ -41,6 +40,11 @@ impl GrantTypeResolver for RefreshTokenGrant {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for refresh token",
             ));
+        }
+        if let Err(err) = refresh_token.validate() {
+            // invalidate entire token chain
+            grant.consume().await?;
+            return Err(err);
         }
 
         let context = RTContext {

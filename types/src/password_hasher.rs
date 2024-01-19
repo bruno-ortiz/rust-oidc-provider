@@ -6,7 +6,7 @@ use thiserror::Error;
 
 const SALT_LEN: usize = 16;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum HashingError {
     #[error("Error decoding hash: {}", .0)]
     DecodeError(#[from] DecodeError),

@@ -67,15 +67,14 @@ impl RefreshToken {
             .map_err(OpenIdError::server_error)
     }
 
-    pub fn validate(self) -> Result<Self, OpenIdError> {
+    pub fn validate(&self) -> Result<(), OpenIdError> {
         if self.status == Status::Consumed {
-            //TODO: invalidate entire token chain
             return Err(OpenIdError::invalid_grant("Refresh token already used"));
         }
         if self.is_expired() {
             return Err(OpenIdError::invalid_grant("Refresh token is expired"));
         }
-        Ok(self)
+        Ok(())
     }
 
     pub fn total_lifetime(&self) -> Duration {

@@ -86,7 +86,7 @@ pub struct OpenIDProviderConfiguration {
     interaction_base_url: Box<dyn Fn(&Self) -> &Url + Send + Sync>,
     #[builder(setter(skip))]
     interaction_url_resolver: InteractionUrlResolver,
-    subject_types_supported: Vec<SubjectType>, //TODO: create subject type resolvers
+    subject_types_supported: Vec<SubjectType>, //TODO: check subject type on dynamic client registration
     #[getset(skip)]
     #[get_copy = "pub"]
     auth_max_age: u64,

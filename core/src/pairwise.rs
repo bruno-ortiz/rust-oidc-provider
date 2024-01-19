@@ -3,7 +3,7 @@ use thiserror::Error;
 use url::{Host, Url};
 
 use oidc_types::client::ClientID;
-use oidc_types::password_hasher::PasswordHasher;
+use oidc_types::password_hasher::{HashingError, PasswordHasher};
 use oidc_types::subject::Subject;
 
 use crate::configuration::OpenIDProviderConfiguration;
@@ -19,6 +19,8 @@ pub enum PairwiseError {
     InvalidDomain(Url),
     #[error("Host not found for uri: {}", .0)]
     HostNotFound(Url),
+    #[error("Error calculating hash for pairwise sub: {}", .0)]
+    Hashing(#[from] HashingError),
 }
 
 #[derive(Clone)]
@@ -58,7 +60,7 @@ impl PairwiseResolver {
             let hasher = config.secret_hasher();
             let sector_identifier = select_sector_identifier(client)?;
             let sub = [sector_identifier.as_bytes(), subject.as_ref()].concat();
-            let hash = hasher.hash(&sub).expect("Fix later");
+            let hash = hasher.hash(&sub)?;
             Ok(PairwiseSubject(Subject::new(hash)))
         })
     }

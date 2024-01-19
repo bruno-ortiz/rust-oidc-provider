@@ -3,8 +3,6 @@ use time::Duration;
 
 use crate::models::client::{AuthenticatedClient, ClientInformation};
 
-//todo: allow generic params to be passed to this function
-// this can allow the duration to be parameterized with a consent duration for example;
 type TTLResolver = Box<dyn Fn(&ClientInformation) -> Duration + Send + Sync>;
 type AsyncTTLResolver = Box<dyn Fn(&AuthenticatedClient) -> BoxFuture<Duration> + Send + Sync>;
 

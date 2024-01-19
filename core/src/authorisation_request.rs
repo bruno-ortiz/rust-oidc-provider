@@ -137,7 +137,6 @@ impl AuthorisationRequest {
                 ));
             }
         }
-        //TODO: claims should come from the request or the request_object
         let claims = match parse_claims(configuration, &this) {
             Ok(c) => c,
             Err(err) => return Err((err, this)),
