@@ -3,7 +3,6 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use serde::Deserialize;
 use tracing::error;
 use url::Url;
@@ -25,7 +24,7 @@ use crate::error::OpenIdError;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ValidatedAuthorisationRequest {
     pub response_type: ResponseType,
     pub client_id: ClientID,
@@ -39,10 +38,9 @@ pub struct ValidatedAuthorisationRequest {
     pub max_age: Option<u64>,
     pub resource: Option<Url>,
     pub id_token_hint: Option<ValidJWT<GenericJWT>>,
+    pub login_hint: Option<String>,
     //rfc8707
     pub include_granted_scopes: Option<bool>,
-    pub request_uri: Option<Url>,
-    pub request: Option<ValidJWT<GenericJWT>>,
     pub prompt: Option<IndexSet<Prompt>>,
     pub acr_values: Option<Acr>,
     pub claims: Option<Claims>,
@@ -86,26 +84,16 @@ pub struct AuthorisationRequest {
     pub acr_values: Option<Acr>,
     pub claims: Option<String>,
     pub id_token_hint: Option<String>,
+    pub login_hint: Option<String>,
 }
 
 impl AuthorisationRequest {
     pub async fn validate(
         self,
         client: &ClientInformation,
+        configuration: &OpenIDProviderConfiguration,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
-        let configuration = OpenIDProviderConfiguration::instance();
         let this = self;
-
-        let request_object_config = configuration.request_object();
-        let request_object = if request_object_config.request || request_object_config.request_uri {
-            match process_request_object(configuration, client, &this).await {
-                Ok(ro) => ro,
-                Err(err) => return Err((err, this)),
-            }
-        } else {
-            None
-        };
-
         if let Err(err) = this.validate_response_type(configuration, client) {
             return Err((err, this));
         }
@@ -176,10 +164,9 @@ impl AuthorisationRequest {
             code_challenge_method: this.code_challenge_method,
             resource: this.resource,
             include_granted_scopes: this.include_granted_scopes,
-            request_uri: this.request_uri,
-            request: request_object,
             acr_values: this.acr_values,
             max_age: this.max_age,
+            login_hint: this.login_hint,
             prompt,
             claims,
         })
@@ -289,42 +276,4 @@ fn parse_claims(
         None
     };
     Ok(claims)
-}
-
-async fn process_request_object(
-    configuration: &OpenIDProviderConfiguration,
-    client: &ClientInformation,
-    request: &AuthorisationRequest,
-) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
-    let required = configuration.request_object().require_signed_request_object;
-    let request_object = if let Some(ref req) = request.request {
-        let req = GenericJWT::parse(req, client)
-            .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
-        //TODO: finish process and validation in request_objects(Validate params of RequestObjectConfiguration, Mode, etc)
-        // Maybe build a new ValidatedAuthorisationRequest from the values of this request object
-        if let Some(alg) = req.alg() {
-            if alg.name() == UnsecuredJwsAlgorithm::None.name() && required {
-                return Err(OpenIdError::invalid_request(
-                    "Request object must be signed",
-                ));
-            } else {
-                let keystore = client
-                    .keystore(&alg)
-                    .await
-                    .map_err(OpenIdError::server_error)?;
-                let result = ValidJWT::validate(req, &keystore)
-                    .await
-                    .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
-                Some(result)
-            }
-        } else {
-            return Err(OpenIdError::invalid_request(
-                "Missing alg in request_object Header",
-            ));
-        }
-    } else {
-        //TODO: get request object from uri if possible
-        None
-    };
-    Ok(request_object)
 }

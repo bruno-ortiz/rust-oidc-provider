@@ -101,7 +101,12 @@ pub async fn check_user_has_consented(
         None
     };
     if let Some(grant) = grant {
-        Ok(grant.client_id() != request.client_id || !grant.has_requested_scopes(&request.scope))
+        Ok(grant.client_id() != request.client_id
+            || !grant.has_requested_scopes(&request.scope)
+            || *grant.claims() != request.claims
+            || *grant.max_age() != request.max_age
+            || grant.redirect_uri().is_some()
+                && *grant.redirect_uri().as_ref().unwrap() != request.redirect_uri)
     } else {
         Ok(true)
     }

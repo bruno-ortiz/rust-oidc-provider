@@ -148,6 +148,17 @@ impl ValidJWT<GenericJWT> {
     }
 }
 
+impl<T> PartialEq for ValidJWT<T>
+where
+    T: JWT,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0.serialized() == other.0.serialized()
+    }
+}
+
+impl<T> Eq for ValidJWT<T> where T: JWT {}
+
 impl<T> Deref for ValidJWT<T>
 where
     T: JWT,

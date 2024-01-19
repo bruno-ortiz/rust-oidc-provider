@@ -64,7 +64,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
                 .await?;
         let mut simple_id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
-            let profile = ProfileData::get(&grant)
+            let profile = ProfileData::get(&grant, client.as_ref())
                 .await
                 .map_err(OpenIdError::server_error)?;
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;

@@ -116,13 +116,14 @@ impl From<&OpenIDProviderConfiguration> for DynamicResponseTypeResolver {
 
 #[cfg(test)]
 mod tests {
-    use crate::configuration::OpenIDProviderConfiguration;
-    use crate::context::test_utils::setup_context;
-    use crate::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
     use oidc_types::nonce::Nonce;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue::Code;
     use oidc_types::response_type::ResponseTypeValue::IdToken;
+
+    use crate::configuration::OpenIDProviderConfiguration;
+    use crate::context::test_utils::setup_context;
+    use crate::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
 
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code() {

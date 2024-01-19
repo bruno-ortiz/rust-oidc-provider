@@ -1,8 +1,8 @@
 use std::collections::HashMap;
+use std::error::Error;
 use std::str::FromStr;
 
 use axum::extract::Query;
-use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
@@ -18,6 +18,7 @@ use oidc_admin::oidc_admin::{
 use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
 use oidc_core::configuration::claims::ClaimsSupported;
+use oidc_core::configuration::request_object::RequestObjectConfigurationBuilder;
 use oidc_core::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_core::models::client::ClientInformation;
 use oidc_server::server::OidcServer;
@@ -52,7 +53,7 @@ lazy_static! {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
@@ -63,7 +64,7 @@ async fn main() {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://d451-201-1-66-182.ngrok-free.app")
+        .issuer("https://7d5f-201-1-66-76.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .request_object_signing_alg_values_supported(vec![
@@ -73,6 +74,11 @@ async fn main() {
             SigningAlgorithm::from(EdDSA),
             SigningAlgorithm::from(UnsecuredJwsAlgorithm::None),
         ])
+        .request_object(
+            RequestObjectConfigurationBuilder::default()
+                .request(true)
+                .build()?,
+        )
         .claims_parameter_supported(true)
         .build()
         .expect("Expected valid configuration");
@@ -106,8 +112,8 @@ async fn main() {
     OidcServer::with_configuration(config)
         .with_router(app)
         .run()
-        .await
-        .unwrap()
+        .await?;
+    Ok(())
 }
 
 async fn create_client(
@@ -147,9 +153,25 @@ async fn create_client(
         .expect("Expected successful client registration");
 }
 
-async fn login_page(Query(params): Query<HashMap<String, String>>) -> Html<String> {
+async fn login_page(
+    Query(params): Query<HashMap<String, String>>,
+    Extension(mut interaction_client): Extension<InteractionClient>,
+) -> Html<String> {
     let mut context: Context = Context::new();
-    context.insert("interaction_id", params.get("interaction_id").unwrap());
+    let interaction_id = params.get("interaction_id").unwrap();
+    let request = GrpcRequest::new(InteractionInfoRequest {
+        interaction_id: interaction_id.to_owned(),
+    });
+    let interaction_info = interaction_client
+        .get_interaction_info(request)
+        .await
+        .unwrap()
+        .into_inner();
+
+    let auth_request = interaction_info.request.unwrap();
+    let login_hint = auth_request.login_hint.unwrap_or_default();
+    context.insert("interaction_id", interaction_id);
+    context.insert("login_hint", &login_hint);
     Html(TEMPLATES.render("login.html", &context).unwrap())
 }
 
@@ -198,9 +220,9 @@ async fn login(
     Extension(mut interaction_client): Extension<InteractionClient>,
     Form(req): Form<LoginRequest>,
 ) -> Response {
-    if req.username != "xoze" || req.password != "1234" {
-        return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
-    }
+    // if req.username != "xoze" || req.password != "1234" {
+    //     return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
+    // }
 
     let interaction_info = interaction_client
         .get_interaction_info(GrpcRequest::new(InteractionInfoRequest {

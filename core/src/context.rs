@@ -66,6 +66,7 @@ pub mod test_utils {
     use oidc_types::{response_type, scopes};
 
     use crate::authorisation_request::ValidatedAuthorisationRequest;
+    use crate::client::register_client;
     use crate::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
     use crate::context::OpenIDContext;
     use crate::keystore::KeyStore;
@@ -93,13 +94,12 @@ pub mod test_utils {
             code_challenge_method: Some(CodeChallengeMethod::Plain),
             resource: None,
             include_granted_scopes: None,
-            request_uri: None,
-            request: None,
             prompt: None,
             acr_values: None,
             claims: None,
             max_age: None,
             id_token_hint: None,
+            login_hint: None,
         };
         let (hashed, _) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let metadata = ClientMetadata {
@@ -170,6 +170,10 @@ pub mod test_utils {
             .unwrap();
         OpenIDProviderConfiguration::set(config);
 
+        register_client(OpenIDProviderConfiguration::instance(), client.clone())
+            .await
+            .unwrap();
+
         let grant = GrantBuilder::new()
             .subject(user.sub().clone())
             .scopes(scopes!("openid", "test"))
@@ -186,7 +190,7 @@ pub mod test_utils {
             .save()
             .await
             .unwrap();
-        let user = user.with_grant(grant.id());
+        let user = user.with_grant(grant.id()).save().await.unwrap();
         OpenIDContext::new(Arc::new(client), user, request, grant)
     }
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::RwLock;
 
@@ -7,6 +8,7 @@ use oidc_types::identifiable::Identifiable;
 
 use crate::adapter::{Adapter, PersistenceError};
 
+#[derive(Debug)]
 pub struct InMemoryGenericAdapter<ID, IT> {
     storage: RwLock<HashMap<ID, IT>>,
 }
@@ -22,8 +24,8 @@ impl<ID, IT> InMemoryGenericAdapter<ID, IT> {
 #[async_trait]
 impl<ID, IT> Adapter for InMemoryGenericAdapter<ID, IT>
 where
-    ID: Eq + Hash + Send + Sync + Clone,
-    IT: Identifiable<ID> + Send + Sync + Clone,
+    ID: Eq + Hash + Send + Sync + Clone + Debug,
+    IT: Identifiable<ID> + Send + Sync + Clone + Debug,
 {
     type Id = ID;
     type Item = IT;

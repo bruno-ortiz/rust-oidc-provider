@@ -37,9 +37,9 @@ message AuthorisationRequestInfo{
   optional string code_challenge_method = 9;
   optional string resource = 10;
   optional bool include_granted_scopes = 11;
-  optional string request_uri = 12;
   optional string prompt = 13;
   repeated string requested_acr = 14;
+  optional string login_hint = 15;
 }
 
 message AuthenticatedUserInfo {

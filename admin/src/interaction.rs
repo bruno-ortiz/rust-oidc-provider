@@ -175,7 +175,6 @@ impl From<ValidatedAuthorisationRequest> for AuthorisationRequestInfo {
             code_challenge_method: req.code_challenge_method.map(|ccm| ccm.to_string()),
             resource: req.resource.map(|r| r.to_string()),
             include_granted_scopes: req.include_granted_scopes,
-            request_uri: req.request_uri.map(|ru| ru.to_string()),
             prompt: req.prompt.map(|p| {
                 p.iter()
                     .map(|it| it.to_string())
@@ -186,6 +185,7 @@ impl From<ValidatedAuthorisationRequest> for AuthorisationRequestInfo {
                 .acr_values
                 .map(|it| it.iter().cloned().collect::<Vec<_>>())
                 .unwrap_or_default(),
+            login_hint: req.login_hint,
         }
     }
 }

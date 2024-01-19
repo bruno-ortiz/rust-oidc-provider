@@ -10,8 +10,8 @@ use thiserror::Error;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
-use crate::client::retrieve_client_info;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
 use crate::pairwise::PairwiseError;
 use crate::profile::ProfileError::FormatMismatch;
@@ -42,18 +42,18 @@ impl ProfileData {
         Self(HashMap::new())
     }
 
-    pub async fn get(grant: &Grant) -> Result<ProfileData, ProfileError> {
+    pub async fn get(
+        grant: &Grant,
+        client: &ClientInformation,
+    ) -> Result<ProfileData, ProfileError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        let client = retrieve_client_info(grant.client_id())
-            .await
-            .ok_or_else(|| ProfileError::FetchError(anyhow!("Grant contains invalid client id")))?;
         Ok(configuration
             .profile_resolver()
             .resolve(grant.subject())
             .await?
             .append_i64("auth_time", grant.auth_time().unix_timestamp())
             .append("acr", grant.acr())
-            .append("sub", resolve_sub(configuration, grant.subject(), &client)?)
+            .append("sub", resolve_sub(configuration, grant.subject(), client)?)
             .maybe_append("amr", grant.amr().as_ref()))
     }
 

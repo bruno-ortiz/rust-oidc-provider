@@ -6,6 +6,7 @@ use josekit::jwk::Jwk;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::{JoseError, Number, Value};
+use serde::de::DeserializeOwned;
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -191,7 +192,7 @@ impl<'a> IdTokenBuilder<'a> {
     }
 }
 
-trait JwtPayloadExt {
+pub trait JwtPayloadExt {
     fn set_auth_time(&mut self, value: Option<OffsetDateTime>);
     fn set_nonce(&mut self, value: Option<Nonce>);
     fn set_acr(&mut self, value: Option<&Acr>);
@@ -200,6 +201,7 @@ trait JwtPayloadExt {
     fn set_s_hash(&mut self, value: Option<String>);
     fn set_c_hash(&mut self, value: Option<String>);
     fn set_at_hash(&mut self, value: Option<String>);
+    fn convert<T: DeserializeOwned>(&self) -> serde_json::Result<T>;
 }
 
 impl JwtPayloadExt for JwtPayload {
@@ -263,6 +265,11 @@ impl JwtPayloadExt for JwtPayload {
             self.set_claim("at_hash", Some(Value::String(at_hash)))
                 .expect("Cannot set at_hash on JWT");
         }
+    }
+
+    fn convert<T: DeserializeOwned>(&self) -> serde_json::Result<T> {
+        let value = serde_json::to_value(self.as_ref())?;
+        serde_json::from_value::<T>(value)
     }
 }
 

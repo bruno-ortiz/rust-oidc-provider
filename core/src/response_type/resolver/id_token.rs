@@ -52,8 +52,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 "Hybrid flow must contain a nonce in the auth request",
             ));
         }
-
-        let profile = ProfileData::get(&context.grant)
+        let profile = ProfileData::get(&context.grant, &context.client)
             .await
             .map_err(OpenIdError::server_error)?;
         let claims = get_id_token_claims(&profile, context.grant.claims().as_ref())?;

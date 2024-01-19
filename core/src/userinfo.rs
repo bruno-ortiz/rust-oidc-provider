@@ -26,7 +26,11 @@ pub async fn get_user_info(at: ActiveAccessToken) -> Result<UserInfo, OpenIdErro
         .await
         .ok_or_else(|| OpenIdError::invalid_grant("invalid access_token"))?;
 
-    let profile = ProfileData::get(&grant)
+    let client = retrieve_client_info(grant.client_id())
+        .await
+        .ok_or_else(|| OpenIdError::server_error(anyhow!("Grant contains invalid client id")))?;
+
+    let profile = ProfileData::get(&grant, &client)
         .await
         .map_err(OpenIdError::server_error)?;
     let claims: HashMap<&str, Value> =

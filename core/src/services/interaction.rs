@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
@@ -19,7 +19,7 @@ use crate::client::retrieve_client_info;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
-use crate::models::grant::GrantBuilder;
+use crate::models::grant::{Grant, GrantBuilder};
 use crate::prompt::{PromptError, PromptResolver};
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
@@ -136,6 +136,20 @@ where
 {
     match Interaction::find(interaction_id).await {
         Some(Interaction::Consent { request, user, .. }) => {
+            if let Some(old_grant_id) = user.grant_id() {
+                if let Some(old_grant) = Grant::find(old_grant_id).await {
+                    old_grant
+                        .consume()
+                        .await
+                        .context(format!(
+                            "Failed to consume old grant with id {} from user {}",
+                            old_grant_id,
+                            user.sub()
+                        ))
+                        .map_err(InteractionError::Internal)?;
+                }
+            }
+
             let claims = prepare_grant_claims(&request);
             let grant = GrantBuilder::new()
                 .subject(user.sub().clone())
@@ -200,9 +214,10 @@ fn prepare_grant_claims(request: &ValidatedAuthorisationRequest) -> Claims {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use indexmap::IndexSet;
     use josekit::jws::ES256;
-    use std::sync::Arc;
     use time::{Duration, OffsetDateTime};
     use tracing::info;
     use url::Url;
@@ -385,13 +400,12 @@ mod tests {
             code_challenge_method: Some(CodeChallengeMethod::Plain),
             resource: None,
             include_granted_scopes: None,
-            request_uri: None,
-            request: None,
             prompt,
             acr_values: acr,
             claims: Some(claims),
             max_age,
             id_token_hint: None,
+            login_hint: None,
         }
     }
 

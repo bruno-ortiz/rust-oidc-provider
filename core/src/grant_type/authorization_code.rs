@@ -66,7 +66,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let now = clock.now();
         let mut simple_id_token = None;
         if code.scopes.contains(&OPEN_ID) {
-            let profile = ProfileData::get(&grant)
+            let profile = ProfileData::get(&grant, client.as_ref())
                 .await
                 .map_err(OpenIdError::server_error)?;
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;

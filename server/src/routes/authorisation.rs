@@ -5,8 +5,10 @@ use axum::response::{IntoResponse, Redirect, Response, Result};
 
 use oidc_core::authorisation_request::AuthorisationRequest;
 use oidc_core::client::retrieve_client_info_by_unparsed;
+use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::models::client::ClientInformation;
+use oidc_core::request_object::RequestObjectProcessor;
 use oidc_core::response_mode::encoder::{
     encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
     ResponseModeEncoder,
@@ -29,9 +31,18 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
+    let configuration = OpenIDProviderConfiguration::instance();
     let client = Arc::new(get_client(&request).await?);
-    validate_redirect_uri(&request.0, &client)?;
-    match request.0.validate(&client).await {
+    let request_object = RequestObjectProcessor::process(&request.0, &client, configuration).await;
+    let authorization_request = match request_object {
+        Ok(Some(request)) => request,
+        Ok(None) => request.0,
+        Err(err) => {
+            return handle_validation_error(&encoder, &client, err, request.0);
+        }
+    };
+    validate_redirect_uri(&authorization_request, &client)?;
+    match authorization_request.validate(&client, configuration).await {
         Ok(req) => {
             let res = auth_service
                 .authorise(session.session_id(), client.clone(), req)

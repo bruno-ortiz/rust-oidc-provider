@@ -71,6 +71,17 @@ impl OpenIdError {
         Self::new(OpenIdErrorType::InvalidRequest, description, None)
     }
 
+    pub fn invalid_request_with_source<D: Into<String>, T: Into<anyhow::Error>>(
+        description: D,
+        source: T,
+    ) -> Self {
+        Self::new(
+            OpenIdErrorType::InvalidRequest,
+            description,
+            Some(source.into()),
+        )
+    }
+
     pub fn invalid_grant<D: Into<String>>(description: D) -> Self {
         Self::new(OpenIdErrorType::InvalidGrant, description, None)
     }

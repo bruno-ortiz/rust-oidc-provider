@@ -17,6 +17,7 @@ pub mod models;
 mod pairwise;
 pub mod profile;
 mod prompt;
+pub mod request_object;
 pub mod response_mode;
 pub mod response_type;
 pub mod services;

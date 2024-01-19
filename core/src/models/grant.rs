@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
@@ -22,6 +23,12 @@ use crate::models::Status;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct GrantID(Uuid);
+
+impl Display for GrantID {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Builder, Getters, CopyGetters)]
 #[get = "pub"]
