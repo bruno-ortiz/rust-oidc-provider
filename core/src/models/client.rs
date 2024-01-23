@@ -77,7 +77,7 @@ impl ClientInformation {
     }
 
     pub fn encrypt_id_token(&self) -> bool {
-        self.metadata.id_token_encryption.is_some()
+        self.metadata.id_token_encryption_data().is_some()
     }
 }
 

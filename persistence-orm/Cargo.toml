@@ -1,0 +1,18 @@
+[package]
+name = "oidc-persistence"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+oidc-migration = { path = "migration" }
+sea-orm = { version = "0.12.12", features = ["runtime-tokio-rustls", "macros"] }
+anyhow = { workspace = true }
+futures = { workspace = true }
+
+[features]
+default = ["sqlite"]
+sqlite = ["sea-orm/sqlx-sqlite"]
+mysql = ["sea-orm/sqlx-mysql"]
+postgresql = ["sea-orm/sqlx-postgres"]

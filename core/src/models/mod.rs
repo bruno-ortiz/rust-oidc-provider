@@ -1,5 +1,5 @@
 pub mod access_token;
-pub(crate) mod authorisation_code;
+pub mod authorisation_code;
 pub mod client;
 pub mod grant;
 pub(crate) mod refresh_token;

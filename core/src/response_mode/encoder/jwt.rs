@@ -16,6 +16,7 @@ use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 use crate::response_mode::errors::EncodingError;
+use crate::utils::encrypt;
 
 const EXP_IN_MINUTES: i64 = 5i64;
 
@@ -39,7 +40,9 @@ impl ResponseModeEncoder for JwtEncoder {
         let payload = self.build_payload(configuration, context, parameters);
         let jwt = SignedJWT::new(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
-
+        if let Some(enc_data) = context.client.metadata().authorization_encryption_data() {
+            //TODO: how do I encrypt jwt here?
+        }
         let mut params = IndexMap::new();
         params.insert("response".to_owned(), jwt.serialized_owned());
 

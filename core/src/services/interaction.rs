@@ -435,9 +435,11 @@ mod tests {
             sector_identifier_uri: None,
             subject_type: SubjectType::Public,
             id_token_signed_response_alg: ES256.into(),
-            id_token_encryption: None,
+            id_token_encrypted_response_alg: None,
+            id_token_encrypted_response_enc: None,
             userinfo_signed_response_alg: None,
-            userinfo_encryption: None,
+            userinfo_encrypted_response_alg: None,
+            userinfo_encrypted_response_enc: None,
             request_object_signing_alg: None,
             software_id: None,
             software_version: None,
@@ -445,8 +447,10 @@ mod tests {
             application_type: ApplicationType::Native,
             authorization_signed_response_alg: ES256.into(),
             request_uris: None,
-            request_object_encryption: None,
-            authorization_response_encryption: None,
+            request_object_encryption_alg: None,
+            request_object_encryption_enc: None,
+            authorization_encrypted_response_alg: None,
+            authorization_encrypted_response_enc: None,
         };
 
         Arc::new(ClientInformation::new(

@@ -36,7 +36,7 @@ impl IdToken<SignedJWT> {
         client: &ClientInformation,
     ) -> Result<IdToken<EncryptedJWT<SignedJWT>>, IdTokenError> {
         let client_metadata = client.metadata();
-        if let Some(EncryptionData { ref alg, ref enc }) = client_metadata.id_token_encryption {
+        if let Some(EncryptionData { alg, enc }) = client_metadata.id_token_encryption_data() {
             let keystore = client
                 .keystore(alg)
                 .await

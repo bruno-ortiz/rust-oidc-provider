@@ -17,11 +17,12 @@ use oidc_admin::oidc_admin::{
 };
 use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
-use oidc_core::configuration::claims::ClaimsSupported;
-use oidc_core::configuration::request_object::RequestObjectConfigurationBuilder;
-use oidc_core::configuration::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_core::models::client::ClientInformation;
+use oidc_server::claims::ClaimsSupported;
+use oidc_server::provider::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
+use oidc_server::request_object::RequestObjectConfigurationBuilder;
 use oidc_server::server::OidcServer;
+use oidc_server::Database;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadataBuilder};
 use oidc_types::grant_type::GrantType;
@@ -56,6 +57,8 @@ lazy_static! {
 async fn main() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::fmt::init();
 
+    let db = Database::connect("mysql://dev:dev@localhost:3306/oidc-provider").await?;
+
     let app = Router::new()
         .route("/interaction/login", get(login_page))
         .route("/interaction/consent", get(consent_page))
@@ -80,6 +83,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .build()?,
         )
         .claims_parameter_supported(true)
+        .db_connection(db)
         .build()
         .expect("Expected valid configuration");
 
@@ -111,6 +115,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     OidcServer::with_configuration(config)
         .with_router(app)
+        .with_run_migrations(true)
         .run()
         .await?;
     Ok(())

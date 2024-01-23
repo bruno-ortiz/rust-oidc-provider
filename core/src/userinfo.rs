@@ -20,6 +20,7 @@ use crate::models::access_token::ActiveAccessToken;
 use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
 use crate::profile::ProfileData;
+use crate::utils::encrypt;
 
 pub async fn get_user_info(at: ActiveAccessToken) -> Result<UserInfo, OpenIdError> {
     let grant = Grant::find(at.grant_id())
@@ -48,8 +49,8 @@ pub async fn get_user_info(at: ActiveAccessToken) -> Result<UserInfo, OpenIdErro
     let result: UserInfo;
     if let Some(ref alg) = client.metadata().userinfo_signed_response_alg {
         let signed = sign_user_info(claims, &client, alg).map_err(OpenIdError::server_error)?;
-        if let Some(ref enc_config) = client.metadata().userinfo_encryption {
-            let encrypted = encrypt(signed, &client, alg, enc_config)
+        if let Some(enc_config) = client.metadata().userinfo_encryption_data() {
+            let encrypted = encrypt(signed, &client, &enc_config)
                 .await
                 .map_err(OpenIdError::server_error)?;
             result = UserInfo::Encrypted(encrypted)
@@ -78,20 +79,4 @@ fn sign_user_info(
     let payload = JwtPayload::from_hash_map(claims);
     let signed_user_info = SignedJWT::new(header, payload, signing_key)?;
     Ok(signed_user_info)
-}
-
-async fn encrypt(
-    signed_user_info: SignedJWT,
-    client: &ClientInformation,
-    alg: &SigningAlgorithm,
-    enc_config: &EncryptionData,
-) -> anyhow::Result<EncryptedJWT<SignedJWT>> {
-    let keystore = client.keystore(&enc_config.alg).await?;
-    let encryption_key = keystore
-        .select(KeyUse::Enc)
-        .alg(alg.name())
-        .first()
-        .ok_or_else(|| anyhow!("Missing signing key"))?;
-    let encrypted_user_info = signed_user_info.encrypt(encryption_key, &enc_config.enc)?;
-    Ok(encrypted_user_info)
 }

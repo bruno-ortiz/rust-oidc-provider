@@ -1,6 +1,7 @@
 use derive_more::From;
 use serde::Deserialize;
 use url::Url;
+use uuid::Uuid;
 
 use crate::code::Code;
 use crate::grant_type::GrantType;
@@ -36,7 +37,7 @@ pub struct AuthorisationCodeGrant {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RefreshTokenGrant {
-    pub refresh_token: String,
+    pub refresh_token: Uuid,
     pub scope: Option<Scopes>,
 }
 

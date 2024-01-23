@@ -59,7 +59,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
         if configuration.rotate_refresh_token(context) {
             let old_rt = refresh_token.consume().await?;
             refresh_token = RefreshToken::new_from(old_rt)?.save().await?;
-            rt_token = Some(refresh_token.token.clone())
+            rt_token = Some(refresh_token.token)
         }
 
         let at_duration = ttl.access_token_ttl(client.as_ref());

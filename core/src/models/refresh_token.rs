@@ -19,7 +19,7 @@ use crate::models::Status;
 #[derive(Debug, Clone, Eq, PartialEq, Builder)]
 #[builder(setter(into))]
 pub struct RefreshToken {
-    pub token: String,
+    pub token: Uuid,
     pub grant_id: GrantID,
     #[builder(default)]
     pub status: Status,
@@ -33,7 +33,7 @@ pub struct RefreshToken {
 impl RefreshToken {
     pub fn new_from(old_rt: RefreshToken) -> Result<Self, OpenIdError> {
         RefreshTokenBuilder::default()
-            .token(Uuid::new_v4().to_string())
+            .token(Uuid::new_v4())
             .grant_id(old_rt.grant_id)
             .status(Status::Awaiting)
             .state(old_rt.state)
@@ -93,8 +93,8 @@ impl RefreshToken {
     }
 }
 
-impl Identifiable<String> for RefreshToken {
-    fn id(&self) -> &String {
+impl Identifiable<Uuid> for RefreshToken {
+    fn id(&self) -> &Uuid {
         &self.token
     }
 }

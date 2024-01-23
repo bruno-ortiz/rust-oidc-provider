@@ -19,8 +19,8 @@ use crate::user::AuthenticatedUser;
 pub struct AdapterContainer {
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync>,
     grant: Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync>,
-    token: Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync>,
-    refresh: Arc<dyn Adapter<Item = RefreshToken, Id = String> + Send + Sync>,
+    token: Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync>,
+    refresh: Arc<dyn Adapter<Item = RefreshToken, Id = Uuid> + Send + Sync>,
     client: Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>,
     user: Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync>,
     interaction: Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>,
@@ -35,11 +35,11 @@ impl AdapterContainer {
         self.grant.clone()
     }
 
-    pub fn refresh(&self) -> Arc<dyn Adapter<Item = RefreshToken, Id = String> + Send + Sync> {
+    pub fn refresh(&self) -> Arc<dyn Adapter<Item = RefreshToken, Id = Uuid> + Send + Sync> {
         self.refresh.clone()
     }
 
-    pub fn token(&self) -> Arc<dyn Adapter<Item = AccessToken, Id = String> + Send + Sync> {
+    pub fn token(&self) -> Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync> {
         self.token.clone()
     }
 

@@ -10,6 +10,7 @@ edition = "2021"
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 oidc-admin = { path = "../admin" }
+oidc-persistence = { path = "../persistence-orm" }
 uuid = { workspace = true, features = ["v4", "serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_urlencoded = "0.7.1"
@@ -39,3 +40,10 @@ urlencoding = { workspace = true }
 
 [dev-dependencies]
 axum-macros = "0.4.0"
+
+
+[features]
+default = ["sqlite"]
+sqlite = ["oidc-persistence/sqlite"]
+mysql = ["oidc-persistence/mysql"]
+postgresql = ["oidc-persistence/postgresql"]

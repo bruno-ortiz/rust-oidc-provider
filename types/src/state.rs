@@ -20,8 +20,8 @@ impl Display for State {
 }
 
 impl Hashable for State {
-    fn identifier(&self) -> &str {
-        &self.0
+    fn identifier(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 

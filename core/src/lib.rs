@@ -1,4 +1,4 @@
-mod adapter;
+pub mod adapter;
 pub mod authorisation_request;
 mod claims;
 pub mod client;
@@ -15,6 +15,7 @@ mod jwt;
 pub mod keystore;
 pub mod models;
 mod pairwise;
+mod persistence;
 pub mod profile;
 mod prompt;
 pub mod request_object;

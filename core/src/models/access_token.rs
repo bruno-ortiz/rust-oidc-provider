@@ -32,7 +32,7 @@ impl ActiveAccessToken {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
     grant_id: GrantID,
-    pub token: String,
+    pub token: Uuid,
     pub t_type: String,
     pub expires_in: Duration,
     pub created: OffsetDateTime,
@@ -50,7 +50,7 @@ impl AccessToken {
     ) -> Self {
         let clock = OpenIDProviderConfiguration::clock();
         Self {
-            token: Uuid::new_v4().to_string(),
+            token: Uuid::new_v4(),
             t_type: token_type.into(),
             created: clock.now(),
             expires_in,
@@ -78,7 +78,8 @@ impl AccessToken {
 
     pub async fn find(id: &str) -> Option<AccessToken> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapters().token().find(&id.to_string()).await //todo: revisit this code later
+        let id = Uuid::parse_str(id).ok()?; //todo: revisit this code later, return err?
+        configuration.adapters().token().find(&id).await
     }
 
     pub async fn save(self) -> Result<AccessToken, PersistenceError> {
@@ -87,8 +88,8 @@ impl AccessToken {
     }
 }
 
-impl Identifiable<String> for AccessToken {
-    fn id(&self) -> &String {
+impl Identifiable<Uuid> for AccessToken {
+    fn id(&self) -> &Uuid {
         &self.token
     }
 }
@@ -96,7 +97,7 @@ impl Identifiable<String> for AccessToken {
 impl UrlEncodable for AccessToken {
     fn params(self) -> IndexMap<String, String> {
         let mut map = IndexMap::new();
-        map.insert("access_token".to_owned(), self.token);
+        map.insert("access_token".to_owned(), self.token.to_string());
         map.insert("token_type".to_owned(), self.t_type);
         map.insert(
             "expires_in".to_owned(),
@@ -107,8 +108,8 @@ impl UrlEncodable for AccessToken {
 }
 
 impl Hashable for AccessToken {
-    fn identifier(&self) -> &str {
-        &self.token
+    fn identifier(&self) -> &[u8] {
+        self.token.as_bytes()
     }
 }
 

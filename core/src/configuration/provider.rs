@@ -12,6 +12,7 @@ use time::Duration;
 use tracing::warn;
 use url::Url;
 
+use oidc_persistence::{get_default_db_connection, DatabaseConnection};
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::claim_type::ClaimType;
 use oidc_types::grant_type::GrantType;
@@ -72,6 +73,7 @@ pub struct OpenIDProviderConfiguration {
     keystore: Arc<KeyStore>,
     routes: Routes,
     adapters: AdapterContainer,
+    db_connection: DatabaseConnection,
     response_types_supported: Vec<ResponseType>,
     #[builder(setter(custom))]
     response_modes_supported: Vec<ResponseMode>,
@@ -217,6 +219,7 @@ impl Default for OpenIDProviderConfiguration {
             keystore: Arc::new(KeyStore::default()),
             routes: Routes::default(),
             adapters: AdapterContainer::default(),
+            db_connection: get_default_db_connection(),
             response_types_supported: vec![
                 response_type![Code],
                 response_type![IdToken],

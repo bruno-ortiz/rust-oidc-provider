@@ -115,7 +115,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         if configuration.issue_refresh_token(&client).await {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
             let refresh_token = RefreshTokenBuilder::default()
-                .token(Uuid::new_v4().to_string())
+                .token(Uuid::new_v4())
                 .grant_id(code.grant_id)
                 .nonce(code.nonce)
                 .state(code.state)

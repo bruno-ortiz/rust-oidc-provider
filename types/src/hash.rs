@@ -1,3 +1,3 @@
 pub trait Hashable {
-    fn identifier(&self) -> &str;
+    fn identifier(&self) -> &[u8];
 }

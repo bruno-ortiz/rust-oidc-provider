@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-oidc-server = { path = "../server" }
+oidc-server = { path = "../server", features = ["mysql"] }
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 oidc-admin = { path = "../admin" }
@@ -25,4 +25,4 @@ lazy_static = { workspace = true }
 urlencoding = { workspace = true }
 
 [dev-dependencies]
-axum-macros = "0.4.0"
+axum-macros = "0.4.1"

@@ -15,8 +15,8 @@ impl Code {
 }
 
 impl Hashable for Code {
-    fn identifier(&self) -> &str {
-        self.0.as_str()
+    fn identifier(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 
