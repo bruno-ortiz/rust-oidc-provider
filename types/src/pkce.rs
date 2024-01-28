@@ -35,7 +35,7 @@ pub enum CodeChallengeError {
     MissingVerifier,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize, PartialEq)]
 pub struct CodeChallenge(String);
 
 impl CodeChallenge {

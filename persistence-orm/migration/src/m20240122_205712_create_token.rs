@@ -25,14 +25,18 @@ impl MigrationTrait for Migration {
                             .enumeration(TokenType::Table, [TokenType::Access, TokenType::Refresh])
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Token::ExpiresIn).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(Token::ExpiresIn)
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(Token::Created)
                             .timestamp_with_time_zone()
                             .not_null(),
                     )
                     .col(ColumnDef::new(Token::Scopes).string().not_null())
-                    .col(ColumnDef::new(Token::TType).string().not_null())
+                    .col(ColumnDef::new(Token::TType).string())
                     .col(ColumnDef::new(Token::State).string())
                     .col(ColumnDef::new(Token::Nonce).string())
                     .to_owned(),

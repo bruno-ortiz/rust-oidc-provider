@@ -31,7 +31,7 @@ impl ActiveAccessToken {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
-    grant_id: GrantID,
+    pub grant_id: GrantID,
     pub token: Uuid,
     pub t_type: String,
     pub expires_in: Duration,
@@ -49,10 +49,28 @@ impl AccessToken {
         grant_id: GrantID,
     ) -> Self {
         let clock = OpenIDProviderConfiguration::clock();
+        Self::new_with_value(
+            Uuid::new_v4(),
+            token_type,
+            clock.now(),
+            expires_in,
+            scopes,
+            grant_id,
+        )
+    }
+
+    pub fn new_with_value<TT: Into<String>>(
+        token_value: Uuid,
+        token_type: TT,
+        created: OffsetDateTime,
+        expires_in: Duration,
+        scopes: Option<Scopes>,
+        grant_id: GrantID,
+    ) -> Self {
         Self {
-            token: Uuid::new_v4(),
+            token: token_value,
             t_type: token_type.into(),
-            created: clock.now(),
+            created,
             expires_in,
             scopes,
             grant_id,
@@ -68,7 +86,7 @@ impl AccessToken {
         let now = clock.now();
         if now <= (self.created + self.expires_in) {
             let grant = Grant::find(self.grant_id)
-                .await
+                .await?
                 .ok_or(TokenError::InvalidGrant)?;
             Ok(ActiveAccessToken { inner: self, grant })
         } else {
@@ -76,15 +94,15 @@ impl AccessToken {
         }
     }
 
-    pub async fn find(id: &str) -> Option<AccessToken> {
+    pub async fn find(id: &str) -> Result<Option<AccessToken>, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        let id = Uuid::parse_str(id).ok()?; //todo: revisit this code later, return err?
-        configuration.adapters().token().find(&id).await
+        let id = Uuid::parse_str(id).map_err(|err| PersistenceError::Internal(err.into()))?; //todo: revisit this code later, return err?
+        configuration.adapter().token(None).find(&id).await
     }
 
     pub async fn save(self) -> Result<AccessToken, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapters().token().save(self).await
+        configuration.adapter().token(None).insert(self).await
     }
 }
 
@@ -108,8 +126,8 @@ impl UrlEncodable for AccessToken {
 }
 
 impl Hashable for AccessToken {
-    fn identifier(&self) -> &[u8] {
-        self.token.as_bytes()
+    fn identifier(&self) -> String {
+        self.token.to_string()
     }
 }
 
@@ -119,6 +137,8 @@ pub enum TokenError {
     Expired,
     #[error("Invalid grant")]
     InvalidGrant,
+    #[error(transparent)]
+    PersistenceError(#[from] PersistenceError),
 }
 
 impl From<TokenError> for OpenIdError {
@@ -126,6 +146,7 @@ impl From<TokenError> for OpenIdError {
         match err {
             TokenError::Expired => OpenIdError::invalid_grant(err.to_string()),
             TokenError::InvalidGrant => OpenIdError::invalid_grant(err.to_string()),
+            TokenError::PersistenceError(e) => OpenIdError::server_error(e),
         }
     }
 }

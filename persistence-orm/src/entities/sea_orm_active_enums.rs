@@ -3,6 +3,18 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "code_challenge_method"
+)]
+pub enum CodeChallengeMethod {
+    #[sea_orm(string_value = "Plain")]
+    Plain,
+    #[sea_orm(string_value = "S256")]
+    S256,
+}
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "interaction_type")]
 pub enum InteractionType {
     #[sea_orm(string_value = "Login")]

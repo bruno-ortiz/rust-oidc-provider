@@ -1,10 +1,10 @@
 use crate::hash::Hashable;
 use crate::url_encodable::UrlEncodable;
 use indexmap::IndexMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct State(String);
 
 impl State {
@@ -20,8 +20,8 @@ impl Display for State {
 }
 
 impl Hashable for State {
-    fn identifier(&self) -> &[u8] {
-        self.0.as_bytes()
+    fn identifier(&self) -> String {
+        self.0.clone()
     }
 }
 

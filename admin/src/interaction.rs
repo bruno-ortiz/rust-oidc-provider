@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
+use oidc_core::adapter::PersistenceError;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
 use oidc_core::authorisation_request::ValidatedAuthorisationRequest;
-use oidc_core::client::retrieve_client_info;
+use oidc_core::client::{retrieve_client_info, ClientError};
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::models::client::ClientInformation;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
@@ -55,9 +56,12 @@ impl InteractionService for InteractionServiceImpl {
         let interaction_id = Uuid::try_parse(request.interaction_id.as_str()).map_err(|err| {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
-        let interaction = Interaction::find(interaction_id).await.ok_or_else(|| {
-            Status::not_found(format!("Interaction with id {interaction_id} not found"))
-        })?;
+        let interaction = Interaction::find(interaction_id)
+            .await
+            .map_err(convert_persistence_err)?
+            .ok_or_else(|| {
+                Status::not_found(format!("Interaction with id {interaction_id} not found"))
+            })?;
         Ok(Response::new(interaction.into()))
     }
 
@@ -70,6 +74,7 @@ impl InteractionService for InteractionServiceImpl {
             .map_err(|err| Status::invalid_argument(format!("Failed to parse client id. {err}")))?;
         let client = retrieve_client_info(client_id)
             .await
+            .map_err(convert_client_err)?
             .ok_or_else(|| Status::not_found(format!("Client with id {client_id} not found")))?;
         Ok(Response::new(client.into()))
     }
@@ -126,6 +131,7 @@ impl From<Interaction> for InteractionInfoReply {
                 id,
                 session,
                 request,
+                ..
             } => InteractionInfoReply {
                 interaction_id: id.to_string(),
                 session_id: session.to_string(),
@@ -138,6 +144,7 @@ impl From<Interaction> for InteractionInfoReply {
                 session,
                 request,
                 user,
+                ..
             } => InteractionInfoReply {
                 interaction_id: id.to_string(),
                 session_id: session.to_string(),
@@ -150,6 +157,7 @@ impl From<Interaction> for InteractionInfoReply {
                 session,
                 request,
                 user,
+                ..
             } => InteractionInfoReply {
                 interaction_id: id.to_string(),
                 session_id: session.to_string(),
@@ -245,4 +253,12 @@ fn convert_err(err: InteractionError) -> Status {
         InteractionError::Authorization(_) => Status::internal(err.to_string()),
         InteractionError::PromptError(_) => Status::internal(err.to_string()),
     }
+}
+
+fn convert_client_err(err: ClientError) -> Status {
+    Status::internal(err.to_string())
+}
+
+fn convert_persistence_err(err: PersistenceError) -> Status {
+    Status::internal(err.to_string())
 }

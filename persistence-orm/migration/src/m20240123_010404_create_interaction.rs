@@ -27,7 +27,6 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Interaction::Request).text().not_null())
-                    .col(ColumnDef::new(Interaction::Subject).string())
                     .col(
                         ColumnDef::new(Interaction::Type)
                             .enumeration(InteractionType::Table, InteractionType::iter().skip(1))

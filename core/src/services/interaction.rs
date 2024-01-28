@@ -12,6 +12,7 @@ use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
+use InteractionError::Internal;
 
 use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
@@ -36,11 +37,11 @@ pub enum InteractionError {
     NotFound(Uuid),
     #[error("Client not found for id {}", .0)]
     ClientNotFound(ClientID),
-    #[error("Unexpected error saving interaction")]
+    #[error("Unexpected error saving interaction: {}", .0)]
     Persistence(#[from] PersistenceError),
     #[error("Unexpected prompt error {}", .0)]
     PromptError(#[from] PromptError),
-    #[error("Unexpected error authorizing user")]
+    #[error("Unexpected error authorizing user: {}",.0)]
     Authorization(anyhow::Error),
     #[error("Unexpected error resolving user interaction")]
     Internal(#[from] anyhow::Error),
@@ -52,15 +53,14 @@ pub async fn begin_interaction(
     client: Arc<ClientInformation>,
 ) -> Result<Interaction, InteractionError> {
     let config = OpenIDProviderConfiguration::instance();
-    let user = AuthenticatedUser::find_by_session(session).await;
+    let user = AuthenticatedUser::find_by_session(session).await?;
     let (user, request, prompt_resolver) =
         select_prompt_resolver(config, user, request, &client).await?;
-
     if let Some(resolver) = prompt_resolver {
-        let interaction = resolver.resolve(session, user, request)?.save().await?;
+        let interaction = resolver.resolve(session, user, request).await?;
         Ok(interaction)
     } else {
-        Err(InteractionError::Internal(anyhow!(
+        Err(Internal(anyhow!(
             "Unable to resolve prompt: {:?}",
             request.prompt
         )))
@@ -107,18 +107,20 @@ pub async fn complete_login(
     let configuration = OpenIDProviderConfiguration::instance();
     let clock = configuration.clock_provider();
     match Interaction::find(interaction_id).await {
-        Some(Interaction::Login {
+        Ok(Some(Interaction::Login {
             session, request, ..
-        }) => {
+        })) => {
             let user =
                 AuthenticatedUser::new(session, subject, clock.now(), interaction_id, acr, amr)
                     .save()
                     .await?;
 
-            let interaction = Interaction::consent(request, user).save().await?;
+            let interaction = Interaction::consent_with_id(user.interaction_id(), request, user)
+                .update()
+                .await?;
             Ok(interaction.uri())
         }
-        None => Err(InteractionError::NotFound(interaction_id)),
+        Ok(None) => Err(InteractionError::NotFound(interaction_id)),
         _ => Err(InteractionError::FailedPreCondition(
             "Expected to find login interaction".to_owned(),
         )),
@@ -135,9 +137,9 @@ where
     E: ResponseModeEncoder,
 {
     match Interaction::find(interaction_id).await {
-        Some(Interaction::Consent { request, user, .. }) => {
+        Ok(Some(Interaction::Consent { request, user, .. })) => {
             if let Some(old_grant_id) = user.grant_id() {
-                if let Some(old_grant) = Grant::find(old_grant_id).await {
+                if let Some(old_grant) = Grant::find(old_grant_id).await? {
                     old_grant
                         .consume()
                         .await
@@ -146,7 +148,7 @@ where
                             old_grant_id,
                             user.sub()
                         ))
-                        .map_err(InteractionError::Internal)?;
+                        .map_err(Internal)?;
                 }
             }
 
@@ -167,9 +169,10 @@ where
                 .save()
                 .await?;
 
-            let user = user.with_grant(grant.id()).save().await?;
+            let user = user.with_grant(grant.id()).update().await?;
             let client = retrieve_client_info(request.client_id)
                 .await
+                .map_err(|err| Internal(err.into()))?
                 .ok_or(InteractionError::ClientNotFound(request.client_id))?;
 
             let (user, request) = finalize_interaction(request, user).await?;
@@ -180,10 +183,10 @@ where
             if let AuthorisationResponse::Redirect(url) = res {
                 Ok(url)
             } else {
-                Err(InteractionError::Internal(anyhow!("Not supported")))
+                Err(Internal(anyhow!("Not supported")))
             }
         }
-        None => Err(InteractionError::NotFound(interaction_id)),
+        Ok(None) => Err(InteractionError::NotFound(interaction_id)),
         _ => Err(InteractionError::FailedPreCondition(
             "Expected to find consent interaction".to_owned(),
         )),
@@ -194,22 +197,21 @@ async fn finalize_interaction(
     request: ValidatedAuthorisationRequest,
     user: AuthenticatedUser,
 ) -> Result<(AuthenticatedUser, ValidatedAuthorisationRequest), InteractionError> {
-    Interaction::none(request, user)
-        .save()
+    Interaction::none_with_id(user.interaction_id(), request, user)
+        .update()
         .await?
         .consume_authenticated()
-        .ok_or_else(|| InteractionError::Internal(anyhow!("Unable to consume this interaction")))
+        .ok_or_else(|| Internal(anyhow!("Unable to consume this interaction")))
 }
 
-fn prepare_grant_claims(request: &ValidatedAuthorisationRequest) -> Claims {
-    let mut claims = if let Some(claims) = &request.claims {
-        claims.clone()
+fn prepare_grant_claims(request: &ValidatedAuthorisationRequest) -> Option<Claims> {
+    if let Some(claims) = &request.claims {
+        let mut claims = claims.clone();
+        claims.handle_acr_values_parameter(request.acr_values.as_ref());
+        Some(claims)
     } else {
-        Claims::default()
-    };
-
-    claims.handle_acr_values_parameter(request.acr_values.as_ref());
-    claims
+        None
+    }
 }
 
 #[cfg(test)]
@@ -290,8 +292,7 @@ mod tests {
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
 
-        let result =
-            dbg!(begin_interaction(session_id, auth_request.clone(), create_client()).await);
+        let result = begin_interaction(session_id, auth_request.clone(), create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")

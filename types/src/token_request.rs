@@ -55,7 +55,7 @@ mod tests {
         let json = r#"
         {
           "grant_type": "refresh_token",
-          "refresh_token":"1234",
+          "refresh_token":"bf1f8ef6-9aca-49e3-8e28-03767b776ddf",
           "scope": "openid"
         }
         "#;

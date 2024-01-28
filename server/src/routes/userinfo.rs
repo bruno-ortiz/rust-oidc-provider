@@ -16,10 +16,17 @@ pub async fn userinfo(
     bearer_token: TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<UserInfo>, OpenIdErrorResponse> {
     //TODO: review error to respond wwwAuthenticate Header
-    let token = AccessToken::find(bearer_token.token())
-        .await
-        .ok_or_else(|| OpenIdError::invalid_grant("Invalid token"))?;
+    let token = find_access_token(bearer_token).await?;
     let active_token = token.into_active().await.map_err(OpenIdError::from)?;
     let user_info = get_user_info(active_token).await?;
     Ok(Json(user_info))
+}
+
+async fn find_access_token(
+    bearer_token: TypedHeader<Authorization<Bearer>>,
+) -> Result<AccessToken, OpenIdError> {
+    let token = AccessToken::find(bearer_token.token())
+        .await?
+        .ok_or_else(|| OpenIdError::invalid_grant("Invalid token"))?;
+    Ok(token)
 }

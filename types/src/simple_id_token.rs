@@ -12,6 +12,12 @@ impl SimpleIdToken {
     }
 }
 
+impl AsRef<str> for SimpleIdToken {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl Display for SimpleIdToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

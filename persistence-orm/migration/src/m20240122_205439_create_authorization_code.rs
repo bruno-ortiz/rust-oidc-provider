@@ -1,6 +1,7 @@
 use sea_orm_migration::prelude::*;
 
-use crate::models::{AuthorizationCode, Grant, Status};
+use crate::models::{AuthorisationCode, CodeChallengeMethod, Grant, Status};
+use crate::sea_orm::Iterable;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -11,36 +12,41 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(AuthorizationCode::Table)
+                    .table(AuthorisationCode::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(AuthorizationCode::Id)
-                            .integer()
+                        ColumnDef::new(AuthorisationCode::Id)
+                            .big_integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(AuthorizationCode::Code).string().not_null())
-                    .col(ColumnDef::new(AuthorizationCode::GrantId).uuid().not_null())
+                    .col(ColumnDef::new(AuthorisationCode::Code).string().not_null())
+                    .col(ColumnDef::new(AuthorisationCode::GrantId).uuid().not_null())
                     .col(
-                        ColumnDef::new(AuthorizationCode::Status)
+                        ColumnDef::new(AuthorisationCode::Status)
                             .enumeration(Status::Table, [Status::Awaiting, Status::Consumed])
                             .not_null(),
                     )
-                    .col(ColumnDef::new(AuthorizationCode::CodeChallenge).string())
-                    .col(ColumnDef::new(AuthorizationCode::CodeChallengeMethod).string())
+                    .col(ColumnDef::new(AuthorisationCode::CodeChallenge).string())
                     .col(
-                        ColumnDef::new(AuthorizationCode::ExpiresIn)
+                        ColumnDef::new(AuthorisationCode::CodeChallengeMethod).enumeration(
+                            CodeChallengeMethod::Table,
+                            CodeChallengeMethod::iter().skip(1),
+                        ),
+                    )
+                    .col(
+                        ColumnDef::new(AuthorisationCode::ExpiresIn)
                             .timestamp_with_time_zone()
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(AuthorizationCode::Scopes)
+                        ColumnDef::new(AuthorisationCode::Scopes)
                             .string()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(AuthorizationCode::State).string())
-                    .col(ColumnDef::new(AuthorizationCode::Nonce).string())
+                    .col(ColumnDef::new(AuthorisationCode::State).string())
+                    .col(ColumnDef::new(AuthorisationCode::Nonce).string())
                     .to_owned(),
             )
             .await?;
@@ -50,8 +56,8 @@ impl MigrationTrait for Migration {
                 Index::create()
                     .if_not_exists()
                     .name("idx-authorization_code_code")
-                    .table(AuthorizationCode::Table)
-                    .col(AuthorizationCode::Code)
+                    .table(AuthorisationCode::Table)
+                    .col(AuthorisationCode::Code)
                     .to_owned(),
             )
             .await?;
@@ -60,8 +66,8 @@ impl MigrationTrait for Migration {
             .create_foreign_key(
                 ForeignKey::create()
                     .name("fk-authorization_code-grant_id")
-                    .from_tbl(AuthorizationCode::Table)
-                    .from_col(AuthorizationCode::GrantId)
+                    .from_tbl(AuthorisationCode::Table)
+                    .from_col(AuthorisationCode::GrantId)
                     .to_tbl(Grant::Table)
                     .to_col(Grant::Id)
                     .to_owned(),
@@ -75,7 +81,7 @@ impl MigrationTrait for Migration {
             .drop_foreign_key(
                 ForeignKey::drop()
                     .name("fk-authorization_code-grant_id")
-                    .table(AuthorizationCode::Table)
+                    .table(AuthorisationCode::Table)
                     .to_owned(),
             )
             .await?;
@@ -83,12 +89,12 @@ impl MigrationTrait for Migration {
             .drop_index(
                 Index::drop()
                     .name("idx-authorization_code_code")
-                    .table(AuthorizationCode::Table)
+                    .table(AuthorisationCode::Table)
                     .to_owned(),
             )
             .await?;
         manager
-            .drop_table(Table::drop().table(AuthorizationCode::Table).to_owned())
+            .drop_table(Table::drop().table(AuthorisationCode::Table).to_owned())
             .await?;
         Ok(())
     }

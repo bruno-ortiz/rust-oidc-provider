@@ -3,7 +3,7 @@
 pub mod prelude;
 
 pub mod authenticated_user;
-pub mod authorization_code;
+pub mod authorisation_code;
 pub mod client_information;
 pub mod grant;
 pub mod interaction;

@@ -1,3 +1,4 @@
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -15,46 +16,76 @@ pub enum Interaction {
         id: Uuid,
         session: SessionID,
         request: ValidatedAuthorisationRequest,
+        created: OffsetDateTime,
     },
     Consent {
         id: Uuid,
         session: SessionID,
         request: ValidatedAuthorisationRequest,
         user: AuthenticatedUser,
+        created: OffsetDateTime,
     },
     None {
         id: Uuid,
         session: SessionID,
         request: ValidatedAuthorisationRequest,
         user: AuthenticatedUser,
+        created: OffsetDateTime,
     },
 }
 
 impl Interaction {
     pub fn login(session: SessionID, request: ValidatedAuthorisationRequest) -> Self {
         let id = Uuid::new_v4();
+        Self::login_with_id(id, session, request)
+    }
+
+    pub fn login_with_id(
+        id: Uuid,
+        session: SessionID,
+        request: ValidatedAuthorisationRequest,
+    ) -> Self {
         Self::Login {
             id,
             session,
             request,
+            created: OffsetDateTime::now_utc(),
         }
     }
 
     pub fn consent(request: ValidatedAuthorisationRequest, user: AuthenticatedUser) -> Self {
+        Self::consent_with_id(Uuid::new_v4(), request, user)
+    }
+
+    pub fn consent_with_id(
+        id: Uuid,
+        request: ValidatedAuthorisationRequest,
+        user: AuthenticatedUser,
+    ) -> Self {
         Self::Consent {
-            id: user.interaction_id(),
+            id,
             session: user.session(),
             request,
             user,
+            created: OffsetDateTime::now_utc(),
         }
     }
 
     pub fn none(request: ValidatedAuthorisationRequest, user: AuthenticatedUser) -> Self {
+        Self::none_with_id(Uuid::new_v4(), request, user)
+    }
+
+    pub fn none_with_id(
+        id: Uuid,
+        request: ValidatedAuthorisationRequest,
+        user: AuthenticatedUser,
+    ) -> Self {
         Self::None {
-            id: user.interaction_id(),
+            id,
             session: user.session(),
             request,
             user,
+            created: OffsetDateTime::now_utc(),
         }
     }
 
@@ -83,12 +114,17 @@ impl Interaction {
 
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapters().interaction().save(self).await
+        config.adapter().interaction(None).insert(self).await
     }
 
-    pub async fn find(id: Uuid) -> Option<Interaction> {
+    pub async fn update(self) -> Result<Self, PersistenceError> {
+        let config = OpenIDProviderConfiguration::instance();
+        config.adapter().interaction(None).update(self).await
+    }
+
+    pub async fn find(id: Uuid) -> Result<Option<Interaction>, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapters().interaction().find(&id).await
+        configuration.adapter().interaction(None).find(&id).await
     }
 }
 

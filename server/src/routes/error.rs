@@ -4,6 +4,7 @@ use axum::Json;
 use thiserror::Error;
 use tracing::error;
 
+use oidc_core::client::ClientError;
 use oidc_core::error::{OpenIdError, OpenIdErrorType};
 use oidc_core::services::authorisation::AuthorisationError;
 
@@ -21,10 +22,7 @@ impl IntoResponse for AuthorisationErrorWrapper {
             | AuthorisationError::MissingClient => {
                 (StatusCode::BAD_REQUEST, self.0.to_string()).into_response()
             }
-            AuthorisationError::InternalError(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_string()).into_response()
-            }
-            AuthorisationError::RedirectableErr { .. } => {
+            AuthorisationError::InternalError(_) | AuthorisationError::RedirectableErr { .. } => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_string()).into_response()
             }
         }
@@ -45,5 +43,11 @@ impl IntoResponse for OpenIdErrorResponse {
             StatusCode::BAD_REQUEST
         };
         (status_code, Json(err)).into_response()
+    }
+}
+
+impl From<ClientError> for OpenIdErrorResponse {
+    fn from(err: ClientError) -> Self {
+        OpenIdError::server_error(err).into()
     }
 }

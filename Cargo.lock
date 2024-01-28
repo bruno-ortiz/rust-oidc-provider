@@ -2316,7 +2316,6 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.12.0",
  "josekit",
- "oidc-persistence",
  "oidc-types",
  "once_cell",
  "quick_cache",
@@ -2343,6 +2342,7 @@ dependencies = [
  "lazy_static",
  "oidc-admin",
  "oidc-core",
+ "oidc-persistence",
  "oidc-server",
  "oidc-types",
  "serde",
@@ -2370,9 +2370,16 @@ name = "oidc-persistence"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "futures",
+ "oidc-core",
  "oidc-migration",
+ "oidc-types",
  "sea-orm",
+ "serde_json",
+ "time",
+ "url",
+ "uuid",
 ]
 
 [[package]]
@@ -2390,7 +2397,6 @@ dependencies = [
  "hyper 1.1.0",
  "oidc-admin",
  "oidc-core",
- "oidc-persistence",
  "oidc-types",
  "serde",
  "serde_urlencoded",

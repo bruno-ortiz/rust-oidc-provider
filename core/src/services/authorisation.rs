@@ -9,11 +9,12 @@ use oidc_types::state::State;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
+use crate::client::ClientError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::models::client::ClientInformation;
-use crate::models::grant::Grant;
+use crate::models::grant::{Grant, GrantID};
 use crate::prompt::PromptError;
 use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
@@ -31,7 +32,7 @@ pub enum AuthorisationError {
     #[error("Missing redirect_uri")]
     MissingRedirectUri,
     #[error("Invalid client {}", .0)]
-    InvalidClient(String),
+    InvalidClient(#[from] ClientError),
     #[error("Missing client")]
     MissingClient,
     #[error("Err: {}", .err)]
@@ -88,9 +89,7 @@ where
         let grant_id = user.grant_id().ok_or_else(|| {
             AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
         })?;
-        let grant = Grant::find(grant_id).await.ok_or_else(|| {
-            AuthorisationError::InternalError(anyhow!("User has not granted access to data"))
-        })?;
+        let grant = Self::find_grant(grant_id).await?;
         let context = OpenIDContext::new(client.clone(), user, request, grant);
         let auth_result = self.resolver.resolve(&context).await;
 
@@ -109,6 +108,16 @@ where
             parameters,
             context.request.state,
         )
+    }
+
+    async fn find_grant(grant_id: GrantID) -> Result<Grant, AuthorisationError> {
+        let grant = Grant::find(grant_id)
+            .await
+            .map_err(|err| AuthorisationError::InternalError(err.into()))?
+            .ok_or_else(|| {
+                AuthorisationError::InternalError(anyhow!("User has not granted access to data"))
+            })?;
+        Ok(grant)
     }
 }
 

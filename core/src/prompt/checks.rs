@@ -95,11 +95,7 @@ pub async fn check_user_has_consented(
     CheckContext { user, request, .. }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
     let user = user.ok_or(PromptError::login_required(request))?;
-    let grant = if let Some(grant_id) = user.grant_id() {
-        Grant::find(grant_id).await
-    } else {
-        None
-    };
+    let grant = find_grant(user).await?;
     if let Some(grant) = grant {
         Ok(grant.client_id() != request.client_id
             || !grant.has_requested_scopes(&request.scope)
@@ -116,16 +112,23 @@ pub async fn check_user_must_have_consented(
     CheckContext { user, request, .. }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
     let user = user.ok_or(PromptError::login_required(request))?;
-    let grant = if let Some(grant_id) = user.grant_id() {
-        Grant::find(grant_id).await
-    } else {
-        None
-    };
+    let grant = find_grant(user).await?;
     if grant.is_none() {
         Err(PromptError::consent_required(request))
     } else {
         Ok(false)
     }
+}
+
+async fn find_grant(user: &AuthenticatedUser) -> Result<Option<Grant>, PromptError> {
+    let grant = if let Some(grant_id) = user.grant_id() {
+        Grant::find(grant_id)
+            .await
+            .map_err(|err| PromptError::Internal(err.into()))?
+    } else {
+        None
+    };
+    Ok(grant)
 }
 
 pub async fn check_id_token_hint(
@@ -138,7 +141,10 @@ pub async fn check_id_token_hint(
     }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
     let Some(user) = user else { return Ok(true) };
-    if let Some(hint) = &request.id_token_hint {
+    if let Some(hint) = &request
+        .id_token_hint(client)
+        .map_err(|err| PromptError::Internal(err.into()))?
+    {
         if client.metadata().subject_type == SubjectType::Pairwise {
             let pairwise_resolver = config.pairwise_resolver();
             let pairwise_subject =

@@ -2,40 +2,49 @@ use std::str::FromStr;
 
 use thiserror::Error;
 
-use oidc_types::client::ClientID;
+use oidc_types::client::{ClientID, ParseError};
 
 use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
-use crate::services::authorisation::AuthorisationError;
 
 #[derive(Error, Debug)]
-#[error("Error registering client")]
-pub struct RegisterClientError {
-    #[from]
-    source: PersistenceError,
+pub enum ClientError {
+    #[error("Error executing persistence operation: {}", .0)]
+    Persistence(#[from] PersistenceError),
+    #[error("Could not parse client id: {}", .0)]
+    Parse(#[from] ParseError),
 }
 
-pub async fn retrieve_client_info(client_id: ClientID) -> Option<ClientInformation> {
+pub async fn retrieve_client_info(
+    client_id: ClientID,
+) -> Result<Option<ClientInformation>, ClientError> {
     let configuration = OpenIDProviderConfiguration::instance();
-    configuration.adapters().client().find(&client_id).await
+    Ok(configuration
+        .adapter()
+        .client(None)
+        .find(&client_id)
+        .await?)
 }
 
 pub async fn retrieve_client_info_by_unparsed(
     client_id: &str,
-) -> Result<ClientInformation, AuthorisationError> {
-    let client_id = ClientID::from_str(client_id)
-        .map_err(|_| AuthorisationError::InvalidClient(client_id.to_owned()))?;
-    let client = retrieve_client_info(client_id)
-        .await
-        .ok_or_else(|| AuthorisationError::InvalidClient(client_id.to_string()))?;
-    Ok(client)
+) -> Result<Option<ClientInformation>, ClientError> {
+    let client_id = ClientID::from_str(client_id)?;
+    retrieve_client_info(client_id).await
 }
 
 pub async fn register_client(
     configuration: &OpenIDProviderConfiguration,
     client: ClientInformation,
-) -> Result<(), RegisterClientError> {
-    configuration.adapters().client().save(client).await?;
+) -> Result<(), ClientError> {
+    let txn_manager = configuration.adapter().transaction_manager();
+    let txn = txn_manager.begin_txn().await.unwrap();
+    configuration
+        .adapter()
+        .client(Some(txn.clone()))
+        .insert(client)
+        .await?;
+    txn.commit().await.unwrap();
     Ok(())
 }

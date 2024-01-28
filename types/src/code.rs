@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use serde::Deserialize;
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
 use crate::hash::Hashable;
@@ -15,22 +16,33 @@ impl Code {
 }
 
 impl Hashable for Code {
-    fn identifier(&self) -> &[u8] {
-        self.0.as_bytes()
+    fn identifier(&self) -> String {
+        self.0.clone()
     }
 }
 
-impl<T: AsRef<str>> From<T> for Code {
+impl<T: Into<String>> From<T> for Code {
     fn from(c: T) -> Self {
-        Self(c.as_ref().to_owned())
+        Self(c.into())
     }
 }
 
+impl AsRef<str> for Code {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
 impl UrlEncodable for Code {
     fn params(self) -> IndexMap<String, String> {
         let mut map = IndexMap::new();
         map.insert("code".to_owned(), self.0);
         map
+    }
+}
+
+impl Display for Code {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

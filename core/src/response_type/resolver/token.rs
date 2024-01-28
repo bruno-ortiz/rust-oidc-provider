@@ -21,9 +21,9 @@ impl ResponseTypeResolver for TokenResolver {
             Some(context.request.scope.clone()),
         );
         let token = configuration
-            .adapters()
-            .token()
-            .save(token)
+            .adapter()
+            .token(None)
+            .insert(token)
             .await
             .map_err(OpenIdError::server_error)?;
         Ok(token)
@@ -49,7 +49,12 @@ mod tests {
 
         let configuration = OpenIDProviderConfiguration::instance();
         let token = resolver.resolve(&context).await.expect("Should be Ok()");
-        let new_token = configuration.adapters().token().find(&token.id()).await;
+        let new_token = configuration
+            .adapter()
+            .token(None)
+            .find(token.id())
+            .await
+            .unwrap();
 
         assert!(new_token.is_some());
         assert_eq!(token, new_token.unwrap());

@@ -8,7 +8,6 @@ edition = "2021"
 
 [dependencies]
 oidc-types = { path = "../types" }
-oidc-persistence = { path = "../persistence-orm" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 url = { workspace = true, features = ["serde"] }
@@ -23,7 +22,7 @@ async-trait = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 tokio = { workspace = true, features = ["full"] }
 futures = { workspace = true }
-indexmap = { workspace = true }
+indexmap = { workspace = true, features = ["serde"] }
 derive_builder = { workspace = true }
 getset = { workspace = true }
 tracing = { workspace = true }

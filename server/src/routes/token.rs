@@ -35,7 +35,7 @@ pub async fn token(
 > {
     let mut credentials = request.credentials;
     let client = retrieve_client_info(credentials.client_id)
-        .await
+        .await?
         .ok_or_else(|| OpenIdError::invalid_client("Unknown client"))?;
     let auth_method = client.metadata().token_endpoint_auth_method;
     let configuration = OpenIDProviderConfiguration::instance();

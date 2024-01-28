@@ -1,7 +1,7 @@
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-use base64::engine::general_purpose::{URL_SAFE_NO_PAD as base64_engine, URL_SAFE_NO_PAD};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD as base64_engine;
 use base64::Engine;
 use josekit::jwe::{JweContext, JweHeader};
 use josekit::jwk::Jwk;
@@ -69,7 +69,7 @@ impl SignedJWT {
 
         let header_and_payload = &jwt_bytes[..indexes[1]];
         let signature = &jwt_bytes[(indexes[1] + 1)..];
-        let decoded_signature = URL_SAFE_NO_PAD.decode(signature)?;
+        let decoded_signature = base64_engine.decode(signature)?;
         verifier
             .verify(header_and_payload, &decoded_signature)
             .map_err(JWTError::InvalidSignature)
@@ -115,6 +115,12 @@ impl SignedJWT {
             serialized_repr: str_jwt.to_owned(),
         })
     }
+
+    pub fn decode_header(header_part: impl AsRef<[u8]>) -> Result<JwsHeader, JWTError> {
+        let header_b64 = base64_engine.decode(header_part)?;
+        let header: Map<String, Value> = serde_json::from_slice(&header_b64)?;
+        Ok(JwsHeader::from_map(header)?)
+    }
 }
 
 impl JWT for SignedJWT {
@@ -142,6 +148,14 @@ pub struct EncryptedJWT<P> {
     header: JweHeader,
     payload: P,
     serialized_repr: String,
+}
+
+impl<P> EncryptedJWT<P> {
+    pub fn decode_header(input: impl AsRef<[u8]>) -> Result<JweHeader, JWTError> {
+        let header_b64 = base64_engine.decode(input)?;
+        let header: Map<String, Value> = serde_json::from_slice(&header_b64)?;
+        Ok(JweHeader::from_map(header)?)
+    }
 }
 
 impl EncryptedJWT<SignedJWT> {

@@ -1,14 +1,18 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub const CLAIM_KEY: &str = "acr";
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Acr(
-    #[serde(deserialize_with = "crate::utils::space_delimited_deserializer")] Vec<String>,
+    #[serde(
+        serialize_with = "crate::utils::space_delimited_serializer",
+        deserialize_with = "crate::utils::space_delimited_deserializer"
+    )]
+    Vec<String>,
 );
 
 impl Acr {

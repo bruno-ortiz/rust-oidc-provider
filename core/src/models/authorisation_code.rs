@@ -16,6 +16,7 @@ use crate::models::Status;
 
 #[derive(Debug, Clone)]
 pub struct AuthorisationCode {
+    pub id: Option<u64>,
     pub code: Code,
     pub grant_id: GrantID,
     pub status: Status,
@@ -50,9 +51,9 @@ impl AuthorisationCode {
         let configuration = OpenIDProviderConfiguration::instance();
         self.status = Status::Consumed;
         configuration
-            .adapters()
-            .code()
-            .save(self)
+            .adapter()
+            .code(None)
+            .update(self)
             .await
             .map_err(OpenIdError::server_error)
     }

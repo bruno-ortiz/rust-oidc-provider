@@ -6,9 +6,8 @@ use josekit::jwt::JwtPayload;
 use serde_json::Value;
 use tracing::error;
 
-use oidc_types::client::encryption::EncryptionData;
 use oidc_types::jose::jws::{JwsHeaderExt, SigningAlgorithm};
-use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT};
+use oidc_types::jose::jwt2::SignedJWT;
 use oidc_types::jose::JwtPayloadExt;
 use oidc_types::userinfo::UserInfo;
 
@@ -24,11 +23,11 @@ use crate::utils::encrypt;
 
 pub async fn get_user_info(at: ActiveAccessToken) -> Result<UserInfo, OpenIdError> {
     let grant = Grant::find(at.grant_id())
-        .await
+        .await?
         .ok_or_else(|| OpenIdError::invalid_grant("invalid access_token"))?;
 
     let client = retrieve_client_info(grant.client_id())
-        .await
+        .await?
         .ok_or_else(|| OpenIdError::server_error(anyhow!("Grant contains invalid client id")))?;
 
     let profile = ProfileData::get(&grant, &client)
@@ -41,7 +40,7 @@ pub async fn get_user_info(at: ActiveAccessToken) -> Result<UserInfo, OpenIdErro
             .collect();
 
     let client = retrieve_client_info(grant.client_id())
-        .await
+        .await?
         .ok_or_else(|| {
             error!("Trying to retrieve invalid client {}", grant.client_id());
             OpenIdError::server_error(anyhow!("invalid access"))

@@ -16,7 +16,7 @@ pub struct Model {
     #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(16)))")]
     pub client_id: Vec<u8>,
     pub subject: String,
-    pub auth_time: TimeDateTime,
+    pub auth_time: TimeDateTimeWithTimeZone,
     pub max_age: Option<i64>,
     pub redirect_uri: Option<String>,
     pub scopes: Option<String>,
@@ -28,10 +28,10 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_one = "super::authenticated_user::Entity")]
+    #[sea_orm(has_many = "super::authenticated_user::Entity")]
     AuthenticatedUser,
-    #[sea_orm(has_many = "super::authorization_code::Entity")]
-    AuthorizationCode,
+    #[sea_orm(has_many = "super::authorisation_code::Entity")]
+    AuthorisationCode,
     #[sea_orm(
         belongs_to = "super::client_information::Entity",
         from = "Column::ClientId",
@@ -50,9 +50,9 @@ impl Related<super::authenticated_user::Entity> for Entity {
     }
 }
 
-impl Related<super::authorization_code::Entity> for Entity {
+impl Related<super::authorisation_code::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::AuthorizationCode.def()
+        Relation::AuthorisationCode.def()
     }
 }
 

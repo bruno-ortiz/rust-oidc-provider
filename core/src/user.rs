@@ -69,15 +69,26 @@ impl AuthenticatedUser {
         self.grant_id = Some(grant);
         self
     }
+    pub fn with_interaction(mut self, interaction_id: Uuid) -> Self {
+        self.interaction_id = interaction_id;
+        self
+    }
 
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapters().user().save(self).await
+        configuration.adapter().user(None).insert(self).await
     }
 
-    pub async fn find_by_session(session: SessionID) -> Option<AuthenticatedUser> {
+    pub async fn update(self) -> Result<Self, PersistenceError> {
+        let configuration = OpenIDProviderConfiguration::instance();
+        configuration.adapter().user(None).update(self).await
+    }
+
+    pub async fn find_by_session(
+        session: SessionID,
+    ) -> Result<Option<AuthenticatedUser>, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapters().user().find(&session).await
+        config.adapter().user(None).find(&session).await
     }
 }
 

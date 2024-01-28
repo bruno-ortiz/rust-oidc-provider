@@ -18,11 +18,12 @@ use oidc_admin::oidc_admin::{
 use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
 use oidc_core::models::client::ClientInformation;
+use oidc_persistence::adapter::SeaOrmAdapterContainer;
+use oidc_persistence::MigrationAction;
 use oidc_server::claims::ClaimsSupported;
 use oidc_server::provider::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_server::request_object::RequestObjectConfigurationBuilder;
 use oidc_server::server::OidcServer;
-use oidc_server::Database;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::{ClientID, ClientMetadataBuilder};
 use oidc_types::grant_type::GrantType;
@@ -57,7 +58,10 @@ lazy_static! {
 async fn main() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::fmt::init();
 
-    let db = Database::connect("mysql://dev:dev@localhost:3306/oidc-provider").await?;
+    let adapter =
+        SeaOrmAdapterContainer::new("mysql://dev:dev@localhost:3306/oidc-provider").await?;
+
+    adapter.run_migrations(MigrationAction::Fresh).await?;
 
     let app = Router::new()
         .route("/interaction/login", get(login_page))
@@ -67,7 +71,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://7d5f-201-1-66-76.ngrok-free.app")
+        .issuer("https://2583-201-1-57-52.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .request_object_signing_alg_values_supported(vec![
@@ -83,7 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .build()?,
         )
         .claims_parameter_supported(true)
-        .db_connection(db)
+        .with_adapter(Box::new(adapter))
         .build()
         .expect("Expected valid configuration");
 
@@ -115,7 +119,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     OidcServer::with_configuration(config)
         .with_router(app)
-        .with_run_migrations(true)
         .run()
         .await?;
     Ok(())
@@ -144,7 +147,7 @@ async fn create_client(
         .expect("Valid client metadata");
 
     let secret1 =
-        HashedSecret::from_string(config.secret_hasher(), secret).expect("Expected hashed secret");
+        HashedSecret::hash_string(config.secret_hasher(), secret).expect("Expected hashed secret");
     let client = ClientInformation::new(
         ClientID::from_str(id).unwrap(),
         OffsetDateTime::now_utc(),

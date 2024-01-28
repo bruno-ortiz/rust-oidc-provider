@@ -31,9 +31,9 @@ where
             .ok_or(HashingError::InvalidKey)?
             .to_uppercase();
         let hash = match &algorithm[..] {
-            "ES256" | "RS256" | "HS256" | "PS256" => Sha256::digest(id).to_vec(),
-            "ES384" | "RS384" | "HS384" | "PS384" => Sha384::digest(id).to_vec(),
-            "ES512" | "RS512" | "HS512" | "PS512" => Sha512::digest(id).to_vec(),
+            "ES256" | "RS256" | "HS256" | "PS256" => Sha256::digest(id.as_bytes()).to_vec(),
+            "ES384" | "RS384" | "HS384" | "PS384" => Sha384::digest(id.as_bytes()).to_vec(),
+            "ES512" | "RS512" | "HS512" | "PS512" => Sha512::digest(id.as_bytes()).to_vec(),
             _ => {
                 return Err(HashingError::InvalidHashAlgorithm(algorithm));
             }

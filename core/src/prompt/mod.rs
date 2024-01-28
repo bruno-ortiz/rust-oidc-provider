@@ -1,7 +1,9 @@
 use thiserror::Error;
 use tracing::debug;
 use url::Url;
+use uuid::Uuid;
 
+use crate::adapter::PersistenceError;
 use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::state::State;
@@ -38,6 +40,10 @@ pub enum PromptError {
     },
     #[error("Error resolving prompt pairwise subject: {}", .0)]
     Pairwise(#[from] PairwiseError),
+    #[error(transparent)]
+    Persistence(#[from] PersistenceError),
+    #[error(transparent)]
+    Internal(anyhow::Error),
 }
 
 impl PromptError {
@@ -97,21 +103,31 @@ impl PromptResolver {
         }
         Ok(false)
     }
-    pub fn resolve(
+    pub async fn resolve(
         &self,
         session: SessionID,
         user: Option<AuthenticatedUser>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<Interaction, PromptError> {
         match self.prompt {
-            Prompt::Login => Ok(Interaction::login(session, request)),
+            Prompt::Login => Ok(Interaction::login(session, request).save().await?),
             Prompt::Consent => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
-                Ok(Interaction::consent(request, user))
+                let new_id = Uuid::new_v4();
+                let user = user.with_interaction(new_id).update().await?;
+                let interaction = Interaction::consent_with_id(new_id, request, user)
+                    .save()
+                    .await?;
+                Ok(interaction)
             }
             Prompt::None => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
-                Ok(Interaction::none(request, user))
+                let new_id = Uuid::new_v4();
+                let user = user.with_interaction(new_id).update().await?;
+                let interaction = Interaction::none_with_id(new_id, request, user)
+                    .save()
+                    .await?;
+                Ok(interaction)
             }
             Prompt::SelectAccount => todo!("Not implemented"),
         }

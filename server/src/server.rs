@@ -2,13 +2,12 @@ use std::net::SocketAddr;
 
 use axum::Router;
 use thiserror::Error;
-use tokio::net::TcpListener;
 use tokio::{io, signal};
+use tokio::net::TcpListener;
 use tracing::info;
 
 use oidc_admin::{AdminServer, AdminServerError};
 use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_persistence::run_migrations;
 
 use crate::routes::oidc_router;
 
@@ -23,7 +22,6 @@ pub enum ServerError {
 #[derive(Default)]
 pub struct OidcServer {
     custom_routes: Option<Router>,
-    run_migrations: bool,
 }
 
 impl OidcServer {
@@ -35,31 +33,16 @@ impl OidcServer {
         OpenIDProviderConfiguration::set(configuration);
         Self {
             custom_routes: None,
-            run_migrations: false,
         }
     }
 
     pub fn with_router(self, router: Router) -> Self {
         Self {
             custom_routes: Some(router),
-            run_migrations: self.run_migrations,
-        }
-    }
-
-    pub fn with_run_migrations(self, run_migrations: bool) -> Self {
-        Self {
-            custom_routes: self.custom_routes,
-            run_migrations,
         }
     }
 
     pub async fn run(self) -> Result<(), ServerError> {
-        if self.run_migrations {
-            let config = OpenIDProviderConfiguration::instance();
-            run_migrations(config.db_connection())
-                .await
-                .expect("Error running migrations");
-        }
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
         let server_ready = AdminServer.run(addr, async {

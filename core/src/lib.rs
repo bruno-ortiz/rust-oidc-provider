@@ -15,7 +15,7 @@ mod jwt;
 pub mod keystore;
 pub mod models;
 mod pairwise;
-mod persistence;
+pub mod persistence;
 pub mod profile;
 mod prompt;
 pub mod request_object;

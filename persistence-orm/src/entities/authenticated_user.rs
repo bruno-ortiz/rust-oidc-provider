@@ -12,8 +12,8 @@ pub struct Model {
     )]
     pub session: Vec<u8>,
     pub subject: String,
-    pub auth_time: TimeDateTime,
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(16)))", nullable, unique)]
+    pub auth_time: TimeDateTimeWithTimeZone,
+    #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(16)))", nullable)]
     pub grant_id: Option<Vec<u8>>,
     #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(16)))")]
     pub interaction_id: Vec<u8>,

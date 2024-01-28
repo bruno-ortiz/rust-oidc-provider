@@ -2,7 +2,7 @@ use crate::sea_orm::EnumIter;
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveIden)]
-pub(crate) enum AuthorizationCode {
+pub(crate) enum AuthorisationCode {
     Table,
     Id,
     Code,
@@ -77,7 +77,6 @@ pub(crate) enum Interaction {
     Id,
     Session,
     Request,
-    Subject,
     Created,
     #[sea_orm(iden = "interaction_type")]
     Type,
@@ -110,4 +109,13 @@ pub(crate) enum InteractionType {
     Consent,
     #[iden = "None"]
     None,
+}
+
+#[derive(Iden, EnumIter)]
+pub(crate) enum CodeChallengeMethod {
+    Table,
+    #[iden = "Plain"]
+    Plain,
+    #[iden = "S256"]
+    S256,
 }

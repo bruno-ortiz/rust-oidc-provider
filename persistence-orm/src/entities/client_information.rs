@@ -11,9 +11,9 @@ pub struct Model {
         column_type = "Binary(BlobSize::Blob(Some(16)))"
     )]
     pub id: Vec<u8>,
-    pub issue_date: TimeDateTime,
+    pub issue_date: TimeDateTimeWithTimeZone,
     pub secret: String,
-    pub secret_expires_at: Option<TimeDateTime>,
+    pub secret_expires_at: Option<TimeDateTimeWithTimeZone>,
     pub metadata: Json,
 }
 

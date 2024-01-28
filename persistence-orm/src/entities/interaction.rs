@@ -14,10 +14,9 @@ pub struct Model {
     pub id: Vec<u8>,
     #[sea_orm(column_type = "Binary(BlobSize::Blob(Some(16)))")]
     pub session: Vec<u8>,
-    pub created: TimeDateTime,
+    pub created: TimeDateTimeWithTimeZone,
     #[sea_orm(column_type = "Text")]
     pub request: String,
-    pub subject: Option<String>,
     pub interaction_type: InteractionType,
 }
 

@@ -13,6 +13,20 @@ impl SessionID {
     }
 }
 
+impl TryFrom<Vec<u8>> for SessionID {
+    type Error = uuid::Error;
+
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        Uuid::from_slice(&value).map(SessionID)
+    }
+}
+
+impl AsRef<[u8]> for SessionID {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 impl FromStr for SessionID {
     type Err = UuidError;
 

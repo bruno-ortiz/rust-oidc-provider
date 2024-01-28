@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::str;
 use std::str::FromStr;
 
-use josekit::jwe::{JweContext, JweHeader};
+use josekit::jwe::JweContext;
 use josekit::jws::JwsAlgorithm;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use josekit::jwt::JwtPayload;
@@ -15,7 +15,6 @@ use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT, JWT};
 
 use crate::keystore::{KeyStore, KeyUse};
-use crate::models::client::ClientInformation;
 
 #[derive(Debug, Clone)]
 pub enum GenericJWT {
@@ -33,18 +32,16 @@ impl GenericJWT {
         }
     }
 
-    pub fn parse(jwt: &str, client: &ClientInformation) -> Result<Self, JWTError> {
+    pub fn parse(jwt: &str, keystore: &KeyStore) -> Result<Self, JWTError> {
         let parts = jwt.split('.').collect::<Vec<_>>();
         if parts.len() == 3 {
             Ok(GenericJWT::Signed(SignedJWT::decode_no_verify(jwt)?))
         } else if parts.len() == 5 {
-            let header =
-                JweHeader::from_bytes(parts[0].as_bytes()).map_err(JWTError::HeaderParseError)?;
+            let header = EncryptedJWT::<SignedJWT>::decode_header(parts[0])?;
             let alg = header
                 .algorithm()
                 .and_then(|it| SigningAlgorithm::from_str(it).ok())
                 .ok_or(JWTError::JWKAlgorithmNotFound)?;
-            let keystore = client.server_keystore(&alg);
             let jwk = keystore
                 .select(KeyUse::Enc)
                 .alg(alg.name())
@@ -83,6 +80,24 @@ impl GenericJWT {
             Err(JWTError::InvalidJwtFormat(
                 "Expected signed or encrypted JWT".to_owned(),
             ))
+        }
+    }
+    pub fn parse_alg(jwt: &str) -> Result<Option<SigningAlgorithm>, JWTError> {
+        let parts = jwt.split('.').collect::<Vec<_>>();
+        if parts.len() == 3 {
+            let header = SignedJWT::decode_header(parts[0])?;
+            Ok(header
+                .algorithm()
+                .map(SigningAlgorithm::from_str)
+                .transpose()?)
+        } else if parts.len() == 5 {
+            let header = EncryptedJWT::<SignedJWT>::decode_header(parts[0])?;
+            Ok(header
+                .algorithm()
+                .map(SigningAlgorithm::from_str)
+                .transpose()?)
+        } else {
+            Err(JWTError::InvalidJwtFormat(format!("Invalid jwt: {}", jwt)))
         }
     }
 }
@@ -129,22 +144,26 @@ where
     T: JWT;
 
 impl ValidJWT<GenericJWT> {
-    pub async fn validate(
+    pub fn validate(
         jwt: GenericJWT,
         keystore: &KeyStore,
     ) -> Result<ValidJWT<GenericJWT>, JWTError> {
         let valid = match jwt {
             GenericJWT::Encrypted(_) => ValidJWT(jwt),
             GenericJWT::Signed(ref inner) => {
-                validate_signature(keystore, inner).await?;
+                validate_signature(keystore, inner)?;
                 ValidJWT(jwt)
             }
             GenericJWT::SignedAndEncrypted(ref inner) => {
-                validate_signature(keystore, inner.signed_payload()).await?;
+                validate_signature(keystore, inner.signed_payload())?;
                 ValidJWT(jwt)
             }
         };
         Ok(valid)
+    }
+
+    pub fn serialized(self) -> String {
+        self.0.serialized_owned()
     }
 }
 
@@ -182,7 +201,7 @@ where
     }
 }
 
-async fn validate_signature(keystore: &KeyStore, jwt: &SignedJWT) -> Result<(), JWTError> {
+fn validate_signature(keystore: &KeyStore, jwt: &SignedJWT) -> Result<(), JWTError> {
     let alg = jwt.alg().ok_or(JWTError::JWKAlgorithmNotFound)?;
     if alg.name() != UnsecuredJwsAlgorithm::None.name() {
         let jwk = keystore

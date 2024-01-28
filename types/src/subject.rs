@@ -1,5 +1,6 @@
-use serde::Deserialize;
 use std::fmt::{Display, Formatter};
+
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Hash)]
 pub struct Subject(String);
@@ -13,6 +14,12 @@ impl Subject {
 impl From<&Subject> for String {
     fn from(sub: &Subject) -> Self {
         sub.0.to_owned()
+    }
+}
+
+impl From<String> for Subject {
+    fn from(sub: String) -> Self {
+        Self(sub)
     }
 }
 

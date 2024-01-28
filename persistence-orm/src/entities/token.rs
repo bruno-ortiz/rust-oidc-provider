@@ -17,10 +17,10 @@ pub struct Model {
     pub grant_id: Vec<u8>,
     pub status: Status,
     pub token_type: TokenType,
-    pub expires_in: i64,
-    pub created: TimeDateTime,
+    pub expires_in: TimeDateTimeWithTimeZone,
+    pub created: TimeDateTimeWithTimeZone,
     pub scopes: String,
-    pub t_type: String,
+    pub t_type: Option<String>,
     pub state: Option<String>,
     pub nonce: Option<String>,
 }

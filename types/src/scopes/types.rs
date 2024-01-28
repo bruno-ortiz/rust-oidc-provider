@@ -105,6 +105,16 @@ impl Display for Scopes {
     }
 }
 
+impl From<&str> for Scopes {
+    fn from(value: &str) -> Self {
+        value
+            .split(' ')
+            .map(|it| it.to_lowercase())
+            .collect::<Vec<String>>()
+            .into()
+    }
+}
+
 impl<T: Into<String>> From<Vec<T>> for Scopes {
     fn from(values: Vec<T>) -> Self {
         let mut vec: Vec<Scope> = Vec::with_capacity(values.capacity());

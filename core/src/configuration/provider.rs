@@ -12,7 +12,6 @@ use time::Duration;
 use tracing::warn;
 use url::Url;
 
-use oidc_persistence::{get_default_db_connection, DatabaseConnection};
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::claim_type::ClaimType;
 use oidc_types::grant_type::GrantType;
@@ -29,7 +28,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::subject_type::SubjectType;
 use oidc_types::{response_type, scopes};
 
-use crate::configuration::adapter_container::AdapterContainer;
+use crate::configuration::adapter_container::{AdapterContainer, DefaultAdapterContainer};
 use crate::configuration::claims::ClaimsSupported;
 use crate::configuration::clock::ClockProvider;
 use crate::configuration::credentials::ClientCredentialConfiguration;
@@ -72,8 +71,8 @@ pub struct OpenIDProviderConfiguration {
     #[getset(skip)]
     keystore: Arc<KeyStore>,
     routes: Routes,
-    adapters: AdapterContainer,
-    db_connection: DatabaseConnection,
+    #[builder(setter(custom))]
+    adapter: Box<dyn AdapterContainer + Send + Sync>,
     response_types_supported: Vec<ResponseType>,
     #[builder(setter(custom))]
     response_modes_supported: Vec<ResponseMode>,
@@ -159,6 +158,11 @@ impl OpenIDProviderConfigurationBuilder {
         ]);
         self
     }
+
+    pub fn with_adapter(mut self, adapter: Box<dyn AdapterContainer + Send + Sync>) -> Self {
+        self.adapter = Some(adapter);
+        self
+    }
 }
 
 impl OpenIDProviderConfiguration {
@@ -218,8 +222,7 @@ impl Default for OpenIDProviderConfiguration {
             pkce: PKCE::default(),
             keystore: Arc::new(KeyStore::default()),
             routes: Routes::default(),
-            adapters: AdapterContainer::default(),
-            db_connection: get_default_db_connection(),
+            adapter: Box::<DefaultAdapterContainer>::default(),
             response_types_supported: vec![
                 response_type![Code],
                 response_type![IdToken],

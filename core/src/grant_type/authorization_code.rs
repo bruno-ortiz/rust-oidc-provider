@@ -28,15 +28,15 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let configuration = OpenIDProviderConfiguration::instance();
         let clock = configuration.clock_provider();
         let code = configuration
-            .adapters()
-            .code()
+            .adapter()
+            .code(None)
             .find(&self.code)
-            .await
+            .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
             .validate(&self)?;
 
         let grant = Grant::find(code.grant_id)
-            .await
+            .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
         if code.status != Status::Awaiting {
@@ -96,7 +96,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .with_custom_claims(claims);
 
             if grant.max_age().is_some() {
-                id_token_builder = id_token_builder.with_auth_time(*grant.auth_time())
+                id_token_builder = id_token_builder.with_auth_time(grant.auth_time())
             }
 
             let id_token = id_token_builder

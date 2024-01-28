@@ -4,6 +4,7 @@ use std::str::FromStr;
 use derive_builder::Builder;
 use josekit::jws::RS256;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
@@ -40,6 +41,19 @@ impl FromStr for ClientID {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let uuid = Uuid::parse_str(s).map_err(ParseError)?;
         Ok(ClientID::new(uuid))
+    }
+}
+
+impl TryFrom<Vec<u8>> for ClientID {
+    type Error = uuid::Error;
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        Uuid::from_slice(&value).map(ClientID)
+    }
+}
+
+impl AsRef<[u8]> for ClientID {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }
 
@@ -133,6 +147,10 @@ impl ClientMetadata {
                     .as_ref()
                     .map(|enc| EncryptionData { alg, enc })
             })
+    }
+
+    pub fn to_json_value(&self) -> anyhow::Result<Value> {
+        Ok(serde_json::to_value(self)?)
     }
 }
 

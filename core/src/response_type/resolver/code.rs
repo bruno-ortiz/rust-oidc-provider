@@ -23,6 +23,7 @@ impl ResponseTypeResolver for CodeResolver {
         let clock = configuration.clock_provider();
         let ttl = configuration.ttl();
         let code = AuthorisationCode {
+            id: None,
             code: Code::random(),
             grant_id: context.grant.id(),
             code_challenge: authorisation_request.code_challenge.clone(),
@@ -34,9 +35,9 @@ impl ResponseTypeResolver for CodeResolver {
             scopes: context.request.scope.clone(),
         };
         let code = configuration
-            .adapters()
-            .code()
-            .save(code)
+            .adapter()
+            .code(None)
+            .insert(code)
             .await
             .map_err(OpenIdError::server_error)?;
         return Ok(code.code);
@@ -65,13 +66,14 @@ mod tests {
             .expect("Expecting a auth code");
 
         let code = configuration
-            .adapters()
-            .code()
+            .adapter()
+            .code(None)
             .find(&code)
             .await
-            .expect("saved code");
+            .expect("Error saving code")
+            .expect("Expected code");
 
-        let grant = Grant::find(code.grant_id).await.unwrap();
+        let grant = Grant::find(code.grant_id).await.unwrap().unwrap();
 
         assert_eq!(context.user.sub(), grant.subject());
         assert_eq!(context.request.code_challenge, code.code_challenge);
@@ -96,8 +98,8 @@ mod tests {
             .expect("Expecting a auth code");
 
         configuration
-            .adapters()
-            .code()
+            .adapter()
+            .code(None)
             .find(&code)
             .await
             .expect("Expected authorisation code to be saved");

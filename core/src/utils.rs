@@ -1,12 +1,17 @@
-use crate::configuration::OpenIDProviderConfiguration;
-use crate::keystore::KeyUse;
-use crate::models::client::ClientInformation;
-use crate::pairwise::PairwiseError;
 use anyhow::anyhow;
+
 use oidc_types::client::encryption::EncryptionData;
+use oidc_types::jose::error::JWTError;
+use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT};
 use oidc_types::subject::Subject;
 use oidc_types::subject_type::SubjectType;
+
+use crate::configuration::OpenIDProviderConfiguration;
+use crate::jwt::GenericJWT;
+use crate::keystore::KeyUse;
+use crate::models::client::ClientInformation;
+use crate::pairwise::PairwiseError;
 
 pub(crate) fn resolve_sub(
     configuration: &OpenIDProviderConfiguration,
@@ -37,4 +42,9 @@ pub(crate) async fn encrypt(
         .ok_or_else(|| anyhow!("Missing signing key"))?;
     let encrypted_user_info = signed_jwt.encrypt(encryption_key, enc_config.enc)?;
     Ok(encrypted_user_info)
+}
+
+pub(crate) fn get_jose_algorithm(jwt: &str) -> Result<Option<SigningAlgorithm>, JWTError> {
+    let alg = GenericJWT::parse_alg(jwt)?;
+    Ok(alg)
 }

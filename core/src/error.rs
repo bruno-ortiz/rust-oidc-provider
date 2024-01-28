@@ -8,6 +8,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;
+use crate::client::ClientError;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -146,6 +147,12 @@ impl UrlEncodable for OpenIdError {
 
 impl From<PersistenceError> for OpenIdError {
     fn from(err: PersistenceError) -> Self {
+        OpenIdError::server_error(err)
+    }
+}
+
+impl From<ClientError> for OpenIdError {
+    fn from(err: ClientError) -> Self {
         OpenIdError::server_error(err)
     }
 }

@@ -141,5 +141,7 @@ async fn get_client(
         .client_id
         .as_ref()
         .ok_or(AuthorisationError::MissingClient)?;
-    retrieve_client_info_by_unparsed(client_id).await
+    Ok(retrieve_client_info_by_unparsed(client_id)
+        .await?
+        .ok_or_else(|| AuthorisationError::MissingClient)?)
 }

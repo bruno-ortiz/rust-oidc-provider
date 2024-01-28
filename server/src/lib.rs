@@ -3,8 +3,6 @@ pub use oidc_core::configuration::{
     routes as config_routes, ttl,
 };
 
-pub use oidc_persistence::{ConnectOptions, Database, DatabaseConnection};
-
 mod credentials;
 pub(crate) mod extractors;
 pub mod middleware;

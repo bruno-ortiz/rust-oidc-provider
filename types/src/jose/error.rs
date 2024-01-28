@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::str::Utf8Error;
 
+use crate::jose::jws::ParseAlgError;
 use base64::DecodeError;
 use josekit::JoseError;
 use thiserror::Error;
@@ -35,6 +36,8 @@ pub enum JWTError {
     EncryptError(JoseError),
     #[error("Invalid JWS Signature")]
     InvalidSignature(JoseError),
+    #[error("Invalid JWS Signature")]
+    ParseAlg(#[from] ParseAlgError),
     #[error("Invalid encoding of payload")]
     NoUTF8(#[from] Utf8Error),
     #[error("Error getting client keystore")]

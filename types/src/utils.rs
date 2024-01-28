@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::Formatter;
 
 use serde::de::{Error, Visitor};
-use serde::Deserializer;
+use serde::{Deserializer, Serializer};
 
 #[macro_export]
 macro_rules! serialize_to_str {
@@ -39,4 +39,13 @@ where
         }
     }
     deserializer.deserialize_str(SpaceDelimitedVisitor)
+}
+
+pub(crate) fn space_delimited_serializer<T, S>(data: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: AsRef<[String]>,
+{
+    let s = data.as_ref().join(" ");
+    serializer.serialize_str(s.as_str())
 }

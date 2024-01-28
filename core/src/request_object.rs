@@ -11,6 +11,7 @@ use crate::error::OpenIdError;
 use crate::id_token_builder::JwtPayloadExt;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
+use crate::utils::get_jose_algorithm;
 
 pub struct RequestObjectProcessor;
 
@@ -37,7 +38,6 @@ impl RequestObjectProcessor {
                     .await
                     .map_err(OpenIdError::server_error)?;
                 let validated = ValidJWT::validate(request_obj, &keystore)
-                    .await
                     .map_err(|err| OpenIdError::invalid_request(err.to_string()))?;
                 let authorisation_request = validated
                     .payload()
@@ -63,12 +63,20 @@ async fn get_request_object(
         &auth_request.request_uri,
     ) {
         (true, _, Some(request_obj), None) => {
-            let jwt = GenericJWT::parse(request_obj, client).map_err(parse_err)?;
+            let alg = get_jose_algorithm(request_obj)
+                .map_err(parse_err)?
+                .ok_or_else(missing_alg)?;
+            let keystore = client.server_keystore(&alg);
+            let jwt = GenericJWT::parse(request_obj, &keystore).map_err(parse_err)?;
             Ok(Some(jwt))
         }
         (_, true, None, Some(request_uri)) => {
             let request_obj = get_object_from_uri(request_uri).await?;
-            let jwt = GenericJWT::parse(&request_obj, client).map_err(parse_err)?;
+            let alg = get_jose_algorithm(&request_obj)
+                .map_err(parse_err)?
+                .ok_or_else(missing_alg)?;
+            let keystore = client.server_keystore(&alg);
+            let jwt = GenericJWT::parse(&request_obj, &keystore).map_err(parse_err)?;
             Ok(Some(jwt))
         }
         (_, _, Some(_), Some(_)) => Err(request_obj_err()),
@@ -92,4 +100,8 @@ fn parse_err(err: JWTError) -> OpenIdError {
 
 fn request_obj_err() -> OpenIdError {
     OpenIdError::invalid_request("Invalid request, authorization request should not provide both request and request_uri parameter")
+}
+
+fn missing_alg() -> OpenIdError {
+    OpenIdError::invalid_request("Invalid request object: Missing alg in header")
 }

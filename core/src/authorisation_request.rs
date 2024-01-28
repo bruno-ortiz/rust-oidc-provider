@@ -1,9 +1,8 @@
 use std::str::FromStr;
 
-use anyhow::anyhow;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::error;
 use url::Url;
 
@@ -11,20 +10,23 @@ use oidc_types::acr::Acr;
 use oidc_types::claims::Claims;
 use oidc_types::client::ClientID;
 use oidc_types::grant_type::GrantType;
+use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::nonce::Nonce;
 use oidc_types::pkce::{CodeChallenge, CodeChallengeMethod};
 use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::response_type::{Flow, ResponseType};
 use oidc_types::scopes::Scopes;
+use oidc_types::simple_id_token::SimpleIdToken;
 use oidc_types::state::State;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
+use crate::utils::get_jose_algorithm;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ValidatedAuthorisationRequest {
     pub response_type: ResponseType,
     pub client_id: ClientID,
@@ -37,7 +39,7 @@ pub struct ValidatedAuthorisationRequest {
     pub code_challenge_method: Option<CodeChallengeMethod>,
     pub max_age: Option<u64>,
     pub resource: Option<Url>,
-    pub id_token_hint: Option<ValidJWT<GenericJWT>>,
+    pub id_token_hint: Option<SimpleIdToken>,
     pub login_hint: Option<String>,
     //rfc8707
     pub include_granted_scopes: Option<bool>,
@@ -60,6 +62,13 @@ impl ValidatedAuthorisationRequest {
         } else {
             response_mode
         }
+    }
+
+    pub fn id_token_hint(
+        &self,
+        client: &ClientInformation,
+    ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
+        validate_id_token_hint(self.id_token_hint.as_ref().map(|it| it.as_ref()), client)
     }
 }
 
@@ -142,11 +151,11 @@ impl AuthorisationRequest {
             Err(err) => return Err((err, this)),
         };
 
-        let id_token_hint = match this.validate_id_token_hint(client).await {
+        let id_token_hint = match validate_id_token_hint(this.id_token_hint.as_deref(), client) {
             Ok(validated_jwt) => validated_jwt,
             Err(err) => return Err((err, this)),
         };
-
+        let id_token_hint = id_token_hint.map(|it| SimpleIdToken::new(it.serialized()));
         Ok(ValidatedAuthorisationRequest {
             response_type: this.response_type.expect("Response type not found"),
             client_id: this
@@ -169,25 +178,6 @@ impl AuthorisationRequest {
             prompt,
             claims,
         })
-    }
-
-    async fn validate_id_token_hint(
-        &self,
-        client: &ClientInformation,
-    ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
-        if let Some(hint) = &self.id_token_hint {
-            let jwt = GenericJWT::parse(hint, client).map_err(OpenIdError::server_error)?;
-            let alg = jwt.alg().ok_or(OpenIdError::server_error(anyhow!(
-                "JWK alg not found in id_token_hint"
-            )))?;
-            let keystore = client.server_keystore(&alg);
-            let valid_jwt = ValidJWT::validate(jwt, &keystore)
-                .await
-                .map_err(OpenIdError::server_error)?;
-            Ok(Some(valid_jwt))
-        } else {
-            Ok(None)
-        }
     }
 
     fn validate_response_type(
@@ -275,4 +265,25 @@ fn parse_claims(
         None
     };
     Ok(claims)
+}
+
+fn validate_id_token_hint(
+    id_token: Option<&str>,
+    client: &ClientInformation,
+) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
+    if let Some(hint) = id_token {
+        let alg = get_alg(hint)?;
+        let keystore = client.server_keystore(&alg);
+        let jwt = GenericJWT::parse(hint, &keystore).map_err(OpenIdError::server_error)?;
+        let valid_jwt = ValidJWT::validate(jwt, &keystore).map_err(OpenIdError::server_error)?;
+        Ok(Some(valid_jwt))
+    } else {
+        Ok(None)
+    }
+}
+fn get_alg(id_token: &str) -> Result<SigningAlgorithm, OpenIdError> {
+    let alg = get_jose_algorithm(id_token)
+        .map_err(|err| OpenIdError::invalid_request(err.to_string()))?
+        .ok_or_else(|| OpenIdError::invalid_request("Missing alg in IdToken header."))?;
+    Ok(alg)
 }

@@ -4,7 +4,11 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
 pub struct Amr(
-    #[serde(deserialize_with = "crate::utils::space_delimited_deserializer")] Vec<String>,
+    #[serde(
+        serialize_with = "crate::utils::space_delimited_serializer",
+        deserialize_with = "crate::utils::space_delimited_deserializer"
+    )]
+    Vec<String>,
 );
 
 impl From<String> for Amr {

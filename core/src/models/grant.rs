@@ -24,6 +24,19 @@ use crate::models::Status;
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct GrantID(Uuid);
 
+impl TryFrom<Vec<u8>> for GrantID {
+    type Error = uuid::Error;
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        Uuid::from_slice(&value).map(GrantID)
+    }
+}
+
+impl AsRef<[u8]> for GrantID {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 impl Display for GrantID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -39,6 +52,8 @@ pub struct Grant {
     #[builder(setter(custom))]
     id: GrantID,
     #[builder(setter(custom))]
+    #[getset(skip)]
+    #[get_copy = "pub"]
     status: Status,
     #[getset(skip)]
     #[get_copy = "pub"]
@@ -47,6 +62,8 @@ pub struct Grant {
     subject: Subject,
     acr: Acr,
     amr: Option<Amr>,
+    #[getset(skip)]
+    #[get_copy = "pub"]
     auth_time: OffsetDateTime,
     claims: Option<Claims>,
     rejected_claims: HashSet<String>,
@@ -55,24 +72,29 @@ pub struct Grant {
 }
 
 impl Grant {
-    pub async fn find(id: GrantID) -> Option<Grant> {
+    pub async fn find(id: GrantID) -> Result<Option<Grant>, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config
-            .adapters()
-            .grant()
+        Ok(config
+            .adapter()
+            .grant(None)
             .find(&id)
-            .await
-            .filter(|it| it.status != Status::Consumed)
+            .await?
+            .filter(|it| it.status != Status::Consumed))
     }
 
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapters().grant().save(self).await
+        config.adapter().grant(None).insert(self).await
+    }
+
+    pub async fn update(self) -> Result<Self, PersistenceError> {
+        let config = OpenIDProviderConfiguration::instance();
+        config.adapter().grant(None).update(self).await
     }
 
     pub async fn consume(mut self) -> Result<Grant, OpenIdError> {
         self.status = Status::Consumed;
-        self.save().await.map_err(OpenIdError::server_error)
+        self.update().await.map_err(OpenIdError::server_error)
     }
 
     pub fn has_requested_scopes(&self, requested: &Scopes) -> bool {
@@ -89,6 +111,13 @@ impl GrantBuilder {
         let mut builder = Self::create_empty();
         builder.id = Some(GrantID(Uuid::new_v4()));
         builder.status = Some(Status::Awaiting);
+        builder
+    }
+
+    pub fn new_with(id: GrantID, status: Status) -> Self {
+        let mut builder = Self::create_empty();
+        builder.id = Some(id);
+        builder.status = Some(status);
         builder
     }
 }

@@ -16,7 +16,6 @@ use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 use crate::response_mode::errors::EncodingError;
-use crate::utils::encrypt;
 
 const EXP_IN_MINUTES: i64 = 5i64;
 
