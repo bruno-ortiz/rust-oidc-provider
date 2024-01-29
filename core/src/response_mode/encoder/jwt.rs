@@ -40,7 +40,7 @@ impl ResponseModeEncoder for JwtEncoder {
         let jwt = SignedJWT::new(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
         if let Some(enc_data) = context.client.metadata().authorization_encryption_data() {
-            //TODO: how do I encrypt jwt here?
+            todo!("how do I encrypt jwt here")
         }
         let mut params = IndexMap::new();
         params.insert("response".to_owned(), jwt.serialized_owned());
