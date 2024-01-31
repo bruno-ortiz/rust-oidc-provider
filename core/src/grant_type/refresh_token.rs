@@ -27,7 +27,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
 
         let mut refresh_token = configuration
             .adapter()
-            .refresh(None)
+            .refresh()
             .find(&grant_type.refresh_token)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Refresh token not found"))?;

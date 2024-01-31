@@ -20,11 +20,7 @@ pub async fn retrieve_client_info(
     client_id: ClientID,
 ) -> Result<Option<ClientInformation>, ClientError> {
     let configuration = OpenIDProviderConfiguration::instance();
-    Ok(configuration
-        .adapter()
-        .client(None)
-        .find(&client_id)
-        .await?)
+    Ok(configuration.adapter().client().find(&client_id).await?)
 }
 
 pub async fn retrieve_client_info_by_unparsed(
@@ -42,9 +38,9 @@ pub async fn register_client(
     let txn = txn_manager.begin_txn().await.unwrap();
     configuration
         .adapter()
-        .client(Some(txn.clone()))
-        .insert(client)
+        .client()
+        .insert(client, txn.clone_self())
         .await?;
-    txn.commit().await.unwrap();
+    txn_manager.commit(txn).await.unwrap();
     Ok(())
 }

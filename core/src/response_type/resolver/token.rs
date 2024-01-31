@@ -22,8 +22,8 @@ impl ResponseTypeResolver for TokenResolver {
         );
         let token = configuration
             .adapter()
-            .token(None)
-            .insert(token)
+            .token()
+            .insert(token, None)
             .await
             .map_err(OpenIdError::server_error)?;
         Ok(token)
@@ -51,7 +51,7 @@ mod tests {
         let token = resolver.resolve(&context).await.expect("Should be Ok()");
         let new_token = configuration
             .adapter()
-            .token(None)
+            .token()
             .find(token.id())
             .await
             .unwrap();

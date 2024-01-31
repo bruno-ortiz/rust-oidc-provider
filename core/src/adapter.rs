@@ -1,3 +1,4 @@
+use crate::persistence::TransactionId;
 use async_trait::async_trait;
 use base64::DecodeError;
 use thiserror::Error;
@@ -26,7 +27,15 @@ pub trait Adapter {
     type Item;
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError>;
 
-    async fn insert(&self, item: Self::Item) -> Result<Self::Item, PersistenceError>;
+    async fn insert(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError>;
 
-    async fn update(&self, item: Self::Item) -> Result<Self::Item, PersistenceError>;
+    async fn update(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError>;
 }

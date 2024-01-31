@@ -97,12 +97,12 @@ impl AccessToken {
     pub async fn find(id: &str) -> Result<Option<AccessToken>, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
         let id = Uuid::parse_str(id).map_err(|err| PersistenceError::Internal(err.into()))?; //todo: revisit this code later, return err?
-        configuration.adapter().token(None).find(&id).await
+        configuration.adapter().token().find(&id).await
     }
 
     pub async fn save(self) -> Result<AccessToken, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapter().token(None).insert(self).await
+        configuration.adapter().token().insert(self, None).await
     }
 }
 

@@ -47,7 +47,7 @@ impl RefreshToken {
 
     pub async fn save(self) -> Result<RefreshToken, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapter().refresh(None).insert(self).await
+        configuration.adapter().refresh().insert(self, None).await
     }
 
     pub fn is_expired(&self) -> bool {
@@ -61,8 +61,8 @@ impl RefreshToken {
         self.status = Status::Consumed;
         configuration
             .adapter()
-            .refresh(None)
-            .update(self)
+            .refresh()
+            .update(self, None)
             .await
             .map_err(OpenIdError::server_error)
     }

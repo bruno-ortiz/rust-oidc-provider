@@ -1,6 +1,7 @@
+use sea_orm::DbErr;
+
 use entities::sea_orm_active_enums;
 use oidc_core::adapter::PersistenceError;
-use sea_orm::DbErr;
 
 use crate::{entities, enum_conversion_impl};
 
@@ -45,15 +46,22 @@ mod macros {
     }
     #[macro_export]
     macro_rules! insert_model {
-        ($self:ident, $model:expr) => {{
-            if let Some(ref txn) = $self.active_txn {
-                $model
-                    .insert(std::ops::Deref::deref(txn.get::<$crate::TxnWrapper>()))
-                    .await
-                    .map_err(|err| PersistenceError::DB(err.into()))?
+        ($self:ident, $model:expr, $active_txn:expr) => {{
+            if let Some(ref txn_id) = $active_txn {
+                if let Some(txn) = $self.db.get_txn(txn_id) {
+                    $model
+                        .insert(txn.value())
+                        .await
+                        .map_err(|err| PersistenceError::DB(err.into()))?
+                } else {
+                    return Err(PersistenceError::DB(anyhow::anyhow!(
+                        "Invalid transaction with id {:?}",
+                        txn_id
+                    )));
+                }
             } else {
                 $model
-                    .insert(&$self.db.0)
+                    .insert(&$self.db.conn)
                     .await
                     .map_err(|err| PersistenceError::DB(err.into()))?
             }
@@ -62,15 +70,22 @@ mod macros {
 
     #[macro_export]
     macro_rules! update_model {
-        ($self:ident, $model:expr) => {{
-            if let Some(ref txn) = $self.active_txn {
-                $model
-                    .update(std::ops::Deref::deref(txn.get::<$crate::TxnWrapper>()))
-                    .await
-                    .map_err(|err| PersistenceError::DB(err.into()))?
+        ($self:ident, $model:expr, $active_txn:expr) => {{
+            if let Some(ref txn_id) = $active_txn {
+                if let Some(txn) = $self.db.get_txn(txn_id) {
+                    $model
+                        .update(txn.value())
+                        .await
+                        .map_err(|err| PersistenceError::DB(err.into()))?
+                } else {
+                    return Err(PersistenceError::DB(anyhow::anyhow!(
+                        "Invalid transaction with id {:?}",
+                        txn_id
+                    )));
+                }
             } else {
                 $model
-                    .update(&$self.db.0)
+                    .update(&$self.db.conn)
                     .await
                     .map_err(|err| PersistenceError::DB(err.into()))?
             }

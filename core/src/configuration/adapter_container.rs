@@ -12,45 +12,24 @@ use crate::models::authorisation_code::AuthorisationCode;
 use crate::models::client::ClientInformation;
 use crate::models::grant::{Grant, GrantID};
 use crate::models::refresh_token::RefreshToken;
-use crate::persistence::{NoOpTransactionManager, TransactionManager, TransactionWrapper};
+use crate::persistence::{NoOpTransactionManager, TransactionManager};
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
 
 pub trait AdapterContainer {
-    fn transaction_manager(&self) -> &dyn TransactionManager;
-    fn code(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync>;
-    fn grant(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync>;
-    fn refresh(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = RefreshToken, Id = Uuid> + Send + Sync>;
-    fn token(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync>;
-    fn client(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>;
-    fn user(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync>;
-    fn interaction(
-        &self,
-        active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>;
+    fn transaction_manager(&self) -> Arc<dyn TransactionManager + Send + Sync>;
+    fn code(&self) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync>;
+    fn grant(&self) -> Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync>;
+    fn refresh(&self) -> Arc<dyn Adapter<Item = RefreshToken, Id = Uuid> + Send + Sync>;
+    fn token(&self) -> Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync>;
+    fn client(&self) -> Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync>;
+    fn user(&self) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync>;
+    fn interaction(&self) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>;
 }
 
 pub(crate) struct DefaultAdapterContainer {
-    txn_manager: NoOpTransactionManager,
+    txn_manager: Arc<dyn TransactionManager + Send + Sync>,
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync>,
     grant: Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync>,
     token: Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync>,
@@ -61,56 +40,35 @@ pub(crate) struct DefaultAdapterContainer {
 }
 
 impl AdapterContainer for DefaultAdapterContainer {
-    fn transaction_manager(&self) -> &dyn TransactionManager {
-        &self.txn_manager
+    fn transaction_manager(&self) -> Arc<dyn TransactionManager + Send + Sync> {
+        self.txn_manager.clone()
     }
 
-    fn code(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync> {
+    fn code(&self) -> Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync> {
         self.code.clone()
     }
 
-    fn grant(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync> {
+    fn grant(&self) -> Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync> {
         self.grant.clone()
     }
 
-    fn refresh(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = RefreshToken, Id = Uuid> + Send + Sync> {
+    fn refresh(&self) -> Arc<dyn Adapter<Item = RefreshToken, Id = Uuid> + Send + Sync> {
         self.refresh.clone()
     }
 
-    fn token(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync> {
+    fn token(&self) -> Arc<dyn Adapter<Item = AccessToken, Id = Uuid> + Send + Sync> {
         self.token.clone()
     }
 
-    fn client(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync> {
+    fn client(&self) -> Arc<dyn Adapter<Item = ClientInformation, Id = ClientID> + Send + Sync> {
         self.client.clone()
     }
 
-    fn user(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync> {
+    fn user(&self) -> Arc<dyn Adapter<Item = AuthenticatedUser, Id = SessionID> + Send + Sync> {
         self.user.clone()
     }
 
-    fn interaction(
-        &self,
-        _active_txn: Option<TransactionWrapper>,
-    ) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync> {
+    fn interaction(&self) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync> {
         self.interaction.clone()
     }
 }
@@ -118,7 +76,7 @@ impl AdapterContainer for DefaultAdapterContainer {
 impl Default for DefaultAdapterContainer {
     fn default() -> Self {
         DefaultAdapterContainer {
-            txn_manager: NoOpTransactionManager,
+            txn_manager: Arc::new(NoOpTransactionManager),
             code: Arc::new(InMemoryGenericAdapter::new()),
             grant: Arc::new(InMemoryGenericAdapter::new()),
             token: Arc::new(InMemoryGenericAdapter::new()),

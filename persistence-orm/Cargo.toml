@@ -9,6 +9,7 @@ edition = "2021"
 oidc-migration = { path = "migration" }
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
+tokio = { workspace = true, features = ["full"] }
 sea-orm = { version = "0.12.12", features = ["runtime-tokio-rustls", "macros"] }
 anyhow = { workspace = true }
 futures = { workspace = true }
@@ -16,7 +17,9 @@ serde_json = { workspace = true }
 base64 = { workspace = true }
 url = { workspace = true }
 time = { workspace = true }
-uuid = { version = "1.6.1", features = ["v4"] }
+dashmap = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [features]
 default = ["sqlite"]

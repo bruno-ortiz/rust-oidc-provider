@@ -76,7 +76,7 @@ impl Grant {
         let config = OpenIDProviderConfiguration::instance();
         Ok(config
             .adapter()
-            .grant(None)
+            .grant()
             .find(&id)
             .await?
             .filter(|it| it.status != Status::Consumed))
@@ -84,12 +84,12 @@ impl Grant {
 
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapter().grant(None).insert(self).await
+        config.adapter().grant().insert(self, None).await
     }
 
     pub async fn update(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapter().grant(None).update(self).await
+        config.adapter().grant().update(self, None).await
     }
 
     pub async fn consume(mut self) -> Result<Grant, OpenIdError> {

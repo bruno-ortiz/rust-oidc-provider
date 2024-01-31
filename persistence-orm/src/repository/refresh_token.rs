@@ -8,7 +8,7 @@ use oidc_core::adapter::{Adapter, PersistenceError};
 use oidc_core::models::grant::GrantID;
 use oidc_core::models::refresh_token::{RefreshToken, RefreshTokenBuilder};
 use oidc_core::models::Status;
-use oidc_core::persistence::TransactionWrapper;
+use oidc_core::persistence::TransactionId;
 use oidc_migration::async_trait::async_trait;
 use oidc_types::nonce::Nonce;
 use oidc_types::scopes::Scopes;
@@ -22,12 +22,11 @@ use crate::{insert_model, update_model, ConnWrapper};
 #[derive(Clone)]
 pub struct RefreshTokenRepository {
     db: Arc<ConnWrapper>,
-    active_txn: Option<TransactionWrapper>,
 }
 
 impl RefreshTokenRepository {
-    pub fn new(db: Arc<ConnWrapper>, active_txn: Option<TransactionWrapper>) -> Self {
-        Self { db, active_txn }
+    pub fn new(db: Arc<ConnWrapper>) -> Self {
+        Self { db }
     }
 
     fn build_active_model(item: RefreshToken) -> ActiveModel {
@@ -54,7 +53,7 @@ impl Adapter for RefreshTokenRepository {
 
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError> {
         let model = RefreshTokenEntity::find_by_id(id.as_ref())
-            .one(&self.db.0)
+            .one(&self.db.conn)
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;
         if let Some(model) = model {
@@ -65,16 +64,24 @@ impl Adapter for RefreshTokenRepository {
     }
 
     //noinspection DuplicatedCode
-    async fn insert(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
+    async fn insert(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError> {
         let model = Self::build_active_model(item);
-        let saved_model = insert_model!(self, model);
+        let saved_model = insert_model!(self, model, active_txn);
         saved_model.try_into()
     }
 
     //noinspection DuplicatedCode
-    async fn update(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
+    async fn update(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError> {
         let model = Self::build_active_model(item);
-        let updated = update_model!(self, model);
+        let updated = update_model!(self, model, active_txn);
         updated.try_into()
     }
 }

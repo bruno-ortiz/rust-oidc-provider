@@ -29,7 +29,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         let clock = configuration.clock_provider();
         let code = configuration
             .adapter()
-            .code(None)
+            .code()
             .find(&self.code)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?

@@ -114,17 +114,17 @@ impl Interaction {
 
     pub async fn save(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapter().interaction(None).insert(self).await
+        config.adapter().interaction().insert(self, None).await
     }
 
     pub async fn update(self) -> Result<Self, PersistenceError> {
         let config = OpenIDProviderConfiguration::instance();
-        config.adapter().interaction(None).update(self).await
+        config.adapter().interaction().update(self, None).await
     }
 
     pub async fn find(id: Uuid) -> Result<Option<Interaction>, PersistenceError> {
         let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapter().interaction(None).find(&id).await
+        configuration.adapter().interaction().find(&id).await
     }
 }
 

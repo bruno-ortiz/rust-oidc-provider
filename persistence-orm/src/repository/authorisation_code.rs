@@ -6,7 +6,7 @@ use sea_orm::{ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, NotSet, Q
 use oidc_core::adapter::{Adapter, PersistenceError};
 use oidc_core::models::authorisation_code::AuthorisationCode;
 use oidc_core::models::grant::GrantID;
-use oidc_core::persistence::TransactionWrapper;
+use oidc_core::persistence::TransactionId;
 use oidc_migration::async_trait::async_trait;
 use oidc_types::code::Code;
 use oidc_types::nonce::Nonce;
@@ -17,15 +17,15 @@ use crate::entities::authorisation_code::Model;
 use crate::entities::authorisation_code::{ActiveModel, Column};
 use crate::entities::prelude::AuthorisationCode as CodeEntity;
 use crate::{insert_model, update_model, ConnWrapper};
+
 #[derive(Clone)]
 pub struct AuthorisationCodeRepository {
     db: Arc<ConnWrapper>,
-    active_txn: Option<TransactionWrapper>,
 }
 
 impl AuthorisationCodeRepository {
-    pub fn new(db: Arc<ConnWrapper>, active_txn: Option<TransactionWrapper>) -> Self {
-        Self { db, active_txn }
+    pub fn new(db: Arc<ConnWrapper>) -> Self {
+        Self { db }
     }
 
     fn build_active_model(id: ActiveValue<i64>, item: AuthorisationCode) -> ActiveModel {
@@ -53,7 +53,7 @@ impl Adapter for AuthorisationCodeRepository {
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError> {
         let model = CodeEntity::find()
             .filter(Column::Code.eq(id.as_ref()))
-            .one(&self.db.0)
+            .one(&self.db.conn)
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;
         if let Some(model) = model {
@@ -64,16 +64,24 @@ impl Adapter for AuthorisationCodeRepository {
     }
 
     //noinspection DuplicatedCode
-    async fn insert(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
+    async fn insert(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError> {
         let model = Self::build_active_model(NotSet, item);
-        let saved_model = insert_model!(self, model);
+        let saved_model = insert_model!(self, model, active_txn);
         saved_model.try_into()
     }
 
     //noinspection DuplicatedCode
-    async fn update(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
+    async fn update(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError> {
         let model = Self::build_active_model(Unchanged(item.id.unwrap_or_default() as i64), item);
-        let updated = update_model!(self, model);
+        let updated = update_model!(self, model, active_txn);
         updated.try_into()
     }
 }

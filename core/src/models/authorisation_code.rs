@@ -52,8 +52,8 @@ impl AuthorisationCode {
         self.status = Status::Consumed;
         configuration
             .adapter()
-            .code(None)
-            .update(self)
+            .code()
+            .update(self, None)
             .await
             .map_err(OpenIdError::server_error)
     }

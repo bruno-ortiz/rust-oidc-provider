@@ -36,8 +36,8 @@ impl ResponseTypeResolver for CodeResolver {
         };
         let code = configuration
             .adapter()
-            .code(None)
-            .insert(code)
+            .code()
+            .insert(code, None)
             .await
             .map_err(OpenIdError::server_error)?;
         return Ok(code.code);
@@ -67,7 +67,7 @@ mod tests {
 
         let code = configuration
             .adapter()
-            .code(None)
+            .code()
             .find(&code)
             .await
             .expect("Error saving code")
@@ -99,7 +99,7 @@ mod tests {
 
         configuration
             .adapter()
-            .code(None)
+            .code()
             .find(&code)
             .await
             .expect("Expected authorisation code to be saved");

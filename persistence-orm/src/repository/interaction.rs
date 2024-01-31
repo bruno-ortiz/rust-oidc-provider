@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use oidc_core::adapter::{Adapter, PersistenceError};
 use oidc_core::authorisation_request::ValidatedAuthorisationRequest;
-use oidc_core::persistence::TransactionWrapper;
+use oidc_core::persistence::TransactionId;
 use oidc_core::services::types::Interaction;
 use oidc_core::session::SessionID;
 use oidc_core::user::AuthenticatedUser;
@@ -26,12 +26,11 @@ use crate::{insert_model, update_model, ConnWrapper};
 #[derive(Clone)]
 pub struct InteractionRepository {
     db: Arc<ConnWrapper>,
-    active_txn: Option<TransactionWrapper>,
 }
 
 impl InteractionRepository {
-    pub fn new(db: Arc<ConnWrapper>, active_txn: Option<TransactionWrapper>) -> Self {
-        Self { db, active_txn }
+    pub fn new(db: Arc<ConnWrapper>) -> Self {
+        Self { db }
     }
 
     fn build_update_model(
@@ -59,7 +58,7 @@ impl Adapter for InteractionRepository {
 
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError> {
         let model = InteractionEntity::find_by_id(id.as_ref())
-            .one(&self.db.0)
+            .one(&self.db.conn)
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;
         if let Some(model) = model {
@@ -69,7 +68,11 @@ impl Adapter for InteractionRepository {
         }
     }
 
-    async fn insert(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
+    async fn insert(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError> {
         let model = match item {
             Interaction::Login {
                 id,
@@ -122,11 +125,15 @@ impl Adapter for InteractionRepository {
             }
         };
 
-        let saved_model = insert_model!(self, model);
+        let saved_model = insert_model!(self, model, active_txn);
         convert_from_model(&self.db, saved_model).await
     }
 
-    async fn update(&self, item: Self::Item) -> Result<Self::Item, PersistenceError> {
+    async fn update(
+        &self,
+        item: Self::Item,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Self::Item, PersistenceError> {
         let model = match item {
             Interaction::Consent {
                 id,
@@ -146,7 +153,7 @@ impl Adapter for InteractionRepository {
                 )))
             }
         };
-        let updated = update_model!(self, model);
+        let updated = update_model!(self, model, active_txn);
         convert_from_model(&self.db, updated).await
     }
 }
@@ -183,7 +190,7 @@ async fn get_user(
     session_id: &[u8],
 ) -> Result<AuthenticatedUser, PersistenceError> {
     let user: AuthenticatedUser = UserEntity::find_by_id(session_id)
-        .one(&conn.0)
+        .one(&conn.conn)
         .await
         .map_err(db_err)?
         .map(|model| model.try_into())
