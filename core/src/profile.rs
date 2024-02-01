@@ -43,17 +43,17 @@ impl ProfileData {
     }
 
     pub async fn get(
+        provider: &OpenIDProviderConfiguration,
         grant: &Grant,
         client: &ClientInformation,
     ) -> Result<ProfileData, ProfileError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        Ok(configuration
+        Ok(provider
             .profile_resolver()
             .resolve(grant.subject())
             .await?
             .append_i64("auth_time", grant.auth_time().unix_timestamp())
             .append("acr", grant.acr())
-            .append("sub", resolve_sub(configuration, grant.subject(), client)?)
+            .append("sub", resolve_sub(provider, grant.subject(), client)?)
             .maybe_append("amr", grant.amr().as_ref()))
     }
 
@@ -61,9 +61,12 @@ impl ProfileData {
         self.0.get(key)
     }
 
-    pub fn claims(&self, scope: &Scopes) -> HashMap<&str, &Value> {
-        let config = OpenIDProviderConfiguration::instance();
-        let claims_supported = config
+    pub fn claims<'a>(
+        &'a self,
+        provider: &'a OpenIDProviderConfiguration,
+        scope: &'a Scopes,
+    ) -> HashMap<&'a str, &'a Value> {
+        let claims_supported = provider
             .claims_supported()
             .iter()
             .filter_map(|it| it.unwrap_scoped())

@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::models::access_token::AccessToken;
@@ -12,15 +11,16 @@ impl ResponseTypeResolver for TokenResolver {
     type Output = AccessToken;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        let ttl = configuration.ttl();
+        let ttl = context.provider.ttl();
         let at_ttl = ttl.access_token_ttl(context.client.as_ref());
         let token = AccessToken::bearer(
+            context.provider.clock_provider(),
             context.grant.id(),
             at_ttl,
             Some(context.request.scope.clone()),
         );
-        let token = configuration
+        let token = context
+            .provider
             .adapter()
             .token()
             .insert(token, None)
@@ -32,29 +32,29 @@ impl ResponseTypeResolver for TokenResolver {
 
 #[cfg(test)]
 mod tests {
-    use crate::configuration::OpenIDProviderConfiguration;
     use oidc_types::identifiable::Identifiable;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
 
-    use crate::context::test_utils::setup_context;
+    use crate::context::test_utils::{setup_context, setup_provider};
     use crate::response_type::resolver::token::TokenResolver;
     use crate::response_type::resolver::ResponseTypeResolver;
 
     #[tokio::test]
     async fn test_can_create_access_token() {
-        let context = setup_context(response_type!(ResponseTypeValue::Token), None, None).await;
+        let provider = setup_provider();
+        let context = setup_context(
+            &provider,
+            response_type!(ResponseTypeValue::Token),
+            None,
+            None,
+        )
+        .await;
 
         let resolver = TokenResolver;
 
-        let configuration = OpenIDProviderConfiguration::instance();
         let token = resolver.resolve(&context).await.expect("Should be Ok()");
-        let new_token = configuration
-            .adapter()
-            .token()
-            .find(token.id())
-            .await
-            .unwrap();
+        let new_token = provider.adapter().token().find(token.id()).await.unwrap();
 
         assert!(new_token.is_some());
         assert_eq!(token, new_token.unwrap());

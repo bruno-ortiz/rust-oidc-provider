@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
+use crate::configuration::OpenIDProviderConfiguration;
 use oidc_types::claims::{ClaimOptions, Claims};
 use oidc_types::scopes::Scopes;
 
@@ -24,12 +25,15 @@ pub(crate) fn get_id_token_claims<'a>(
 }
 
 pub(crate) fn get_userinfo_claims<'a>(
+    provider: &'a OpenIDProviderConfiguration,
     profile: &'a ProfileData,
     requested_claims: Option<&'a Claims>,
-    scopes: Option<&Scopes>,
+    scopes: Option<&'a Scopes>,
 ) -> Result<HashMap<&'a str, &'a Value>, OpenIdError> {
     //TODO: make possible to filter rejected claims
-    let mut claims = scopes.map(|it| profile.claims(it)).unwrap_or_default();
+    let mut claims = scopes
+        .map(|it| profile.claims(provider, it))
+        .unwrap_or_default();
     if let Some(requested_claims) = requested_claims {
         let userinfo_claims = &requested_claims.userinfo;
         let filtered = filter_claims(profile, userinfo_claims)?;

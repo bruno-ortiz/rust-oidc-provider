@@ -89,10 +89,9 @@ impl Interaction {
         }
     }
 
-    pub fn uri(self) -> Url {
+    pub fn uri(self, provider: &OpenIDProviderConfiguration) -> Url {
         let id = *self.id();
-        let config = OpenIDProviderConfiguration::instance();
-        let mut url = config.interaction_url_resolver()(self);
+        let mut url = provider.interaction_url_resolver()(self, provider);
         Self::add_id(&mut url, id);
         url
     }
@@ -112,19 +111,25 @@ impl Interaction {
             .append_pair("interaction_id", id.to_string().as_str());
     }
 
-    pub async fn save(self) -> Result<Self, PersistenceError> {
-        let config = OpenIDProviderConfiguration::instance();
-        config.adapter().interaction().insert(self, None).await
+    pub async fn save(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<Self, PersistenceError> {
+        provider.adapter().interaction().insert(self, None).await
     }
 
-    pub async fn update(self) -> Result<Self, PersistenceError> {
-        let config = OpenIDProviderConfiguration::instance();
-        config.adapter().interaction().update(self, None).await
+    pub async fn update(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<Self, PersistenceError> {
+        provider.adapter().interaction().update(self, None).await
     }
 
-    pub async fn find(id: Uuid) -> Result<Option<Interaction>, PersistenceError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapter().interaction().find(&id).await
+    pub async fn find(
+        provider: &OpenIDProviderConfiguration,
+        id: Uuid,
+    ) -> Result<Option<Interaction>, PersistenceError> {
+        provider.adapter().interaction().find(&id).await
     }
 }
 

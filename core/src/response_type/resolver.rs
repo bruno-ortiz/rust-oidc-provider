@@ -121,15 +121,14 @@ mod tests {
     use oidc_types::response_type::ResponseTypeValue::Code;
     use oidc_types::response_type::ResponseTypeValue::IdToken;
 
-    use crate::configuration::OpenIDProviderConfiguration;
-    use crate::context::test_utils::setup_context;
+    use crate::context::test_utils::{setup_context, setup_provider};
     use crate::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
 
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code() {
-        let context = setup_context(response_type!(Code), None, None).await;
-        let configuration = OpenIDProviderConfiguration::instance();
-        let resolver = DynamicResponseTypeResolver::from(configuration);
+        let provider = setup_provider();
+        let context = setup_context(&provider, response_type!(Code), None, None).await;
+        let resolver = DynamicResponseTypeResolver::from(&provider);
         let result = ResponseTypeResolver::resolve(&resolver, &context)
             .await
             .expect("Expected Ok value");
@@ -139,14 +138,15 @@ mod tests {
 
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code_id_token() {
+        let provider = setup_provider();
         let context = setup_context(
+            &provider,
             response_type!(Code, IdToken),
             None,
             Some(Nonce::new("some-nonce")),
         )
         .await;
-        let configuration = OpenIDProviderConfiguration::instance();
-        let resolver = DynamicResponseTypeResolver::from(configuration);
+        let resolver = DynamicResponseTypeResolver::from(&provider);
         let result = ResponseTypeResolver::resolve(&resolver, &context)
             .await
             .expect("Expected Ok value");

@@ -80,14 +80,14 @@ impl PromptResolver {
 
     pub async fn should_run(
         &self,
-        config: &OpenIDProviderConfiguration,
+        provider: &OpenIDProviderConfiguration,
         user: Option<&AuthenticatedUser>,
         request: &ValidatedAuthorisationRequest,
         client: &ClientInformation,
     ) -> Result<bool, PromptError> {
         for (name, check) in &self.checks {
             let ctx = CheckContext {
-                config,
+                provider,
                 prompt: self.prompt,
                 request,
                 user,
@@ -105,27 +105,28 @@ impl PromptResolver {
     }
     pub async fn resolve(
         &self,
+        provider: &OpenIDProviderConfiguration,
         session: SessionID,
         user: Option<AuthenticatedUser>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<Interaction, PromptError> {
         match self.prompt {
-            Prompt::Login => Ok(Interaction::login(session, request).save().await?),
+            Prompt::Login => Ok(Interaction::login(session, request).save(provider).await?),
             Prompt::Consent => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
                 let new_id = Uuid::new_v4();
-                let user = user.with_interaction(new_id).update().await?;
+                let user = user.with_interaction(new_id).update(provider).await?;
                 let interaction = Interaction::consent_with_id(new_id, request, user)
-                    .save()
+                    .save(provider)
                     .await?;
                 Ok(interaction)
             }
             Prompt::None => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
                 let new_id = Uuid::new_v4();
-                let user = user.with_interaction(new_id).update().await?;
+                let user = user.with_interaction(new_id).update(provider).await?;
                 let interaction = Interaction::none_with_id(new_id, request, user)
-                    .save()
+                    .save(provider)
                     .await?;
                 Ok(interaction)
             }

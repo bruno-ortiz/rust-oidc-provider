@@ -21,6 +21,7 @@ pub enum ClientAuthenticationError {
 pub trait ClientAuthenticator {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError>;
 }
@@ -29,15 +30,16 @@ pub trait ClientAuthenticator {
 impl ClientAuthenticator for ClientCredential {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         match self {
-            ClientSecretBasic(inner) => inner.authenticate(client).await,
-            ClientSecretPost(inner) => inner.authenticate(client).await,
-            ClientSecretJwt(inner) => inner.authenticate(client).await,
-            PrivateKeyJwt(inner) => inner.authenticate(client).await,
-            TlsClientAuth(inner) => inner.authenticate(client).await,
-            SelfSignedTlsClientAuth(inner) => inner.authenticate(client).await,
+            ClientSecretBasic(inner) => inner.authenticate(provider, client).await,
+            ClientSecretPost(inner) => inner.authenticate(provider, client).await,
+            ClientSecretJwt(inner) => inner.authenticate(provider, client).await,
+            PrivateKeyJwt(inner) => inner.authenticate(provider, client).await,
+            TlsClientAuth(inner) => inner.authenticate(provider, client).await,
+            SelfSignedTlsClientAuth(inner) => inner.authenticate(provider, client).await,
             None => Ok(AuthenticatedClient::new(client)),
         }
     }
@@ -47,16 +49,16 @@ impl ClientAuthenticator for ClientCredential {
 impl ClientAuthenticator for ClientSecretCredential {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let config = OpenIDProviderConfiguration::instance();
         let secret = self.secret();
         if secret.len() < MIN_SECRET_LEN {
             return Err(ClientAuthenticationError::InvalidSecret(secret.into()));
         }
         if client
             .secret()
-            .verify(config.secret_hasher(), secret.as_str())
+            .verify(provider.secret_hasher(), secret.as_str())
         {
             Ok(AuthenticatedClient::new(client))
         } else {
@@ -69,6 +71,7 @@ impl ClientAuthenticator for ClientSecretCredential {
 impl ClientAuthenticator for ClientSecretJWTCredential {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         todo!()
@@ -79,6 +82,7 @@ impl ClientAuthenticator for ClientSecretJWTCredential {
 impl ClientAuthenticator for PrivateKeyJWTCredential {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         todo!()
@@ -89,6 +93,7 @@ impl ClientAuthenticator for PrivateKeyJWTCredential {
 impl ClientAuthenticator for TLSClientAuthCredential {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         todo!()
@@ -99,6 +104,7 @@ impl ClientAuthenticator for TLSClientAuthCredential {
 impl ClientAuthenticator for SelfSignedTLSClientAuthCredential {
     async fn authenticate(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         todo!()

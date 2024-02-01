@@ -52,12 +52,12 @@ pub struct PairwiseResolver {
 impl PairwiseResolver {
     pub fn calculate_pairwise_identifier(
         &self,
+        provider: &OpenIDProviderConfiguration,
         subject: &Subject,
         client: &ClientInformation,
     ) -> Result<PairwiseSubject, PairwiseError> {
         self.cache.get_or_insert_with(subject, || {
-            let config = OpenIDProviderConfiguration::instance();
-            let hasher = config.secret_hasher();
+            let hasher = provider.secret_hasher();
             let sector_identifier = select_sector_identifier(client)?;
             let sub = [sector_identifier.as_bytes(), subject.as_ref()].concat();
             let hash = hasher.hash(&sub)?;

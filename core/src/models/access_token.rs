@@ -10,7 +10,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;
-use crate::configuration::clock::Clock;
+use crate::configuration::clock::{Clock, ClockProvider};
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::grant::{Grant, GrantID};
@@ -43,12 +43,12 @@ impl AccessToken {
     pub const BEARER_TYPE: &'static str = "Bearer";
 
     pub fn new<TT: Into<String>>(
+        clock: &ClockProvider,
         token_type: TT,
         expires_in: Duration,
         scopes: Option<Scopes>,
         grant_id: GrantID,
     ) -> Self {
-        let clock = OpenIDProviderConfiguration::clock();
         Self::new_with_value(
             Uuid::new_v4(),
             token_type,
@@ -77,15 +77,28 @@ impl AccessToken {
         }
     }
 
-    pub fn bearer(grant_id: GrantID, expires_in: Duration, scopes: Option<Scopes>) -> Self {
-        Self::new(AccessToken::BEARER_TYPE, expires_in, scopes, grant_id)
+    pub fn bearer(
+        clock: &ClockProvider,
+        grant_id: GrantID,
+        expires_in: Duration,
+        scopes: Option<Scopes>,
+    ) -> Self {
+        Self::new(
+            clock,
+            AccessToken::BEARER_TYPE,
+            expires_in,
+            scopes,
+            grant_id,
+        )
     }
 
-    pub async fn into_active(self) -> Result<ActiveAccessToken, TokenError> {
-        let clock = OpenIDProviderConfiguration::clock();
-        let now = clock.now();
+    pub async fn into_active(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<ActiveAccessToken, TokenError> {
+        let now = provider.clock_provider().now();
         if now <= (self.created + self.expires_in) {
-            let grant = Grant::find(self.grant_id)
+            let grant = Grant::find(provider, self.grant_id)
                 .await?
                 .ok_or(TokenError::InvalidGrant)?;
             Ok(ActiveAccessToken { inner: self, grant })
@@ -94,15 +107,19 @@ impl AccessToken {
         }
     }
 
-    pub async fn find(id: &str) -> Result<Option<AccessToken>, PersistenceError> {
-        let configuration = OpenIDProviderConfiguration::instance();
+    pub async fn find(
+        provider: &OpenIDProviderConfiguration,
+        id: &str,
+    ) -> Result<Option<AccessToken>, PersistenceError> {
         let id = Uuid::parse_str(id).map_err(|err| PersistenceError::Internal(err.into()))?; //todo: revisit this code later, return err?
-        configuration.adapter().token().find(&id).await
+        provider.adapter().token().find(&id).await
     }
 
-    pub async fn save(self) -> Result<AccessToken, PersistenceError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapter().token().insert(self, None).await
+    pub async fn save(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<AccessToken, PersistenceError> {
+        provider.adapter().token().insert(self, None).await
     }
 }
 

@@ -14,15 +14,15 @@ use crate::models::client::ClientInformation;
 use crate::pairwise::PairwiseError;
 
 pub(crate) fn resolve_sub(
-    configuration: &OpenIDProviderConfiguration,
+    provider: &OpenIDProviderConfiguration,
     subject: &Subject,
     client: &ClientInformation,
 ) -> Result<Subject, PairwiseError> {
     if client.metadata().subject_type == SubjectType::Pairwise {
-        let pairwise_resolver = configuration.pairwise_resolver();
+        let pairwise_resolver = provider.pairwise_resolver();
 
         Ok(pairwise_resolver
-            .calculate_pairwise_identifier(subject, client)?
+            .calculate_pairwise_identifier(provider, subject, client)?
             .into_subject())
     } else {
         Ok(subject.clone())
@@ -30,11 +30,12 @@ pub(crate) fn resolve_sub(
 }
 
 pub(crate) async fn encrypt(
+    provider: &OpenIDProviderConfiguration,
     signed_jwt: SignedJWT,
     client: &ClientInformation,
     enc_config: &EncryptionData<'_>,
 ) -> anyhow::Result<EncryptedJWT<SignedJWT>> {
-    let keystore = client.keystore(enc_config.alg).await?;
+    let keystore = client.keystore(provider, enc_config.alg).await?;
     let encryption_key = keystore
         .select(KeyUse::Enc)
         .alg(enc_config.alg.name())

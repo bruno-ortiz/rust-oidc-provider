@@ -26,7 +26,7 @@ pub type PromptCheck = Box<
 >;
 
 pub struct CheckContext<'a> {
-    pub config: &'a OpenIDProviderConfiguration,
+    pub provider: &'a OpenIDProviderConfiguration,
     pub prompt: Prompt,
     pub user: Option<&'a AuthenticatedUser>,
     pub request: &'a ValidatedAuthorisationRequest,
@@ -92,10 +92,15 @@ pub async fn check_user_must_be_authenticated(
 }
 
 pub async fn check_user_has_consented(
-    CheckContext { user, request, .. }: CheckContext<'_>,
+    CheckContext {
+        user,
+        request,
+        provider,
+        ..
+    }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
     let user = user.ok_or(PromptError::login_required(request))?;
-    let grant = find_grant(user).await?;
+    let grant = find_grant(provider, user).await?;
     if let Some(grant) = grant {
         Ok(grant.client_id() != request.client_id
             || !grant.has_requested_scopes(&request.scope)
@@ -109,10 +114,15 @@ pub async fn check_user_has_consented(
 }
 
 pub async fn check_user_must_have_consented(
-    CheckContext { user, request, .. }: CheckContext<'_>,
+    CheckContext {
+        user,
+        request,
+        provider,
+        ..
+    }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
     let user = user.ok_or(PromptError::login_required(request))?;
-    let grant = find_grant(user).await?;
+    let grant = find_grant(provider, user).await?;
     if grant.is_none() {
         Err(PromptError::consent_required(request))
     } else {
@@ -120,9 +130,12 @@ pub async fn check_user_must_have_consented(
     }
 }
 
-async fn find_grant(user: &AuthenticatedUser) -> Result<Option<Grant>, PromptError> {
+async fn find_grant(
+    provider: &OpenIDProviderConfiguration,
+    user: &AuthenticatedUser,
+) -> Result<Option<Grant>, PromptError> {
     let grant = if let Some(grant_id) = user.grant_id() {
-        Grant::find(grant_id)
+        Grant::find(provider, grant_id)
             .await
             .map_err(|err| PromptError::Internal(err.into()))?
     } else {
@@ -136,19 +149,19 @@ pub async fn check_id_token_hint(
         user,
         request,
         client,
-        config,
+        provider,
         ..
     }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
     let Some(user) = user else { return Ok(true) };
     if let Some(hint) = &request
-        .id_token_hint(client)
+        .id_token_hint(provider, client)
         .map_err(|err| PromptError::Internal(err.into()))?
     {
         if client.metadata().subject_type == SubjectType::Pairwise {
-            let pairwise_resolver = config.pairwise_resolver();
+            let pairwise_resolver = provider.pairwise_resolver();
             let pairwise_subject =
-                pairwise_resolver.calculate_pairwise_identifier(user.sub(), client)?;
+                pairwise_resolver.calculate_pairwise_identifier(provider, user.sub(), client)?;
             Ok(!hint
                 .payload()
                 .subject()
@@ -169,7 +182,7 @@ pub async fn check_sub_id_token_claim(
         user,
         request,
         client,
-        config,
+        provider,
         ..
     }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
@@ -185,7 +198,7 @@ pub async fn check_sub_id_token_claim(
 
     match sub_claim {
         Some(Some(sub)) => {
-            let expected_sub = resolve_sub(config, user.sub(), client)?;
+            let expected_sub = resolve_sub(provider, user.sub(), client)?;
             Ok(expected_sub != *sub)
         }
         _ => Ok(false),
@@ -196,13 +209,13 @@ pub async fn check_max_age(
     CheckContext {
         user,
         request,
-        config,
+        provider,
         ..
     }: CheckContext<'_>,
 ) -> Result<bool, PromptError> {
-    let clock = config.clock_provider();
+    let clock = provider.clock_provider();
     let user = user.ok_or(PromptError::login_required(request))?;
-    let max_age = request.max_age.unwrap_or_else(|| config.auth_max_age());
+    let max_age = request.max_age.unwrap_or_else(|| provider.auth_max_age());
     let auth_limit = user.auth_time() + Duration::seconds(max_age as i64);
     Ok(clock.now() > auth_limit)
 }

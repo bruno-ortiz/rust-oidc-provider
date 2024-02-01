@@ -117,10 +117,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     )
     .await;
 
-    OidcServer::with_configuration(config)
-        .with_router(app)
-        .run()
-        .await?;
+    OidcServer::new(config).with_router(app).run().await?;
     Ok(())
 }
 

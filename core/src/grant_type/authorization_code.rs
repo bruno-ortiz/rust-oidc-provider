@@ -24,28 +24,31 @@ use crate::utils::resolve_sub;
 
 #[async_trait]
 impl GrantTypeResolver for AuthorisationCodeGrant {
-    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        let clock = configuration.clock_provider();
-        let code = configuration
+    async fn execute(
+        self,
+        provider: &OpenIDProviderConfiguration,
+        client: AuthenticatedClient,
+    ) -> Result<TokenResponse, OpenIdError> {
+        let clock = provider.clock_provider();
+        let code = provider
             .adapter()
             .code()
             .find(&self.code)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
-            .validate(&self)?;
+            .validate(&self, provider.clock_provider())?;
 
-        let grant = Grant::find(code.grant_id)
+        let grant = Grant::find(provider, code.grant_id)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
         if code.status != Status::Awaiting {
-            grant.consume().await?;
+            grant.consume(provider).await?;
             return Err(OpenIdError::invalid_grant(
                 "Authorization code already consumed",
             ));
         }
-        let code = code.consume().await?;
+        let code = code.consume(provider).await?;
         if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for Authorization Code",
@@ -58,21 +61,22 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
             return Err(OpenIdError::invalid_grant("redirect_uri mismatch"));
         }
 
-        let ttl = configuration.ttl();
+        let ttl = provider.ttl();
         let at_duration = ttl.access_token_ttl(client.as_ref());
         let access_token =
-            create_access_token(grant.id(), at_duration, Some(code.scopes.clone())).await?;
+            create_access_token(provider, grant.id(), at_duration, Some(code.scopes.clone()))
+                .await?;
 
         let now = clock.now();
         let mut simple_id_token = None;
         if code.scopes.contains(&OPEN_ID) {
-            let profile = ProfileData::get(&grant, client.as_ref())
+            let profile = ProfileData::get(provider, &grant, client.as_ref())
                 .await
                 .map_err(OpenIdError::server_error)?;
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
-            let keystore = client.as_ref().server_keystore(alg);
+            let keystore = client.as_ref().server_keystore(provider, alg);
             let signing_key = keystore
                 .select(KeyUse::Sig)
                 .alg(alg.name())
@@ -81,10 +85,10 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                     let error = anyhow!("Missing signing key");
                     OpenIdError::server_error(error)
                 })?;
-            let sub = resolve_sub(configuration, grant.subject(), &client)
+            let sub = resolve_sub(provider, grant.subject(), &client)
                 .map_err(OpenIdError::server_error)?;
             let mut id_token_builder = IdTokenBuilder::new(signing_key)
-                .with_issuer(configuration.issuer())
+                .with_issuer(provider.issuer())
                 .with_sub(&sub)
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
@@ -105,14 +109,14 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
             simple_id_token = Some(
                 id_token
-                    .return_or_encrypt_simple_id_token(&client)
+                    .return_or_encrypt_simple_id_token(provider, &client)
                     .await
                     .map_err(OpenIdError::server_error)?,
             );
         }
 
         let mut rt = None;
-        if configuration.issue_refresh_token(&client).await {
+        if provider.issue_refresh_token(&client).await {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
             let refresh_token = RefreshTokenBuilder::default()
                 .token(Uuid::new_v4())
@@ -124,7 +128,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .created(now)
                 .build()
                 .map_err(OpenIdError::server_error)?
-                .save()
+                .save(provider)
                 .await?;
             rt = Some(refresh_token.token)
         }

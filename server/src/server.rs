@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::Router;
 use thiserror::Error;
-use tokio::{io, signal};
 use tokio::net::TcpListener;
+use tokio::{io, signal};
 use tracing::info;
 
 use oidc_admin::{AdminServer, AdminServerError};
@@ -22,16 +23,13 @@ pub enum ServerError {
 #[derive(Default)]
 pub struct OidcServer {
     custom_routes: Option<Router>,
+    provider: OpenIDProviderConfiguration,
 }
 
 impl OidcServer {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_configuration(configuration: OpenIDProviderConfiguration) -> Self {
-        OpenIDProviderConfiguration::set(configuration);
+    pub fn new(provider: OpenIDProviderConfiguration) -> Self {
         Self {
+            provider,
             custom_routes: None,
         }
     }
@@ -39,17 +37,19 @@ impl OidcServer {
     pub fn with_router(self, router: Router) -> Self {
         Self {
             custom_routes: Some(router),
+            provider: self.provider,
         }
     }
 
     pub async fn run(self) -> Result<(), ServerError> {
+        let provider = Arc::new(self.provider);
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
         let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
-        let server_ready = AdminServer.run(addr, async {
+        let server_ready = AdminServer.run(addr, provider.clone(), async {
             rx.await.ok();
         });
         server_ready.await.expect("Admin server should be ready");
-        let oidc_router = oidc_router(self.custom_routes).await;
+        let oidc_router = oidc_router(self.custom_routes, provider).await;
         let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
         let tcp_listener = TcpListener::bind(addr).await?;
         info!("OpenId Server listening on {}", addr);

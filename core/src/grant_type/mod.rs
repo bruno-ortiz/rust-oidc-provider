@@ -18,15 +18,22 @@ mod refresh_token;
 
 #[async_trait]
 pub trait GrantTypeResolver {
-    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError>;
+    async fn execute(
+        self,
+        provider: &OpenIDProviderConfiguration,
+        client: AuthenticatedClient,
+    ) -> Result<TokenResponse, OpenIdError>;
 }
 
 #[async_trait]
 impl GrantTypeResolver for TokenRequestBody {
-    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
+    async fn execute(
+        self,
+        provider: &OpenIDProviderConfiguration,
+        client: AuthenticatedClient,
+    ) -> Result<TokenResponse, OpenIdError> {
         let grant_type = self.grant_type();
-        let configuration = OpenIDProviderConfiguration::instance();
-        if !configuration.grant_types_supported().contains(&grant_type) {
+        if !provider.grant_types_supported().contains(&grant_type) {
             return Err(OpenIdError::unsupported_grant_type(
                 "The grant type is not supported by the authorization server",
             ));
@@ -37,27 +44,32 @@ impl GrantTypeResolver for TokenRequestBody {
             ));
         }
         match self {
-            TokenRequestBody::AuthorisationCodeGrant(inner) => inner.execute(client).await,
-            TokenRequestBody::RefreshTokenGrant(inner) => inner.execute(client).await,
-            TokenRequestBody::ClientCredentialsGrant(inner) => inner.execute(client).await,
+            TokenRequestBody::AuthorisationCodeGrant(inner) => {
+                inner.execute(provider, client).await
+            }
+            TokenRequestBody::RefreshTokenGrant(inner) => inner.execute(provider, client).await,
+            TokenRequestBody::ClientCredentialsGrant(inner) => {
+                inner.execute(provider, client).await
+            }
         }
     }
 }
 
 async fn create_access_token(
+    provider: &OpenIDProviderConfiguration,
     grant_id: GrantID,
     duration: Duration,
     scopes: Option<Scopes>,
 ) -> Result<AccessToken, OpenIdError> {
-    AccessToken::bearer(grant_id, duration, scopes)
-        .save()
+    AccessToken::bearer(provider.clock_provider(), grant_id, duration, scopes)
+        .save(provider)
         .await
         .map_err(OpenIdError::server_error)
 }
 
 #[derive(Copy, Clone)]
 pub struct RTContext<'a> {
-    pub config: &'a OpenIDProviderConfiguration,
+    pub provider: &'a OpenIDProviderConfiguration,
     pub rt: &'a RefreshToken,
     pub client: &'a AuthenticatedClient,
 }

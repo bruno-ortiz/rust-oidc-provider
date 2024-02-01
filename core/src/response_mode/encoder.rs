@@ -27,6 +27,7 @@ pub struct EncodingContext<'a> {
     pub client: &'a ClientInformation,
     pub redirect_uri: &'a Url,
     pub response_mode: ResponseMode,
+    pub provider: &'a OpenIDProviderConfiguration,
 }
 
 pub trait ResponseModeEncoder {

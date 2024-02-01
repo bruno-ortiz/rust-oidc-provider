@@ -8,7 +8,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 use oidc_types::token_request::AuthorisationCodeGrant;
 
-use crate::configuration::clock::Clock;
+use crate::configuration::clock::{Clock, ClockProvider};
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::grant::GrantID;
@@ -29,14 +29,17 @@ pub struct AuthorisationCode {
 }
 
 impl AuthorisationCode {
-    pub fn is_expired(&self) -> bool {
-        let clock = OpenIDProviderConfiguration::clock();
+    pub fn is_expired(&self, clock: &ClockProvider) -> bool {
         let now = clock.now();
         self.expires_in <= now
     }
 
-    pub fn validate(self, grant: &AuthorisationCodeGrant) -> Result<Self, OpenIdError> {
-        if self.is_expired() {
+    pub fn validate(
+        self,
+        grant: &AuthorisationCodeGrant,
+        clock: &ClockProvider,
+    ) -> Result<Self, OpenIdError> {
+        if self.is_expired(clock) {
             return Err(OpenIdError::invalid_grant("Authorization code is expired"));
         }
         validate_pkce(
@@ -47,10 +50,12 @@ impl AuthorisationCode {
         Ok(self)
     }
 
-    pub async fn consume(mut self) -> Result<AuthorisationCode, OpenIdError> {
-        let configuration = OpenIDProviderConfiguration::instance();
+    pub async fn consume(
+        mut self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<AuthorisationCode, OpenIdError> {
         self.status = Status::Consumed;
-        configuration
+        provider
             .adapter()
             .code()
             .update(self, None)

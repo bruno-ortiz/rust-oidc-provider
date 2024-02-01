@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
@@ -5,7 +7,7 @@ use axum::extract::{FromRequest, FromRequestParts};
 use axum::http::header::{CACHE_CONTROL, PRAGMA};
 use axum::http::Request;
 use axum::response::{AppendHeaders, IntoResponse, Response};
-use axum::Json;
+use axum::{Extension, Json};
 use axum_extra::headers::{HeaderMap, HeaderName};
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
@@ -25,6 +27,7 @@ use crate::routes::error::OpenIdErrorResponse;
 
 // #[axum_macros::debug_handler]
 pub async fn token(
+    Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
     request: TokenRequest,
 ) -> axum::response::Result<
     (
@@ -34,12 +37,11 @@ pub async fn token(
     OpenIdErrorResponse,
 > {
     let mut credentials = request.credentials;
-    let client = retrieve_client_info(credentials.client_id)
+    let client = retrieve_client_info(&provider, credentials.client_id)
         .await?
         .ok_or_else(|| OpenIdError::invalid_client("Unknown client"))?;
     let auth_method = client.metadata().token_endpoint_auth_method;
-    let configuration = OpenIDProviderConfiguration::instance();
-    if !configuration
+    if !provider
         .token_endpoint_auth_methods_supported()
         .contains(&auth_method)
     {
@@ -51,10 +53,10 @@ pub async fn token(
         OpenIdError::invalid_client("authentication method not allowed for client")
     })?;
     let client = auth_method
-        .authenticate(client)
+        .authenticate(&provider, client)
         .await
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
-    let tokens = request.body.execute(client).await?;
+    let tokens = request.body.execute(&provider, client).await?;
 
     let headers = AppendHeaders([(CACHE_CONTROL, "no-store"), (PRAGMA, "no-cache")]);
     Ok((headers, Json(tokens)))
@@ -101,17 +103,19 @@ where
         req: Request<axum::body::Body>,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        let configuration = OpenIDProviderConfiguration::instance();
         let (mut parts, body) = req.into_parts();
 
         let headers = HeaderMap::from_request_parts(&mut parts, state)
             .await
             .expect("Expected to be infallible");
-
+        let provider = parts
+            .extensions
+            .get::<Arc<OpenIDProviderConfiguration>>()
+            .cloned()
+            .expect("Error getting provider from extensions");
         let req = Request::from_parts(parts, body);
         let body_bytes = Bytes::from_request(req, state).await?;
-        let credentials =
-            Credentials::parse_credentials(&headers, &body_bytes, configuration).await?;
+        let credentials = Credentials::parse_credentials(&headers, &body_bytes, &provider).await?;
         let token_request = from_bytes::<TokenRequestBody>(&body_bytes)?;
         Ok(TokenRequest {
             credentials,

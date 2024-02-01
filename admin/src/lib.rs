@@ -1,6 +1,8 @@
 use std::future::Future;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
+use oidc_core::configuration::OpenIDProviderConfiguration;
 use thiserror::Error;
 use tokio::sync::oneshot::Receiver;
 use tonic::transport::{Error as TonicError, Server};
@@ -29,11 +31,12 @@ impl AdminServer {
     pub fn run<F: Future<Output = ()> + Send + 'static>(
         self,
         addr: SocketAddr,
+        provider: Arc<OpenIDProviderConfiguration>,
         signal: F,
     ) -> Receiver<()> {
         let (callback, server_ready) = tokio::sync::oneshot::channel::<()>();
         tokio::spawn(async move {
-            let service = InteractionServiceImpl::new();
+            let service = InteractionServiceImpl::new(provider.clone());
             Server::builder()
                 .add_service(InteractionServiceServer::new(service))
                 .serve_with_shutdown(addr, async move {

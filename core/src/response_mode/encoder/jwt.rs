@@ -27,16 +27,15 @@ impl ResponseModeEncoder for JwtEncoder {
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
-        let configuration = OpenIDProviderConfiguration::instance();
         let alg = &context.client.metadata().authorization_signed_response_alg;
-        let keystore = context.client.server_keystore(alg);
+        let keystore = context.client.server_keystore(context.provider, alg);
         let signing_key = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())
             .first()
             .ok_or(EncodingError::MissingSigningKey)?;
         let header = JwsHeader::from_key(signing_key);
-        let payload = self.build_payload(configuration, context, parameters);
+        let payload = self.build_payload(context.provider, context, parameters);
         let jwt = SignedJWT::new(header, payload, signing_key)
             .map_err(EncodingError::JwtCreationError)?;
         if let Some(enc_data) = context.client.metadata().authorization_encryption_data() {

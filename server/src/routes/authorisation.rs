@@ -25,38 +25,39 @@ pub async fn authorise<R, E>(
     request: Query<AuthorisationRequest>,
     auth_service: Extension<Arc<AuthorisationService<R, E>>>,
     encoder: Extension<Arc<DynamicResponseModeEncoder>>,
+    Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
     session: SessionHolder,
 ) -> Result<Response, AuthorisationErrorWrapper>
 where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    let configuration = OpenIDProviderConfiguration::instance();
-    let client = Arc::new(get_client(&request).await?);
-    let request_object = RequestObjectProcessor::process(&request.0, &client, configuration).await;
+    let client = Arc::new(get_client(&provider, &request).await?);
+    let request_object = RequestObjectProcessor::process(&provider, &request.0, &client).await;
     let authorization_request = match request_object {
         Ok(Some(request)) => request,
         Ok(None) => request.0,
         Err(err) => {
-            return handle_validation_error(&encoder, &client, err, request.0);
+            return handle_validation_error(&provider, &encoder, &client, err, request.0);
         }
     };
     validate_redirect_uri(&authorization_request, &client)?;
-    match authorization_request.validate(&client, configuration).await {
+    match authorization_request.validate(&client, &provider).await {
         Ok(req) => {
             let res = auth_service
                 .authorise(session.session_id(), client.clone(), req)
                 .await;
             match res {
                 Ok(res) => Ok(respond(res)),
-                Err(err) => handle_authorization_error(&encoder, &client, err),
+                Err(err) => handle_authorization_error(&provider, &encoder, &client, err),
             }
         }
-        Err((err, request)) => handle_validation_error(&encoder, &client, err, request),
+        Err((err, request)) => handle_validation_error(&provider, &encoder, &client, err, request),
     }
 }
 
 fn handle_authorization_error(
+    provider: &OpenIDProviderConfiguration,
     encoder: &DynamicResponseModeEncoder,
     client: &ClientInformation,
     err: AuthorisationError,
@@ -72,6 +73,7 @@ fn handle_authorization_error(
                 client,
                 redirect_uri: &redirect_uri,
                 response_mode,
+                provider,
             };
             let response = encode_response(encoding_context, encoder, err, state)?;
             Ok(respond(response))
@@ -81,13 +83,14 @@ fn handle_authorization_error(
 }
 
 fn handle_validation_error(
+    provider: &OpenIDProviderConfiguration,
     encoder: &DynamicResponseModeEncoder,
     client: &ClientInformation,
     err: OpenIdError,
     mut request: AuthorisationRequest,
 ) -> Result<Response, AuthorisationErrorWrapper> {
     let state = request.state.take();
-    let encoding_context = encoding_context(client, &request)?;
+    let encoding_context = encoding_context(provider, client, &request)?;
     let response = encode_response(encoding_context, encoder, err, state)?;
     Ok(respond(response))
 }
@@ -100,6 +103,7 @@ fn respond(response: AuthorisationResponse) -> Response {
 }
 
 fn encoding_context<'a>(
+    provider: &'a OpenIDProviderConfiguration,
     client: &'a ClientInformation,
     request: &'a AuthorisationRequest,
 ) -> Result<EncodingContext<'a>, AuthorisationError> {
@@ -116,6 +120,7 @@ fn encoding_context<'a>(
         client,
         redirect_uri,
         response_mode,
+        provider,
     })
 }
 
@@ -135,13 +140,14 @@ fn validate_redirect_uri(
 }
 
 async fn get_client(
+    provider: &OpenIDProviderConfiguration,
     request: &AuthorisationRequest,
 ) -> Result<ClientInformation, AuthorisationError> {
     let client_id = request
         .client_id
         .as_ref()
         .ok_or(AuthorisationError::MissingClient)?;
-    retrieve_client_info_by_unparsed(client_id)
+    retrieve_client_info_by_unparsed(provider, client_id)
         .await?
         .ok_or_else(|| AuthorisationError::MissingClient)
 }

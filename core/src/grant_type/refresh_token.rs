@@ -20,19 +20,22 @@ use crate::utils::resolve_sub;
 
 #[async_trait]
 impl GrantTypeResolver for RefreshTokenGrant {
-    async fn execute(self, client: AuthenticatedClient) -> Result<TokenResponse, OpenIdError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        let clock = configuration.clock_provider();
+    async fn execute(
+        self,
+        provider: &OpenIDProviderConfiguration,
+        client: AuthenticatedClient,
+    ) -> Result<TokenResponse, OpenIdError> {
+        let clock = provider.clock_provider();
         let grant_type = self;
 
-        let mut refresh_token = configuration
+        let mut refresh_token = provider
             .adapter()
             .refresh()
             .find(&grant_type.refresh_token)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Refresh token not found"))?;
 
-        let grant = Grant::find(refresh_token.grant_id)
+        let grant = Grant::find(provider, refresh_token.grant_id)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
@@ -41,51 +44,55 @@ impl GrantTypeResolver for RefreshTokenGrant {
                 "Client mismatch for refresh token",
             ));
         }
-        if let Err(err) = refresh_token.validate() {
+        if let Err(err) = refresh_token.validate(provider) {
             // invalidate entire token chain
-            grant.consume().await?;
+            grant.consume(provider).await?;
             return Err(err);
         }
 
         let context = RTContext {
-            config: configuration,
+            provider: provider,
             rt: &refresh_token,
             client: &client,
         };
-        configuration.validate_refresh_token(context).await?;
-        let ttl = configuration.ttl();
+        provider.validate_refresh_token(context).await?;
+        let ttl = provider.ttl();
 
         let mut rt_token = None;
-        if configuration.rotate_refresh_token(context) {
-            let old_rt = refresh_token.consume().await?;
-            refresh_token = RefreshToken::new_from(old_rt)?.save().await?;
+        if provider.rotate_refresh_token(context) {
+            let old_rt = refresh_token.consume(provider).await?;
+            refresh_token = RefreshToken::new_from(old_rt)?.save(provider).await?;
             rt_token = Some(refresh_token.token)
         }
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token =
-            create_access_token(grant.id(), at_duration, Some(refresh_token.scopes.clone()))
-                .await?;
+        let access_token = create_access_token(
+            provider,
+            grant.id(),
+            at_duration,
+            Some(refresh_token.scopes.clone()),
+        )
+        .await?;
         let mut simple_id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
-            let profile = ProfileData::get(&grant, client.as_ref())
+            let profile = ProfileData::get(provider, &grant, client.as_ref())
                 .await
                 .map_err(OpenIdError::server_error)?;
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
-            let keystore = client.as_ref().server_keystore(alg);
+            let keystore = client.as_ref().server_keystore(provider, alg);
             let signing_key = keystore
                 .select(KeyUse::Sig)
                 .alg(alg.name())
                 .first()
                 .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
             let now = clock.now();
-            let sub = resolve_sub(configuration, grant.subject(), &client)
+            let sub = resolve_sub(provider, grant.subject(), &client)
                 .map_err(OpenIdError::server_error)?;
             let id_token = IdTokenBuilder::new(signing_key)
                 .with_sub(&sub)
-                .with_issuer(configuration.issuer())
+                .with_issuer(provider.issuer())
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
                 .with_iat(now)
@@ -98,7 +105,7 @@ impl GrantTypeResolver for RefreshTokenGrant {
 
             simple_id_token = Some(
                 id_token
-                    .return_or_encrypt_simple_id_token(&client)
+                    .return_or_encrypt_simple_id_token(provider, &client)
                     .await
                     .map_err(OpenIdError::server_error)?,
             );

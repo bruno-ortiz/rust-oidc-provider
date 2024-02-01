@@ -112,9 +112,10 @@ impl KeyStore {
     time = 300,
     size = 1000
 )]
-pub fn create_symmetric(client: &ClientInformation) -> Arc<KeyStore> {
-    let config = OpenIDProviderConfiguration::instance();
-
+pub fn create_symmetric(
+    provider: &OpenIDProviderConfiguration,
+    client: &ClientInformation,
+) -> Arc<KeyStore> {
     let mut algorithms = HashSet::new();
     let client_metadata = client.metadata();
     if client_metadata.token_endpoint_auth_method == AuthMethod::ClientSecretJwt {
@@ -123,7 +124,7 @@ pub fn create_symmetric(client: &ClientInformation) -> Arc<KeyStore> {
                 algorithms.insert(alg.clone());
             }
         } else {
-            let algs = config
+            let algs = provider
                 .token_endpoint_auth_signing_alg_values_supported()
                 .iter()
                 .filter(|&it| it.is_symmetric())

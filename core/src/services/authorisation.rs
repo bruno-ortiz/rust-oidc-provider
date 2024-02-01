@@ -50,6 +50,7 @@ pub enum AuthorisationError {
 pub struct AuthorisationService<R, E> {
     resolver: R,
     encoder: E,
+    provider: Arc<OpenIDProviderConfiguration>,
 }
 
 impl<R, E> AuthorisationService<R, E>
@@ -57,8 +58,12 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    pub fn new(resolver: R, encoder: E) -> Self {
-        Self { resolver, encoder }
+    pub fn new(resolver: R, encoder: E, provider: Arc<OpenIDProviderConfiguration>) -> Self {
+        Self {
+            resolver,
+            encoder,
+            provider,
+        }
     }
 
     pub async fn authorise(
@@ -67,13 +72,13 @@ where
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let interaction = begin_interaction(session, request, client.clone())
+        let interaction = begin_interaction(&self.provider, session, request, client.clone())
             .await
             .map_err(handle_prompt_err)?;
         match interaction {
-            Interaction::Login { .. } | Interaction::Consent { .. } => {
-                Ok(AuthorisationResponse::Redirect(interaction.uri()))
-            }
+            Interaction::Login { .. } | Interaction::Consent { .. } => Ok(
+                AuthorisationResponse::Redirect(interaction.uri(&self.provider)),
+            ),
             Interaction::None { request, user, .. } => {
                 Ok(self.do_authorise(user, client, request).await?)
             }
@@ -89,17 +94,17 @@ where
         let grant_id = user.grant_id().ok_or_else(|| {
             AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
         })?;
-        let grant = Self::find_grant(grant_id).await?;
-        let context = OpenIDContext::new(client.clone(), user, request, grant);
+        let grant = Self::find_grant(&self.provider, grant_id).await?;
+        let context = OpenIDContext::new(client.clone(), user, request, grant, &self.provider);
         let auth_result = self.resolver.resolve(&context).await;
 
-        let config = OpenIDProviderConfiguration::instance();
         let encoding_context = EncodingContext {
             client: &client,
             redirect_uri: &context.request.redirect_uri,
             response_mode: context
                 .request
-                .response_mode(config.jwt_secure_response_mode()),
+                .response_mode(self.provider.jwt_secure_response_mode()),
+            provider: self.provider.as_ref(),
         };
         let parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
         encode_response(
@@ -110,8 +115,11 @@ where
         )
     }
 
-    async fn find_grant(grant_id: GrantID) -> Result<Grant, AuthorisationError> {
-        let grant = Grant::find(grant_id)
+    async fn find_grant(
+        provider: &OpenIDProviderConfiguration,
+        grant_id: GrantID,
+    ) -> Result<Grant, AuthorisationError> {
+        let grant = Grant::find(provider, grant_id)
             .await
             .map_err(|err| AuthorisationError::InternalError(err.into()))?
             .ok_or_else(|| {

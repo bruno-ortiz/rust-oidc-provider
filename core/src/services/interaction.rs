@@ -48,16 +48,16 @@ pub enum InteractionError {
 }
 
 pub async fn begin_interaction(
+    provider: &OpenIDProviderConfiguration,
     session: SessionID,
     request: ValidatedAuthorisationRequest,
     client: Arc<ClientInformation>,
 ) -> Result<Interaction, InteractionError> {
-    let config = OpenIDProviderConfiguration::instance();
-    let user = AuthenticatedUser::find_by_session(session).await?;
+    let user = AuthenticatedUser::find_by_session(provider, session).await?;
     let (user, request, prompt_resolver) =
-        select_prompt_resolver(config, user, request, &client).await?;
+        select_prompt_resolver(provider, user, request, &client).await?;
     if let Some(resolver) = prompt_resolver {
-        let interaction = resolver.resolve(session, user, request).await?;
+        let interaction = resolver.resolve(provider, session, user, request).await?;
         Ok(interaction)
     } else {
         Err(Internal(anyhow!(
@@ -99,26 +99,26 @@ async fn select_prompt_resolver<'a>(
 }
 
 pub async fn complete_login(
+    provider: &OpenIDProviderConfiguration,
     interaction_id: Uuid,
     subject: Subject,
     acr: Option<Acr>,
     amr: Option<Amr>,
 ) -> Result<Url, InteractionError> {
-    let configuration = OpenIDProviderConfiguration::instance();
-    let clock = configuration.clock_provider();
-    match Interaction::find(interaction_id).await {
+    let clock = provider.clock_provider();
+    match Interaction::find(provider, interaction_id).await {
         Ok(Some(Interaction::Login {
             session, request, ..
         })) => {
             let user =
                 AuthenticatedUser::new(session, subject, clock.now(), interaction_id, acr, amr)
-                    .save()
+                    .save(provider)
                     .await?;
 
             let interaction = Interaction::consent_with_id(user.interaction_id(), request, user)
-                .update()
+                .update(provider)
                 .await?;
-            Ok(interaction.uri())
+            Ok(interaction.uri(provider))
         }
         Ok(None) => Err(InteractionError::NotFound(interaction_id)),
         _ => Err(InteractionError::FailedPreCondition(
@@ -128,6 +128,7 @@ pub async fn complete_login(
 }
 
 pub async fn confirm_consent<R, E>(
+    provider: &OpenIDProviderConfiguration,
     auth_service: &AuthorisationService<R, E>,
     interaction_id: Uuid,
     scopes: Scopes,
@@ -136,12 +137,12 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    match Interaction::find(interaction_id).await {
+    match Interaction::find(provider, interaction_id).await {
         Ok(Some(Interaction::Consent { request, user, .. })) => {
             if let Some(old_grant_id) = user.grant_id() {
-                if let Some(old_grant) = Grant::find(old_grant_id).await? {
+                if let Some(old_grant) = Grant::find(provider, old_grant_id).await? {
                     old_grant
-                        .consume()
+                        .consume(provider)
                         .await
                         .context(format!(
                             "Failed to consume old grant with id {} from user {}",
@@ -166,16 +167,16 @@ where
                 .claims(claims)
                 .build()
                 .expect("Should always build successfully")
-                .save()
+                .save(provider)
                 .await?;
 
-            let user = user.with_grant(grant.id()).update().await?;
-            let client = retrieve_client_info(request.client_id)
+            let user = user.with_grant(grant.id()).update(provider).await?;
+            let client = retrieve_client_info(provider, request.client_id)
                 .await
                 .map_err(|err| Internal(err.into()))?
                 .ok_or(InteractionError::ClientNotFound(request.client_id))?;
 
-            let (user, request) = finalize_interaction(request, user).await?;
+            let (user, request) = finalize_interaction(provider, request, user).await?;
             let res = auth_service
                 .do_authorise(user, Arc::new(client), request)
                 .await
@@ -194,11 +195,12 @@ where
 }
 
 async fn finalize_interaction(
+    provider: &OpenIDProviderConfiguration,
     request: ValidatedAuthorisationRequest,
     user: AuthenticatedUser,
 ) -> Result<(AuthenticatedUser, ValidatedAuthorisationRequest), InteractionError> {
     Interaction::none_with_id(user.interaction_id(), request, user)
-        .update()
+        .update(provider)
         .await?
         .consume_authenticated()
         .ok_or_else(|| Internal(anyhow!("Unable to consume this interaction")))
@@ -240,6 +242,7 @@ mod tests {
     use oidc_types::{acr, response_type, scopes};
 
     use crate::authorisation_request::ValidatedAuthorisationRequest;
+    use crate::context::test_utils::setup_provider;
     use crate::models::client::ClientInformation;
     use crate::services::interaction::begin_interaction;
     use crate::services::types::Interaction;
@@ -249,8 +252,10 @@ mod tests {
     #[tokio::test]
     async fn test_begin_login_interaction_successful() {
         let session_id = SessionID::new();
+
+        let provider = setup_provider();
         let auth_request = create_request(None, None, None);
-        let result = begin_interaction(session_id, auth_request, create_client()).await;
+        let result = begin_interaction(&provider, session_id, auth_request, create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, .. }) = result else {
             panic!("Expected login interactions")
@@ -261,10 +266,13 @@ mod tests {
     #[tokio::test]
     async fn test_begin_login_interaction_due_to_user_max_age_expired() {
         init_logging();
+
+        let provider = setup_provider();
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, Some(1));
 
-        let result = begin_interaction(session_id, auth_request.clone(), create_client()).await;
+        let result =
+            begin_interaction(&provider, session_id, auth_request.clone(), create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -272,12 +280,12 @@ mod tests {
 
         let auth_time = OffsetDateTime::now_utc() - Duration::minutes(5);
         let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save()
+            .save(&provider)
             .await
             .expect("User should be saved");
 
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        let result = begin_interaction(session_id, auth_request, create_client()).await;
+        let result = begin_interaction(&provider, session_id, auth_request, create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -291,8 +299,10 @@ mod tests {
         init_logging();
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
+        let provider = setup_provider();
 
-        let result = begin_interaction(session_id, auth_request.clone(), create_client()).await;
+        let result =
+            begin_interaction(&provider, session_id, auth_request.clone(), create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -300,12 +310,13 @@ mod tests {
 
         let auth_time = OffsetDateTime::now_utc();
         let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save()
+            .save(&provider)
             .await
             .expect("User should be saved");
 
         let request_with_prompt = create_request(Some(IndexSet::from([Prompt::Login])), None, None);
-        let result = begin_interaction(session_id, request_with_prompt, create_client()).await;
+        let result =
+            begin_interaction(&provider, session_id, request_with_prompt, create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -319,8 +330,9 @@ mod tests {
         init_logging();
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
-
-        let result = begin_interaction(session_id, auth_request.clone(), create_client()).await;
+        let provider = setup_provider();
+        let result =
+            begin_interaction(&provider, session_id, auth_request.clone(), create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -328,7 +340,7 @@ mod tests {
 
         let auth_time = OffsetDateTime::now_utc();
         let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save()
+            .save(&provider)
             .await
             .expect("User should be saved");
 
@@ -340,7 +352,8 @@ mod tests {
             ])),
             None,
         );
-        let result = begin_interaction(session_id, request_with_acr, create_client()).await;
+        let result =
+            begin_interaction(&provider, session_id, request_with_acr, create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -354,8 +367,9 @@ mod tests {
         init_logging();
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
-
-        let result = begin_interaction(session_id, auth_request.clone(), create_client()).await;
+        let provider = setup_provider();
+        let result =
+            begin_interaction(&provider, session_id, auth_request.clone(), create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -363,13 +377,14 @@ mod tests {
 
         let auth_time = OffsetDateTime::now_utc();
         let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save()
+            .save(&provider)
             .await
             .expect("User should be saved");
 
         let request_with_acr =
             create_request(None, Some(Acr::new(vec!["acr:test:xpto".into()])), None);
-        let result = begin_interaction(session_id, request_with_acr, create_client()).await;
+        let result =
+            begin_interaction(&provider, session_id, request_with_acr, create_client()).await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")

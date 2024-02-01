@@ -72,9 +72,11 @@ pub struct Grant {
 }
 
 impl Grant {
-    pub async fn find(id: GrantID) -> Result<Option<Grant>, PersistenceError> {
-        let config = OpenIDProviderConfiguration::instance();
-        Ok(config
+    pub async fn find(
+        provider: &OpenIDProviderConfiguration,
+        id: GrantID,
+    ) -> Result<Option<Grant>, PersistenceError> {
+        Ok(provider
             .adapter()
             .grant()
             .find(&id)
@@ -82,19 +84,28 @@ impl Grant {
             .filter(|it| it.status != Status::Consumed))
     }
 
-    pub async fn save(self) -> Result<Self, PersistenceError> {
-        let config = OpenIDProviderConfiguration::instance();
-        config.adapter().grant().insert(self, None).await
+    pub async fn save(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<Self, PersistenceError> {
+        provider.adapter().grant().insert(self, None).await
     }
 
-    pub async fn update(self) -> Result<Self, PersistenceError> {
-        let config = OpenIDProviderConfiguration::instance();
-        config.adapter().grant().update(self, None).await
+    pub async fn update(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<Self, PersistenceError> {
+        provider.adapter().grant().update(self, None).await
     }
 
-    pub async fn consume(mut self) -> Result<Grant, OpenIdError> {
+    pub async fn consume(
+        mut self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<Grant, OpenIdError> {
         self.status = Status::Consumed;
-        self.update().await.map_err(OpenIdError::server_error)
+        self.update(provider)
+            .await
+            .map_err(OpenIdError::server_error)
     }
 
     pub fn has_requested_scopes(&self, requested: &Scopes) -> bool {

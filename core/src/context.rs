@@ -3,29 +3,33 @@ use std::sync::Arc;
 use oidc_types::response_type::Flow;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
+use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
 use crate::user::AuthenticatedUser;
 
-pub struct OpenIDContext {
+pub struct OpenIDContext<'a> {
     pub client: Arc<ClientInformation>,
     pub user: AuthenticatedUser,
     pub request: ValidatedAuthorisationRequest,
     pub grant: Grant,
+    pub provider: &'a OpenIDProviderConfiguration,
 }
 
-impl OpenIDContext {
+impl<'a> OpenIDContext<'a> {
     pub fn new(
         client: Arc<ClientInformation>,
         user: AuthenticatedUser,
         request: ValidatedAuthorisationRequest,
         grant: Grant,
+        provider: &'a OpenIDProviderConfiguration,
     ) -> Self {
         OpenIDContext {
             client,
             user,
             request,
             grant,
+            provider,
         }
     }
 
@@ -76,11 +80,12 @@ pub mod test_utils {
     use crate::user::AuthenticatedUser;
 
     //noinspection DuplicatedCode
-    pub async fn setup_context(
+    pub async fn setup_context<'a>(
+        provider: &'a OpenIDProviderConfiguration,
         response_type: ResponseType,
         state: Option<State>,
         nonce: Option<Nonce>,
-    ) -> OpenIDContext {
+    ) -> OpenIDContext<'a> {
         let client_id = ClientID::new(Uuid::new_v4());
         let request = ValidatedAuthorisationRequest {
             client_id,
@@ -154,6 +159,29 @@ pub mod test_utils {
             None,
         );
 
+        register_client(&provider, client.clone()).await.unwrap();
+
+        let grant = GrantBuilder::new()
+            .subject(user.sub().clone())
+            .scopes(scopes!("openid", "test"))
+            .acr(user.acr().clone())
+            .amr(user.amr().cloned())
+            .client_id(request.client_id)
+            .auth_time(user.auth_time())
+            .max_age(request.max_age)
+            .redirect_uri(request.redirect_uri.clone())
+            .rejected_claims(HashSet::new())
+            .claims(Claims::default())
+            .build()
+            .expect("Should always build successfully")
+            .save(&provider)
+            .await
+            .unwrap();
+        let user = user.with_grant(grant.id()).save(&provider).await.unwrap();
+        OpenIDContext::new(Arc::new(client), user, request, grant, &provider)
+    }
+
+    pub fn setup_provider() -> OpenIDProviderConfiguration {
         let mut jwk = Jwk::generate_ec_key(EcCurve::P256).unwrap();
         jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.to_string());
         jwk.set_key_id("test-key-id");
@@ -172,29 +200,6 @@ pub mod test_utils {
             ])
             .build()
             .unwrap();
-        OpenIDProviderConfiguration::set(config);
-
-        register_client(OpenIDProviderConfiguration::instance(), client.clone())
-            .await
-            .unwrap();
-
-        let grant = GrantBuilder::new()
-            .subject(user.sub().clone())
-            .scopes(scopes!("openid", "test"))
-            .acr(user.acr().clone())
-            .amr(user.amr().cloned())
-            .client_id(request.client_id)
-            .auth_time(user.auth_time())
-            .max_age(request.max_age)
-            .redirect_uri(request.redirect_uri.clone())
-            .rejected_claims(HashSet::new())
-            .claims(Claims::default())
-            .build()
-            .expect("Should always build successfully")
-            .save()
-            .await
-            .unwrap();
-        let user = user.with_grant(grant.id()).save().await.unwrap();
-        OpenIDContext::new(Arc::new(client), user, request, grant)
+        config
     }
 }

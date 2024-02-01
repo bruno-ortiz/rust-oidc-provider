@@ -17,17 +17,18 @@ pub enum ClientError {
 }
 
 pub async fn retrieve_client_info(
+    provider: &OpenIDProviderConfiguration,
     client_id: ClientID,
 ) -> Result<Option<ClientInformation>, ClientError> {
-    let configuration = OpenIDProviderConfiguration::instance();
-    Ok(configuration.adapter().client().find(&client_id).await?)
+    Ok(provider.adapter().client().find(&client_id).await?)
 }
 
 pub async fn retrieve_client_info_by_unparsed(
+    provider: &OpenIDProviderConfiguration,
     client_id: &str,
 ) -> Result<Option<ClientInformation>, ClientError> {
     let client_id = ClientID::from_str(client_id)?;
-    retrieve_client_info(client_id).await
+    retrieve_client_info(provider, client_id).await
 }
 
 pub async fn register_client(

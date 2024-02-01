@@ -17,12 +17,12 @@ pub struct RequestObjectProcessor;
 
 impl RequestObjectProcessor {
     pub async fn process(
+        provider: &OpenIDProviderConfiguration,
         request: &AuthorisationRequest,
         client: &ClientInformation,
-        configuration: &OpenIDProviderConfiguration,
     ) -> Result<Option<AuthorisationRequest>, OpenIdError> {
-        let ro_config = configuration.request_object();
-        if let Some(request_obj) = get_request_object(request, client, ro_config).await? {
+        let ro_config = provider.request_object();
+        if let Some(request_obj) = get_request_object(provider, request, client, ro_config).await? {
             let alg = request_obj.alg().ok_or(OpenIdError::invalid_request(
                 "Missing alg in request_object Header",
             ))?;
@@ -34,7 +34,7 @@ impl RequestObjectProcessor {
                 ))
             } else {
                 let keystore = client
-                    .keystore(&alg)
+                    .keystore(provider, &alg)
                     .await
                     .map_err(OpenIdError::server_error)?;
                 let validated = ValidJWT::validate(request_obj, &keystore)
@@ -52,6 +52,7 @@ impl RequestObjectProcessor {
 }
 
 async fn get_request_object(
+    provider: &OpenIDProviderConfiguration,
     auth_request: &AuthorisationRequest,
     client: &ClientInformation,
     config: &RequestObjectConfiguration,
@@ -66,7 +67,7 @@ async fn get_request_object(
             let alg = get_jose_algorithm(request_obj)
                 .map_err(parse_err)?
                 .ok_or_else(missing_alg)?;
-            let keystore = client.server_keystore(&alg);
+            let keystore = client.server_keystore(provider, &alg);
             let jwt = GenericJWT::parse(request_obj, &keystore).map_err(parse_err)?;
             Ok(Some(jwt))
         }
@@ -75,7 +76,7 @@ async fn get_request_object(
             let alg = get_jose_algorithm(&request_obj)
                 .map_err(parse_err)?
                 .ok_or_else(missing_alg)?;
-            let keystore = client.server_keystore(&alg);
+            let keystore = client.server_keystore(provider, &alg);
             let jwt = GenericJWT::parse(&request_obj, &keystore).map_err(parse_err)?;
             Ok(Some(jwt))
         }

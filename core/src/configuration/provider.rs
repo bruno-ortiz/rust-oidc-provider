@@ -7,9 +7,7 @@ use getset::{CopyGetters, Getters};
 use josekit::jwe::enc::{A128CBC_HS256, A128GCM, A256CBC_HS512, A256GCM};
 use josekit::jwe::{Dir, A128KW, A256KW, ECDH_ES, RSA_OAEP};
 use josekit::jws::{EdDSA, ES256, PS256, RS256};
-use once_cell::sync::OnceCell;
 use time::Duration;
-use tracing::warn;
 use url::Url;
 
 use oidc_types::auth_method::AuthMethod;
@@ -51,8 +49,6 @@ use crate::prompt::checks::{
 use crate::prompt::PromptResolver;
 use crate::services::types::Interaction;
 
-static INSTANCE: OnceCell<OpenIDProviderConfiguration> = OnceCell::new();
-
 const ONE_YEAR: Duration = Duration::days(365);
 const DEFAULT_ISSUER: &str = "http://localhost:3000";
 const DEFAULT_LOGIN_PATH: &str = "/interaction/login";
@@ -61,7 +57,8 @@ type IssueRTFunc = Box<dyn Fn(&AuthenticatedClient) -> BoxFuture<bool> + Send + 
 type RotateRefreshTokenFunc = Box<dyn Fn(RTContext<'_>) -> bool + Send + Sync>;
 type ValidateRefreshTokenFunc =
     Box<dyn Fn(RTContext<'_>) -> BoxFuture<Result<(), OpenIdError>> + Send + Sync>;
-type InteractionUrlResolver = Box<dyn Fn(Interaction) -> Url + Send + Sync>;
+type InteractionUrlResolver =
+    Box<dyn Fn(Interaction, &OpenIDProviderConfiguration) -> Url + Send + Sync>;
 
 #[derive(Builder, CopyGetters, Getters)]
 #[get = "pub"]
@@ -166,22 +163,6 @@ impl OpenIDProviderConfigurationBuilder {
 }
 
 impl OpenIDProviderConfiguration {
-    pub fn set(config: OpenIDProviderConfiguration) {
-        if INSTANCE.set(config).is_err() {
-            warn!("OpenIDProviderConfiguration.set should only be called once")
-        };
-    }
-
-    pub fn instance() -> &'static OpenIDProviderConfiguration {
-        INSTANCE.get_or_init(OpenIDProviderConfiguration::default)
-    }
-
-    pub fn clock() -> &'static ClockProvider {
-        INSTANCE
-            .get_or_init(OpenIDProviderConfiguration::default)
-            .clock_provider()
-    }
-
     pub fn interaction_login_url(&self) -> Url {
         let interaction_url_fn = &self.interaction_base_url;
         interaction_url_fn(self)
@@ -238,14 +219,11 @@ impl Default for OpenIDProviderConfiguration {
                 GrantType::RefreshToken,
             ],
             interaction_base_url: Box::new(|config| config.issuer.inner()),
-            interaction_url_resolver: Box::new(|interaction| {
-                let configuration = OpenIDProviderConfiguration::instance();
-                match interaction {
-                    Interaction::Login { .. } => configuration.interaction_login_url(),
-                    Interaction::Consent { .. } => configuration.interaction_consent_url(),
-                    Interaction::None { .. } => {
-                        panic!("Should not be called when interaction is None")
-                    }
+            interaction_url_resolver: Box::new(|interaction, provider| match interaction {
+                Interaction::Login { .. } => provider.interaction_login_url(),
+                Interaction::Consent { .. } => provider.interaction_consent_url(),
+                Interaction::None { .. } => {
+                    panic!("Should not be called when interaction is None")
                 }
             }),
             auth_max_age: 3600,
@@ -345,14 +323,18 @@ impl Default for OpenIDProviderConfiguration {
                 Box::pin(async { c.allows_grant(GrantType::RefreshToken) })
             }),
             rotate_refresh_token: Box::new(|ctx| {
-                let RTContext { rt, client, .. } = ctx;
-                if rt.total_lifetime() >= ONE_YEAR {
+                let RTContext {
+                    rt,
+                    client,
+                    provider,
+                } = ctx;
+                if rt.total_lifetime(provider.clock_provider()) >= ONE_YEAR {
                     return false;
                 }
                 if client.auth_method() == AuthMethod::None {
                     return true;
                 }
-                rt.ttl_elapsed() >= 70.0
+                rt.ttl_elapsed(provider.clock_provider()) >= 70.0
             }),
             validate_refresh_token: Box::new(|_ctx| Box::pin(async { Ok(()) })),
             display_values_supported: None,

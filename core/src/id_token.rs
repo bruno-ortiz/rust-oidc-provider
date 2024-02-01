@@ -1,6 +1,7 @@
 use josekit::jwt::JwtPayload;
 use serde::{Deserialize, Serialize};
 
+use crate::configuration::OpenIDProviderConfiguration;
 use oidc_types::client::encryption::EncryptionData;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT, JWT};
@@ -33,12 +34,13 @@ impl IdToken<SignedJWT> {
 
     pub async fn encrypt(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: &ClientInformation,
     ) -> Result<IdToken<EncryptedJWT<SignedJWT>>, IdTokenError> {
         let client_metadata = client.metadata();
         if let Some(EncryptionData { alg, enc }) = client_metadata.id_token_encryption_data() {
             let keystore = client
-                .keystore(alg)
+                .keystore(provider, alg)
                 .await
                 .map_err(|err| EncryptingErr(KeystoreCreation(err)))?;
             let key = keystore
@@ -57,10 +59,11 @@ impl IdToken<SignedJWT> {
 
     pub async fn return_or_encrypt_simple_id_token(
         self,
+        provider: &OpenIDProviderConfiguration,
         client: &ClientInformation,
     ) -> Result<SimpleIdToken, IdTokenError> {
         if client.encrypt_id_token() {
-            let encrypted_id_token = self.encrypt(client).await?;
+            let encrypted_id_token = self.encrypt(provider, client).await?;
             Ok(SimpleIdToken::new(encrypted_id_token.serialized()))
         } else {
             Ok(SimpleIdToken::new(self.serialized()))

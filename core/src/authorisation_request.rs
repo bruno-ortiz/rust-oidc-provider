@@ -66,9 +66,14 @@ impl ValidatedAuthorisationRequest {
 
     pub fn id_token_hint(
         &self,
+        provider: &OpenIDProviderConfiguration,
         client: &ClientInformation,
     ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
-        validate_id_token_hint(self.id_token_hint.as_ref().map(|it| it.as_ref()), client)
+        validate_id_token_hint(
+            provider,
+            self.id_token_hint.as_ref().map(|it| it.as_ref()),
+            client,
+        )
     }
 }
 
@@ -100,10 +105,10 @@ impl AuthorisationRequest {
     pub async fn validate(
         self,
         client: &ClientInformation,
-        configuration: &OpenIDProviderConfiguration,
+        provider: &OpenIDProviderConfiguration,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
         let this = self;
-        if let Err(err) = this.validate_response_type(configuration, client) {
+        if let Err(err) = this.validate_response_type(provider, client) {
             return Err((err, this));
         }
         if let Err(err) = this.validate_scopes(client) {
@@ -146,15 +151,16 @@ impl AuthorisationRequest {
                 ));
             }
         }
-        let claims = match parse_claims(configuration, &this) {
+        let claims = match parse_claims(provider, &this) {
             Ok(c) => c,
             Err(err) => return Err((err, this)),
         };
 
-        let id_token_hint = match validate_id_token_hint(this.id_token_hint.as_deref(), client) {
-            Ok(validated_jwt) => validated_jwt,
-            Err(err) => return Err((err, this)),
-        };
+        let id_token_hint =
+            match validate_id_token_hint(provider, this.id_token_hint.as_deref(), client) {
+                Ok(validated_jwt) => validated_jwt,
+                Err(err) => return Err((err, this)),
+            };
         let id_token_hint = id_token_hint.map(|it| SimpleIdToken::new(it.serialized()));
         Ok(ValidatedAuthorisationRequest {
             response_type: this.response_type.expect("Response type not found"),
@@ -268,12 +274,13 @@ fn parse_claims(
 }
 
 fn validate_id_token_hint(
+    provider: &OpenIDProviderConfiguration,
     id_token: Option<&str>,
     client: &ClientInformation,
 ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
     if let Some(hint) = id_token {
         let alg = get_alg(hint)?;
-        let keystore = client.server_keystore(&alg);
+        let keystore = client.server_keystore(provider, &alg);
         let jwt = GenericJWT::parse(hint, &keystore).map_err(OpenIdError::server_error)?;
         let valid_jwt = ValidJWT::validate(jwt, &keystore).map_err(OpenIdError::server_error)?;
         Ok(Some(valid_jwt))

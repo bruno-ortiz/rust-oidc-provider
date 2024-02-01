@@ -10,7 +10,7 @@ use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 
 use crate::adapter::PersistenceError;
-use crate::configuration::clock::Clock;
+use crate::configuration::clock::{Clock, ClockProvider};
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::grant::GrantID;
@@ -45,21 +45,24 @@ impl RefreshToken {
             .map_err(OpenIdError::server_error)
     }
 
-    pub async fn save(self) -> Result<RefreshToken, PersistenceError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        configuration.adapter().refresh().insert(self, None).await
+    pub async fn save(
+        self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<RefreshToken, PersistenceError> {
+        provider.adapter().refresh().insert(self, None).await
     }
 
-    pub fn is_expired(&self) -> bool {
-        let clock = OpenIDProviderConfiguration::clock();
+    pub fn is_expired(&self, clock: &ClockProvider) -> bool {
         let now = clock.now();
         self.expires_in <= now
     }
 
-    pub async fn consume(mut self) -> Result<RefreshToken, OpenIdError> {
-        let configuration = OpenIDProviderConfiguration::instance();
+    pub async fn consume(
+        mut self,
+        provider: &OpenIDProviderConfiguration,
+    ) -> Result<RefreshToken, OpenIdError> {
         self.status = Status::Consumed;
-        configuration
+        provider
             .adapter()
             .refresh()
             .update(self, None)
@@ -67,24 +70,22 @@ impl RefreshToken {
             .map_err(OpenIdError::server_error)
     }
 
-    pub fn validate(&self) -> Result<(), OpenIdError> {
+    pub fn validate(&self, provider: &OpenIDProviderConfiguration) -> Result<(), OpenIdError> {
         if self.status == Status::Consumed {
             return Err(OpenIdError::invalid_grant("Refresh token already used"));
         }
-        if self.is_expired() {
+        if self.is_expired(provider.clock_provider()) {
             return Err(OpenIdError::invalid_grant("Refresh token is expired"));
         }
         Ok(())
     }
 
-    pub fn total_lifetime(&self) -> Duration {
-        let clock = OpenIDProviderConfiguration::clock();
+    pub fn total_lifetime(&self, clock: &ClockProvider) -> Duration {
         let now = clock.now();
         now - self.created
     }
 
-    pub fn ttl_elapsed(&self) -> f64 {
-        let clock = OpenIDProviderConfiguration::clock();
+    pub fn ttl_elapsed(&self, clock: &ClockProvider) -> f64 {
         let created = self.created;
         let due_date = self.expires_in;
         let partial = (clock.now() - created).as_seconds_f64();

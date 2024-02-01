@@ -19,9 +19,8 @@ impl ResponseTypeResolver for CodeResolver {
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let authorisation_request = &context.request;
 
-        let configuration = OpenIDProviderConfiguration::instance();
-        let clock = configuration.clock_provider();
-        let ttl = configuration.ttl();
+        let clock = context.provider.clock_provider();
+        let ttl = context.provider.ttl();
         let code = AuthorisationCode {
             id: None,
             code: Code::random(),
@@ -34,7 +33,8 @@ impl ResponseTypeResolver for CodeResolver {
             nonce: context.request.nonce.clone(),
             scopes: context.request.scope.clone(),
         };
-        let code = configuration
+        let code = context
+            .provider
             .adapter()
             .code()
             .insert(code, None)
@@ -49,7 +49,7 @@ mod tests {
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
 
-    use crate::context::test_utils::setup_context;
+    use crate::context::test_utils::{setup_context, setup_provider};
     use crate::models::grant::Grant;
     use crate::models::Status;
 
@@ -57,15 +57,21 @@ mod tests {
 
     #[tokio::test]
     async fn can_generate_authorisation_code() {
-        let context = setup_context(response_type![ResponseTypeValue::Code], None, None).await;
+        let provider = setup_provider();
+        let context = setup_context(
+            &provider,
+            response_type![ResponseTypeValue::Code],
+            None,
+            None,
+        )
+        .await;
         let resolver = CodeResolver;
-        let configuration = OpenIDProviderConfiguration::instance();
         let code = resolver
             .resolve(&context)
             .await
             .expect("Expecting a auth code");
 
-        let code = configuration
+        let code = provider
             .adapter()
             .code()
             .find(&code)
@@ -73,7 +79,10 @@ mod tests {
             .expect("Error saving code")
             .expect("Expected code");
 
-        let grant = Grant::find(code.grant_id).await.unwrap().unwrap();
+        let grant = Grant::find(&provider, code.grant_id)
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(context.user.sub(), grant.subject());
         assert_eq!(context.request.code_challenge, code.code_challenge);
@@ -89,15 +98,21 @@ mod tests {
 
     #[tokio::test]
     async fn can_find_authorisation_code() {
-        let context = setup_context(response_type![ResponseTypeValue::Code], None, None).await;
+        let provider = setup_provider();
+        let context = setup_context(
+            &provider,
+            response_type![ResponseTypeValue::Code],
+            None,
+            None,
+        )
+        .await;
         let resolver = CodeResolver;
-        let configuration = OpenIDProviderConfiguration::instance();
         let code = resolver
             .resolve(&context)
             .await
             .expect("Expecting a auth code");
 
-        configuration
+        provider
             .adapter()
             .code()
             .find(&code)

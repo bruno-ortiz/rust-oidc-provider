@@ -8,7 +8,6 @@ use oidc_types::simple_id_token::SimpleIdToken;
 
 use crate::claims::get_id_token_claims;
 use crate::configuration::clock::Clock;
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::id_token_builder::IdTokenBuilder;
@@ -33,12 +32,11 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
     type Output = SimpleIdToken;
 
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
-        let configuration = OpenIDProviderConfiguration::instance();
-        let clock = configuration.clock_provider();
+        let clock = context.provider.clock_provider();
         let client = context.client.clone();
         let client_metadata = client.metadata();
         let alg = &client_metadata.id_token_signed_response_alg;
-        let keystore = client.server_keystore(alg);
+        let keystore = client.server_keystore(context.provider, alg);
         let signing_key = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())
@@ -52,17 +50,17 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
                 "Hybrid flow must contain a nonce in the auth request",
             ));
         }
-        let profile = ProfileData::get(&context.grant, &context.client)
+        let profile = ProfileData::get(context.provider, &context.grant, &context.client)
             .await
             .map_err(OpenIdError::server_error)?;
         let claims = get_id_token_claims(&profile, context.grant.claims().as_ref())?;
 
-        let ttl = configuration.ttl();
+        let ttl = context.provider.ttl();
 
-        let sub = resolve_sub(configuration, context.user.sub(), &client)
+        let sub = resolve_sub(context.provider, context.user.sub(), &client)
             .map_err(OpenIdError::server_error)?;
         let mut id_token_builder = IdTokenBuilder::new(signing_key)
-            .with_issuer(configuration.issuer())
+            .with_issuer(context.provider.issuer())
             .with_sub(&sub)
             .with_audience(vec![context.client.id().into()])
             .with_exp(clock.now() + ttl.id_token)
@@ -83,7 +81,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         })?;
 
         id_token
-            .return_or_encrypt_simple_id_token(&context.client)
+            .return_or_encrypt_simple_id_token(context.provider, &context.client)
             .await
             .map_err(OpenIdError::server_error)
     }
@@ -99,7 +97,7 @@ mod tests {
     use oidc_types::state::State;
     use oidc_types::subject::Subject;
 
-    use crate::context::test_utils::setup_context;
+    use crate::context::test_utils::{setup_context, setup_provider};
     use crate::error::OpenIdErrorType;
     use crate::hash::TokenHasher;
 
@@ -109,14 +107,15 @@ mod tests {
     async fn can_generate_id_token() {
         let state = State::new("mock-state");
         let nonce = Nonce::new("some-nonce");
+        let provider = setup_provider();
         let context = setup_context(
+            &provider,
             response_type![ResponseTypeValue::Code],
             Some(state.clone()),
             Some(nonce.clone()),
         )
         .await;
-        let configuration = OpenIDProviderConfiguration::instance();
-        let keystore = configuration.keystore();
+        let keystore = context.provider.keystore();
         let signing_key = keystore.select(KeyUse::Sig).first().unwrap();
         let resolver = IDTokenResolver::new(None, None);
 
@@ -133,7 +132,7 @@ mod tests {
             &payload.subject().map(Subject::new).unwrap()
         );
         assert_eq!(
-            configuration.issuer(),
+            context.provider.issuer(),
             &payload.issuer().map(Issuer::new).unwrap()
         );
         assert_eq!(
@@ -165,7 +164,9 @@ mod tests {
     #[tokio::test]
     async fn nonce_is_required_when_hybrid_flow() {
         let state = State::new("mock-state");
+        let provider = setup_provider();
         let context = setup_context(
+            &provider,
             response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken],
             Some(state.clone()),
             None,
