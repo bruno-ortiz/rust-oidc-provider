@@ -80,12 +80,12 @@ pub mod test_utils {
     use crate::user::AuthenticatedUser;
 
     //noinspection DuplicatedCode
-    pub async fn setup_context<'a>(
-        provider: &'a OpenIDProviderConfiguration,
+    pub async fn setup_context(
+        provider: &OpenIDProviderConfiguration,
         response_type: ResponseType,
         state: Option<State>,
         nonce: Option<Nonce>,
-    ) -> OpenIDContext<'a> {
+    ) -> OpenIDContext<'_> {
         let client_id = ClientID::new(Uuid::new_v4());
         let request = ValidatedAuthorisationRequest {
             client_id,
@@ -159,7 +159,7 @@ pub mod test_utils {
             None,
         );
 
-        register_client(&provider, client.clone()).await.unwrap();
+        register_client(provider, client.clone()).await.unwrap();
 
         let grant = GrantBuilder::new()
             .subject(user.sub().clone())
@@ -174,11 +174,11 @@ pub mod test_utils {
             .claims(Claims::default())
             .build()
             .expect("Should always build successfully")
-            .save(&provider)
+            .save(provider)
             .await
             .unwrap();
-        let user = user.with_grant(grant.id()).save(&provider).await.unwrap();
-        OpenIDContext::new(Arc::new(client), user, request, grant, &provider)
+        let user = user.with_grant(grant.id()).save(provider).await.unwrap();
+        OpenIDContext::new(Arc::new(client), user, request, grant, provider)
     }
 
     pub fn setup_provider() -> OpenIDProviderConfiguration {
@@ -186,7 +186,7 @@ pub mod test_utils {
         jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.to_string());
         jwk.set_key_id("test-key-id");
         jwk.set_key_use("sig");
-        let config = OpenIDProviderConfigurationBuilder::default()
+        OpenIDProviderConfigurationBuilder::default()
             .issuer("https://oidc.rs.com")
             .keystore(KeyStore::new(JwkSet::new(vec![jwk])))
             .response_types_supported(vec![
@@ -199,7 +199,6 @@ pub mod test_utils {
                 response_type![IdToken, Token],
             ])
             .build()
-            .unwrap();
-        config
+            .unwrap()
     }
 }

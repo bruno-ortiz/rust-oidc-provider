@@ -124,7 +124,7 @@ mod tests {
             .await
             .expect("Expecting a id token");
 
-        let id_token = SignedJWT::decode_no_verify(id_token.to_string()).unwrap();
+        let id_token = SignedJWT::decode_no_verify(id_token).unwrap();
 
         let payload = id_token.payload();
         assert_eq!(
