@@ -13,6 +13,7 @@ pub mod id_token;
 pub mod id_token_builder;
 mod jwt;
 pub mod keystore;
+pub mod manager;
 pub mod models;
 mod pairwise;
 pub mod persistence;
@@ -24,7 +25,6 @@ pub mod response_type;
 pub mod services;
 pub mod session;
 pub mod user;
-pub mod userinfo;
 mod utils;
 
 mod macros {

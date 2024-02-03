@@ -21,8 +21,12 @@ pub struct ActiveAccessToken {
 }
 
 impl ActiveAccessToken {
-    pub fn grant_id(&self) -> GrantID {
-        self.grant.id()
+    pub fn new(at: AccessToken, grant: Grant) -> Self {
+        Self { inner: at, grant }
+    }
+
+    pub fn grant(&self) -> &Grant {
+        &self.grant
     }
     pub fn scopes(&self) -> Option<&Scopes> {
         self.inner.scopes.as_ref()
@@ -90,21 +94,6 @@ impl AccessToken {
             scopes,
             grant_id,
         )
-    }
-
-    pub async fn into_active(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<ActiveAccessToken, TokenError> {
-        let now = provider.clock_provider().now();
-        if now <= (self.created + self.expires_in) {
-            let grant = Grant::find(provider, self.grant_id)
-                .await?
-                .ok_or(TokenError::InvalidGrant)?;
-            Ok(ActiveAccessToken { inner: self, grant })
-        } else {
-            Err(TokenError::Expired)
-        }
     }
 
     pub async fn find(

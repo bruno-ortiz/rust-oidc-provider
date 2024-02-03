@@ -1,13 +1,12 @@
 use thiserror::Error;
 use tracing::debug;
 use url::Url;
-use uuid::Uuid;
 
-use crate::adapter::PersistenceError;
 use oidc_types::prompt::Prompt;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::state::State;
 
+use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
@@ -18,8 +17,6 @@ use crate::prompt::checks::{
     check_user_must_have_consented, CheckContext, PromptCheck,
 };
 use crate::prompt::PromptError::{ConsentRequired, LoginRequired};
-use crate::services::types::Interaction;
-use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
 
 pub mod checks;
@@ -64,12 +61,12 @@ impl PromptError {
     }
 }
 
-pub struct PromptResolver {
+pub struct PromptSelector {
     prompt: Prompt,
     checks: Vec<(String, PromptCheck)>,
 }
 
-impl PromptResolver {
+impl PromptSelector {
     pub fn new(prompt: Prompt, checks: Vec<(String, PromptCheck)>) -> Self {
         Self { prompt, checks }
     }
@@ -103,41 +100,11 @@ impl PromptResolver {
         }
         Ok(false)
     }
-    pub async fn resolve(
-        &self,
-        provider: &OpenIDProviderConfiguration,
-        session: SessionID,
-        user: Option<AuthenticatedUser>,
-        request: ValidatedAuthorisationRequest,
-    ) -> Result<Interaction, PromptError> {
-        match self.prompt {
-            Prompt::Login => Ok(Interaction::login(session, request).save(provider).await?),
-            Prompt::Consent => {
-                let user = user.ok_or_else(|| PromptError::login_required(&request))?;
-                let new_id = Uuid::new_v4();
-                let user = user.with_interaction(new_id).update(provider).await?;
-                let interaction = Interaction::consent_with_id(new_id, request, user)
-                    .save(provider)
-                    .await?;
-                Ok(interaction)
-            }
-            Prompt::None => {
-                let user = user.ok_or_else(|| PromptError::login_required(&request))?;
-                let new_id = Uuid::new_v4();
-                let user = user.with_interaction(new_id).update(provider).await?;
-                let interaction = Interaction::none_with_id(new_id, request, user)
-                    .save(provider)
-                    .await?;
-                Ok(interaction)
-            }
-            Prompt::SelectAccount => todo!("Not implemented"),
-        }
-    }
 }
 
-impl Default for PromptResolver {
+impl Default for PromptSelector {
     fn default() -> Self {
-        PromptResolver {
+        PromptSelector {
             prompt: Prompt::None,
             checks: vec![
                 named_check!(check_user_must_be_authenticated),

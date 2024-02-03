@@ -8,11 +8,15 @@ use oidc_core::adapter::PersistenceError;
 use oidc_core::authorisation_request::ValidatedAuthorisationRequest;
 use oidc_core::client::{retrieve_client_info, ClientError};
 use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_core::manager::grant_manager::GrantManager;
+use oidc_core::manager::interaction_manager::InteractionManager;
 use oidc_core::models::client::ClientInformation;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
-use oidc_core::services::interaction::{complete_login, confirm_consent, InteractionError};
+use oidc_core::services::interaction::InteractionError;
+use oidc_core::services::interaction::InteractionService as CoreInteractionService;
+use oidc_core::services::prompt::PromptService;
 use oidc_core::services::types::Interaction;
 use oidc_core::user::AuthenticatedUser;
 use oidc_types::acr::Acr;
@@ -33,18 +37,33 @@ pub struct InteractionServiceImpl {
     authorisation_service:
         AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>,
     provider: Arc<OpenIDProviderConfiguration>,
+    interaction_service: Arc<CoreInteractionService>,
+    interaction_manager: Arc<InteractionManager>,
 }
 
 impl InteractionServiceImpl {
     pub fn new(provider: Arc<OpenIDProviderConfiguration>) -> Self {
+        let grant_manager = Arc::new(GrantManager::new(provider.clone()));
+        let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
+        let prompt_service = Arc::new(PromptService::new(provider.clone()));
+        let interaction_service = Arc::new(CoreInteractionService::new(
+            provider.clone(),
+            grant_manager.clone(),
+            interaction_manager.clone(),
+            prompt_service.clone(),
+        ));
         let authorisation_service = AuthorisationService::new(
             DynamicResponseTypeResolver::from(provider.as_ref()),
             DynamicResponseModeEncoder::from(provider.as_ref()),
             provider.clone(),
+            interaction_service.clone(),
+            grant_manager.clone(),
         );
         Self {
             authorisation_service,
             provider,
+            interaction_service,
+            interaction_manager,
         }
     }
 }
@@ -59,7 +78,9 @@ impl InteractionService for InteractionServiceImpl {
         let interaction_id = Uuid::try_parse(request.interaction_id.as_str()).map_err(|err| {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
-        let interaction = Interaction::find(&self.provider, interaction_id)
+        let interaction = self
+            .interaction_manager
+            .find(interaction_id)
             .await
             .map_err(convert_persistence_err)?
             .ok_or_else(|| {
@@ -90,15 +111,16 @@ impl InteractionService for InteractionServiceImpl {
         let interaction_id = Uuid::try_parse(c_request.interaction_id.as_str()).map_err(|err| {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
-        let redirect_uri = complete_login(
-            self.provider.as_ref(),
-            interaction_id,
-            Subject::new(c_request.sub),
-            c_request.acr.map(Acr::from),
-            c_request.amr.map(Amr::from),
-        )
-        .await
-        .map_err(convert_err)?;
+        let redirect_uri = self
+            .interaction_service
+            .complete_login(
+                interaction_id,
+                Subject::new(c_request.sub),
+                c_request.acr.map(Acr::from),
+                c_request.amr.map(Amr::from),
+            )
+            .await
+            .map_err(convert_err)?;
         Ok(Response::new(CompleteLoginReply {
             redirect_uri: redirect_uri.to_string(),
         }))
@@ -113,14 +135,11 @@ impl InteractionService for InteractionServiceImpl {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
         let scopes = Scopes::from(request.scopes);
-        let redirect_uri = confirm_consent(
-            &self.provider,
-            &self.authorisation_service,
-            interaction_id,
-            scopes,
-        )
-        .await
-        .map_err(convert_err)?;
+        let redirect_uri = self
+            .interaction_service
+            .confirm_consent(&self.authorisation_service, interaction_id, scopes)
+            .await
+            .map_err(convert_err)?;
         Ok(Response::new(ConfirmConsentReply {
             redirect_uri: redirect_uri.to_string(),
         }))

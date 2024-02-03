@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use axum::routing::{get, post};
 use axum::Router;
 use tower::ServiceBuilder;
@@ -9,9 +10,15 @@ use tower_http::ServiceBuilderExt;
 
 use oidc_admin::InteractionServiceClient;
 use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_core::manager::grant_manager::GrantManager;
+use oidc_core::manager::interaction_manager::InteractionManager;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
+use oidc_core::services::interaction::InteractionService;
+use oidc_core::services::prompt::PromptService;
+use oidc_core::services::token::TokenService;
+use oidc_core::services::userinfo::UserInfoService;
 
 use crate::middleware::SessionManagerLayer;
 use crate::routes::authorisation::authorise;
@@ -34,11 +41,6 @@ pub(crate) async fn oidc_router(
     provider: Arc<OpenIDProviderConfiguration>,
 ) -> Router {
     let routes = provider.routes();
-    let authorisation_service = Arc::new(AuthorisationService::new(
-        DynamicResponseTypeResolver::from(provider.as_ref()),
-        DynamicResponseModeEncoder::from(provider.as_ref()),
-        provider.clone(),
-    ));
     let mut router = Router::new()
         .route(DISCOVERY_ROUTE, get(discovery))
         .route(
@@ -51,19 +53,59 @@ pub(crate) async fn oidc_router(
     if let Some(custom_routes) = custom_routes {
         router = router.nest("/", custom_routes);
     }
-    let interaction_client = InteractionServiceClient::connect(LOCAL_CLIENT)
+    router
+        .route_layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(CookieManagerLayer::new())
+                .layer(SessionManagerLayer::signed(&[0; 32])), //TODO: key configuration
+        )
+        .apply_extensions(provider)
         .await
-        .expect("expected successful gRPC connection");
-    router.route_layer(
-        ServiceBuilder::new()
-            .layer(TraceLayer::new_for_http())
-            .layer(CookieManagerLayer::new())
-            .layer(SessionManagerLayer::signed(&[0; 32])) //TODO: key configuration
-            .add_extension(Arc::new(DynamicResponseModeEncoder::from(
-                provider.as_ref(),
-            )))
-            .add_extension(authorisation_service)
-            .add_extension(interaction_client)
-            .add_extension(provider),
-    )
+}
+
+#[async_trait]
+trait RouterExt {
+    async fn apply_extensions(self, provider: Arc<OpenIDProviderConfiguration>) -> Router;
+}
+
+#[async_trait]
+impl RouterExt for Router {
+    async fn apply_extensions(self, provider: Arc<OpenIDProviderConfiguration>) -> Router {
+        let grant_manager = Arc::new(GrantManager::new(provider.clone()));
+        let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
+        let prompt_service = Arc::new(PromptService::new(provider.clone()));
+        let interaction_service = Arc::new(InteractionService::new(
+            provider.clone(),
+            grant_manager.clone(),
+            interaction_manager.clone(),
+            prompt_service.clone(),
+        ));
+        let authorisation_service = Arc::new(AuthorisationService::new(
+            DynamicResponseTypeResolver::from(provider.as_ref()),
+            DynamicResponseModeEncoder::from(provider.as_ref()),
+            provider.clone(),
+            interaction_service.clone(),
+            grant_manager.clone(),
+        ));
+
+        let token_service = Arc::new(TokenService::new(provider.clone(), grant_manager.clone()));
+        let userinfo_service = Arc::new(UserInfoService::new(provider.clone()));
+        let interaction_client = InteractionServiceClient::connect(LOCAL_CLIENT)
+            .await
+            .expect("expected successful gRPC connection");
+        self.route_layer(
+            ServiceBuilder::new()
+                .add_extension(Arc::new(DynamicResponseModeEncoder::from(
+                    provider.as_ref(),
+                )))
+                .add_extension(authorisation_service)
+                .add_extension(interaction_service)
+                .add_extension(prompt_service)
+                .add_extension(token_service)
+                .add_extension(userinfo_service)
+                .add_extension(interaction_client)
+                .add_extension(provider),
+        )
+    }
 }

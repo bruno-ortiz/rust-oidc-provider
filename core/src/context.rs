@@ -173,8 +173,12 @@ pub mod test_utils {
             .rejected_claims(HashSet::new())
             .claims(Claims::default())
             .build()
-            .expect("Should always build successfully")
-            .save(provider)
+            .expect("Should always build successfully");
+
+        let grant = provider
+            .adapter()
+            .grant()
+            .insert(grant, None)
             .await
             .unwrap();
         let user = user.with_grant(grant.id()).save(provider).await.unwrap();

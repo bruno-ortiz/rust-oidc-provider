@@ -135,7 +135,10 @@ async fn find_grant(
     user: &AuthenticatedUser,
 ) -> Result<Option<Grant>, PromptError> {
     let grant = if let Some(grant_id) = user.grant_id() {
-        Grant::find(provider, grant_id)
+        provider
+            .adapter()
+            .grant()
+            .find(&grant_id)
             .await
             .map_err(|err| PromptError::Internal(err.into()))?
     } else {

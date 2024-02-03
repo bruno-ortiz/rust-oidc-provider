@@ -1,7 +1,9 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use anyhow::anyhow;
-use async_trait::async_trait;
+use derive_new::new;
+use uuid::Uuid;
 
 use oidc_types::acr::Acr;
 use oidc_types::scopes::Scopes;
@@ -13,29 +15,35 @@ use crate::configuration::clock::Clock;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
-use crate::grant_type::GrantTypeResolver;
+use crate::manager::grant_manager::GrantManager;
 use crate::models::access_token::AccessToken;
 use crate::models::client::{AuthenticatedClient, ClientInformation};
-use crate::models::grant::GrantBuilder;
+use crate::models::grant::{GrantBuilder, GrantID};
+use crate::models::Status;
 
-#[async_trait]
-impl GrantTypeResolver for ClientCredentialsGrant {
-    async fn execute(
-        self,
-        provider: &OpenIDProviderConfiguration,
+#[derive(new)]
+pub(crate) struct ClientCredentialsGrantResolver {
+    provider: Arc<OpenIDProviderConfiguration>,
+    grant_manager: Arc<GrantManager>,
+}
+
+impl ClientCredentialsGrantResolver {
+    pub async fn execute(
+        &self,
+        grant_type: ClientCredentialsGrant,
         client: AuthenticatedClient,
     ) -> Result<TokenResponse, OpenIdError> {
-        let clock = provider.clock_provider();
-        let cc_config = provider.client_credentials();
-        let ttl = provider.ttl();
-        let scopes = if let Some(requested_scope) = self.scope {
+        let clock = self.provider.clock_provider();
+        let cc_config = self.provider.client_credentials();
+        let ttl = self.provider.ttl();
+        let scopes = if let Some(requested_scope) = grant_type.scope {
             let client_info = client.as_ref();
             Some(validate_scopes(cc_config, requested_scope, client_info)?)
         } else {
             None
         };
 
-        let grant = GrantBuilder::new()
+        let grant = GrantBuilder::new_with(GrantID::new(Uuid::new_v4()), Status::Consumed)
             .subject(Subject::new(client.id()))
             .scopes(scopes.clone())
             .acr(Acr::default())
@@ -49,12 +57,22 @@ impl GrantTypeResolver for ClientCredentialsGrant {
             .build()
             .expect("Should always build successfully");
 
+        let grant = self
+            .grant_manager
+            .save(grant)
+            .await
+            .map_err(OpenIdError::server_error)?;
+
         let at_duration = ttl.client_credentials_ttl(client.as_ref());
-        let access_token =
-            AccessToken::bearer(provider.clock_provider(), grant.id(), at_duration, scopes)
-                .save(provider)
-                .await
-                .map_err(OpenIdError::server_error)?;
+        let access_token = AccessToken::bearer(
+            self.provider.clock_provider(),
+            grant.id(),
+            at_duration,
+            scopes,
+        )
+        .save(&self.provider)
+        .await
+        .map_err(OpenIdError::server_error)?;
         Ok(TokenResponse::new(
             access_token.token,
             access_token.t_type,

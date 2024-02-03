@@ -18,7 +18,7 @@ use oidc_core::client::retrieve_client_info;
 use oidc_core::client_auth::ClientAuthenticator;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
-use oidc_core::grant_type::GrantTypeResolver;
+use oidc_core::services::token::TokenService;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
 
@@ -28,6 +28,7 @@ use crate::routes::error::OpenIdErrorResponse;
 // #[axum_macros::debug_handler]
 pub async fn token(
     Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
+    Extension(service): Extension<Arc<TokenService>>,
     request: TokenRequest,
 ) -> axum::response::Result<
     (
@@ -56,7 +57,7 @@ pub async fn token(
         .authenticate(&provider, client)
         .await
         .map_err(|err| OpenIdError::invalid_client(err.to_string()))?;
-    let tokens = request.body.execute(&provider, client).await?;
+    let tokens = service.execute(request.body, client).await?;
 
     let headers = AppendHeaders([(CACHE_CONTROL, "no-store"), (PRAGMA, "no-cache")]);
     Ok((headers, Json(tokens)))

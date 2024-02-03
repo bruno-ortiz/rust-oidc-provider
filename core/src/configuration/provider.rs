@@ -46,7 +46,7 @@ use crate::prompt::checks::{
     check_sub_id_token_claim, check_user_has_consented, check_user_is_authenticated,
     check_user_must_be_authenticated,
 };
-use crate::prompt::PromptResolver;
+use crate::prompt::PromptSelector;
 use crate::services::types::Interaction;
 
 const ONE_YEAR: Duration = Duration::days(365);
@@ -130,7 +130,7 @@ pub struct OpenIDProviderConfiguration {
     enable_userinfo: bool,
     request_object: RequestObjectConfiguration,
     clock_provider: ClockProvider,
-    prompts: Vec<PromptResolver>,
+    prompts: Vec<PromptSelector>,
     #[builder(setter(skip))]
     pairwise_resolver: PairwiseResolver,
 }
@@ -348,7 +348,7 @@ impl Default for OpenIDProviderConfiguration {
             request_object: Default::default(),
             clock_provider: Default::default(),
             prompts: vec![
-                PromptResolver::new(
+                PromptSelector::new(
                     Prompt::Login,
                     vec![
                         named_check!(check_user_is_authenticated),
@@ -359,14 +359,14 @@ impl Default for OpenIDProviderConfiguration {
                         named_check!(check_acr_value),
                     ],
                 ),
-                PromptResolver::new(
+                PromptSelector::new(
                     Prompt::Consent,
                     vec![
                         named_check!(check_user_must_be_authenticated),
                         named_check!(check_user_has_consented),
                     ],
                 ),
-                PromptResolver::default(),
+                PromptSelector::default(),
             ],
             pairwise_resolver: PairwiseResolver::default(),
         }

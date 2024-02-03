@@ -13,6 +13,7 @@ use crate::client::ClientError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
+use crate::manager::grant_manager::GrantManager;
 use crate::models::client::ClientInformation;
 use crate::models::grant::{Grant, GrantID};
 use crate::prompt::PromptError;
@@ -20,7 +21,7 @@ use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
 };
 use crate::response_type::resolver::ResponseTypeResolver;
-use crate::services::interaction::{begin_interaction, InteractionError};
+use crate::services::interaction::{InteractionError, InteractionService};
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
@@ -51,6 +52,8 @@ pub struct AuthorisationService<R, E> {
     resolver: R,
     encoder: E,
     provider: Arc<OpenIDProviderConfiguration>,
+    interaction_service: Arc<InteractionService>,
+    grant_manager: Arc<GrantManager>,
 }
 
 impl<R, E> AuthorisationService<R, E>
@@ -58,11 +61,19 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    pub fn new(resolver: R, encoder: E, provider: Arc<OpenIDProviderConfiguration>) -> Self {
+    pub fn new(
+        resolver: R,
+        encoder: E,
+        provider: Arc<OpenIDProviderConfiguration>,
+        interaction_service: Arc<InteractionService>,
+        grant_manager: Arc<GrantManager>,
+    ) -> Self {
         Self {
             resolver,
             encoder,
             provider,
+            interaction_service,
+            grant_manager,
         }
     }
 
@@ -72,7 +83,9 @@ where
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let interaction = begin_interaction(&self.provider, session, request, client.clone())
+        let interaction = self
+            .interaction_service
+            .begin_interaction(session, request, client.clone())
             .await
             .map_err(handle_prompt_err)?;
         match interaction {
@@ -94,7 +107,7 @@ where
         let grant_id = user.grant_id().ok_or_else(|| {
             AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
         })?;
-        let grant = Self::find_grant(&self.provider, grant_id).await?;
+        let grant = self.find_grant(grant_id).await?;
         let context = OpenIDContext::new(client.clone(), user, request, grant, &self.provider);
         let auth_result = self.resolver.resolve(&context).await;
 
@@ -115,11 +128,10 @@ where
         )
     }
 
-    async fn find_grant(
-        provider: &OpenIDProviderConfiguration,
-        grant_id: GrantID,
-    ) -> Result<Grant, AuthorisationError> {
-        let grant = Grant::find(provider, grant_id)
+    async fn find_grant(&self, grant_id: GrantID) -> Result<Grant, AuthorisationError> {
+        let grant = self
+            .grant_manager
+            .find(grant_id)
             .await
             .map_err(|err| AuthorisationError::InternalError(err.into()))?
             .ok_or_else(|| {

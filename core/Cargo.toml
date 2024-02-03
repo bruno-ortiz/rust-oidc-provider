@@ -32,6 +32,7 @@ cached = { version = "0.48.1", features = ["async"] }
 itertools = "0.12.1"
 quick_cache = { workspace = true }
 dashmap = { workspace = true }
+derive-new = "0.6.0"
 
 [dev-dependencies]
 tracing-subscriber = "0.3.18"

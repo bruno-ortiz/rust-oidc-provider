@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use oidc_types::code::Code;
 
 use crate::configuration::clock::Clock;
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
 use crate::models::authorisation_code::AuthorisationCode;
@@ -50,7 +49,6 @@ mod tests {
     use oidc_types::response_type::ResponseTypeValue;
 
     use crate::context::test_utils::{setup_context, setup_provider};
-    use crate::models::grant::Grant;
     use crate::models::Status;
 
     use super::*;
@@ -79,7 +77,10 @@ mod tests {
             .expect("Error saving code")
             .expect("Expected code");
 
-        let grant = Grant::find(&provider, code.grant_id)
+        let grant = provider
+            .adapter()
+            .grant()
+            .find(&code.grant_id)
             .await
             .unwrap()
             .unwrap();

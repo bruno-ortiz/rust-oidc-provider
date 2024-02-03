@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use oidc_types::identifiable::Identifiable;
 
-use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::session::SessionID;
@@ -109,27 +108,6 @@ impl Interaction {
     fn add_id(url: &mut Url, id: Uuid) {
         url.query_pairs_mut()
             .append_pair("interaction_id", id.to_string().as_str());
-    }
-
-    pub async fn save(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        provider.adapter().interaction().insert(self, None).await
-    }
-
-    pub async fn update(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        provider.adapter().interaction().update(self, None).await
-    }
-
-    pub async fn find(
-        provider: &OpenIDProviderConfiguration,
-        id: Uuid,
-    ) -> Result<Option<Interaction>, PersistenceError> {
-        provider.adapter().interaction().find(&id).await
     }
 }
 

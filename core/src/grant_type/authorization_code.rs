@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use anyhow::anyhow;
-use async_trait::async_trait;
+use derive_new::new;
 use tracing::error;
 use uuid::Uuid;
 
@@ -12,43 +14,51 @@ use crate::claims::get_id_token_claims;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
-use crate::grant_type::{create_access_token, GrantTypeResolver};
+use crate::grant_type::create_access_token;
 use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
+use crate::manager::grant_manager::GrantManager;
 use crate::models::client::AuthenticatedClient;
-use crate::models::grant::Grant;
 use crate::models::refresh_token::RefreshTokenBuilder;
 use crate::models::Status;
 use crate::profile::ProfileData;
 use crate::utils::resolve_sub;
 
-#[async_trait]
-impl GrantTypeResolver for AuthorisationCodeGrant {
-    async fn execute(
-        self,
-        provider: &OpenIDProviderConfiguration,
+#[derive(new)]
+pub(crate) struct AuthorisationCodeGrantResolver {
+    provider: Arc<OpenIDProviderConfiguration>,
+    grant_manager: Arc<GrantManager>,
+}
+
+impl AuthorisationCodeGrantResolver {
+    pub async fn execute(
+        &self,
+        grant_type: AuthorisationCodeGrant,
         client: AuthenticatedClient,
     ) -> Result<TokenResponse, OpenIdError> {
-        let clock = provider.clock_provider();
-        let code = provider
+        let clock = self.provider.clock_provider();
+        let code = self
+            .provider
             .adapter()
             .code()
-            .find(&self.code)
+            .find(&grant_type.code)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
-            .validate(&self, provider.clock_provider())?;
+            .validate(&grant_type, self.provider.clock_provider())?;
 
-        let grant = Grant::find(provider, code.grant_id)
+        let grant = self
+            .grant_manager
+            .find(code.grant_id)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
         if code.status != Status::Awaiting {
-            grant.consume(provider).await?;
+            self.grant_manager.consume(grant).await?;
             return Err(OpenIdError::invalid_grant(
                 "Authorization code already consumed",
             ));
         }
-        let code = code.consume(provider).await?;
+        let code = code.consume(&self.provider).await?;
         if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for Authorization Code",
@@ -57,26 +67,30 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
         if grant.redirect_uri().is_none() {
             return Err(OpenIdError::invalid_grant("Missing redirect_uri"));
         }
-        if *grant.redirect_uri() != Some(self.redirect_uri) {
+        if *grant.redirect_uri() != Some(grant_type.redirect_uri) {
             return Err(OpenIdError::invalid_grant("redirect_uri mismatch"));
         }
 
-        let ttl = provider.ttl();
+        let ttl = self.provider.ttl();
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token =
-            create_access_token(provider, grant.id(), at_duration, Some(code.scopes.clone()))
-                .await?;
+        let access_token = create_access_token(
+            &self.provider,
+            grant.id(),
+            at_duration,
+            Some(code.scopes.clone()),
+        )
+        .await?;
 
         let now = clock.now();
         let mut simple_id_token = None;
         if code.scopes.contains(&OPEN_ID) {
-            let profile = ProfileData::get(provider, &grant, client.as_ref())
+            let profile = ProfileData::get(&self.provider, &grant, client.as_ref())
                 .await
                 .map_err(OpenIdError::server_error)?;
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
-            let keystore = client.as_ref().server_keystore(provider, alg);
+            let keystore = client.as_ref().server_keystore(&self.provider, alg);
             let signing_key = keystore
                 .select(KeyUse::Sig)
                 .alg(alg.name())
@@ -85,10 +99,10 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                     let error = anyhow!("Missing signing key");
                     OpenIdError::server_error(error)
                 })?;
-            let sub = resolve_sub(provider, grant.subject(), &client)
+            let sub = resolve_sub(&self.provider, grant.subject(), &client)
                 .map_err(OpenIdError::server_error)?;
             let mut id_token_builder = IdTokenBuilder::new(signing_key)
-                .with_issuer(provider.issuer())
+                .with_issuer(&self.provider.issuer())
                 .with_sub(&sub)
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
@@ -109,14 +123,14 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
 
             simple_id_token = Some(
                 id_token
-                    .return_or_encrypt_simple_id_token(provider, &client)
+                    .return_or_encrypt_simple_id_token(&self.provider, &client)
                     .await
                     .map_err(OpenIdError::server_error)?,
             );
         }
 
         let mut rt = None;
-        if provider.issue_refresh_token(&client).await {
+        if self.provider.issue_refresh_token(&client).await {
             let rt_ttl = ttl.refresh_token_ttl(&client).await;
             let refresh_token = RefreshTokenBuilder::default()
                 .token(Uuid::new_v4())
@@ -128,7 +142,7 @@ impl GrantTypeResolver for AuthorisationCodeGrant {
                 .created(now)
                 .build()
                 .map_err(OpenIdError::server_error)?
-                .save(provider)
+                .save(&self.provider)
                 .await?;
             rt = Some(refresh_token.token)
         }

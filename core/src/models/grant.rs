@@ -16,13 +16,16 @@ use oidc_types::identifiable::Identifiable;
 use oidc_types::scopes::Scopes;
 use oidc_types::subject::Subject;
 
-use crate::adapter::PersistenceError;
-use crate::configuration::OpenIDProviderConfiguration;
-use crate::error::OpenIdError;
 use crate::models::Status;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct GrantID(Uuid);
+
+impl GrantID {
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+}
 
 impl TryFrom<Vec<u8>> for GrantID {
     type Error = uuid::Error;
@@ -72,40 +75,8 @@ pub struct Grant {
 }
 
 impl Grant {
-    pub async fn find(
-        provider: &OpenIDProviderConfiguration,
-        id: GrantID,
-    ) -> Result<Option<Grant>, PersistenceError> {
-        Ok(provider
-            .adapter()
-            .grant()
-            .find(&id)
-            .await?
-            .filter(|it| it.status != Status::Consumed))
-    }
-
-    pub async fn save(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        provider.adapter().grant().insert(self, None).await
-    }
-
-    pub async fn update(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        provider.adapter().grant().update(self, None).await
-    }
-
-    pub async fn consume(
-        mut self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Grant, OpenIdError> {
-        self.status = Status::Consumed;
-        self.update(provider)
-            .await
-            .map_err(OpenIdError::server_error)
+    pub fn set_status(&mut self, status: Status) {
+        self.status = status
     }
 
     pub fn has_requested_scopes(&self, requested: &Scopes) -> bool {
