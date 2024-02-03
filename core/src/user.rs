@@ -6,8 +6,6 @@ use oidc_types::amr::Amr;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::subject::Subject;
 
-use crate::adapter::PersistenceError;
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::grant::GrantID;
 use crate::session::SessionID;
 
@@ -72,27 +70,6 @@ impl AuthenticatedUser {
     pub fn with_interaction(mut self, interaction_id: Uuid) -> Self {
         self.interaction_id = interaction_id;
         self
-    }
-
-    pub async fn save(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        provider.adapter().user().insert(self, None).await
-    }
-
-    pub async fn update(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<Self, PersistenceError> {
-        provider.adapter().user().update(self, None).await
-    }
-
-    pub async fn find_by_session(
-        provider: &OpenIDProviderConfiguration,
-        session: SessionID,
-    ) -> Result<Option<AuthenticatedUser>, PersistenceError> {
-        provider.adapter().user().find(&session).await
     }
 }
 

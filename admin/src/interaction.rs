@@ -48,8 +48,6 @@ impl InteractionServiceImpl {
         let prompt_service = Arc::new(PromptService::new(provider.clone()));
         let interaction_service = Arc::new(CoreInteractionService::new(
             provider.clone(),
-            grant_manager.clone(),
-            interaction_manager.clone(),
             prompt_service.clone(),
         ));
         let authorisation_service = AuthorisationService::new(

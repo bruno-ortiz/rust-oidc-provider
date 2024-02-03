@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::adapter::PersistenceError;
@@ -15,7 +16,7 @@ impl InteractionManager {
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Option<Interaction>, PersistenceError> {
-        Ok(self.provider.adapter().interaction().find(&id).await?)
+        self.provider.adapter().interaction().find(&id).await
     }
 
     pub async fn save(&self, interaction: Interaction) -> Result<Interaction, PersistenceError> {

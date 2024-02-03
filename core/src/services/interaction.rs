@@ -22,6 +22,7 @@ use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::manager::grant_manager::GrantManager;
 use crate::manager::interaction_manager::InteractionManager;
+use crate::manager::user_manager::UserManager;
 use crate::models::client::ClientInformation;
 use crate::models::grant::GrantBuilder;
 use crate::prompt::PromptError;
@@ -53,22 +54,26 @@ pub enum InteractionError {
 
 pub struct InteractionService {
     provider: Arc<OpenIDProviderConfiguration>,
-    interaction_manager: Arc<InteractionManager>,
-    grant_manager: Arc<GrantManager>,
     prompt_service: Arc<PromptService>,
+    interaction_manager: InteractionManager,
+    grant_manager: GrantManager,
+    user_manager: UserManager,
 }
 
 impl InteractionService {
     pub fn new(
         provider: Arc<OpenIDProviderConfiguration>,
-        grant_manager: Arc<GrantManager>,
-        interaction_manager: Arc<InteractionManager>,
         prompt_service: Arc<PromptService>,
     ) -> Self {
+        let user_manager = UserManager::new(provider.clone());
+        let grant_manager = GrantManager::new(provider.clone());
+        let interaction_manager = InteractionManager::new(provider.clone());
+
         Self {
             provider,
             interaction_manager,
             grant_manager,
+            user_manager,
             prompt_service,
         }
     }
@@ -79,7 +84,7 @@ impl InteractionService {
         request: ValidatedAuthorisationRequest,
         client: Arc<ClientInformation>,
     ) -> Result<Interaction, InteractionError> {
-        let user = AuthenticatedUser::find_by_session(&self.provider, session).await?;
+        let user = self.user_manager.find_by_session(session).await?;
         let prompt = self
             .prompt_service
             .resolve_prompt(&request, user.as_ref(), &client)
@@ -110,9 +115,8 @@ impl InteractionService {
                 session, request, ..
             })) => {
                 let user =
-                    AuthenticatedUser::new(session, subject, clock.now(), interaction_id, acr, amr)
-                        .save(&self.provider)
-                        .await?;
+                    AuthenticatedUser::new(session, subject, clock.now(), interaction_id, acr, amr);
+                let user = self.user_manager.save(user, None).await?;
 
                 let interaction =
                     Interaction::consent_with_id(user.interaction_id(), request, user);
@@ -168,7 +172,8 @@ impl InteractionService {
                     .map_err(|err| Internal(err.into()))?;
                 let grant = self.grant_manager.save(grant).await?;
 
-                let user = user.with_grant(grant.id()).update(&self.provider).await?;
+                let user = user.with_grant(grant.id());
+                let user = self.user_manager.update(user, None).await?;
                 let client = retrieve_client_info(&self.provider, request.client_id)
                     .await
                     .map_err(|err| Internal(err.into()))?
@@ -221,7 +226,8 @@ impl InteractionService {
             Prompt::Consent => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
                 let new_id = Uuid::new_v4();
-                let user = user.with_interaction(new_id).update(&self.provider).await?;
+                let user = user.with_interaction(new_id);
+                let user = self.user_manager.update(user, None).await?;
                 let interaction = Interaction::consent_with_id(new_id, request, user);
                 let saved_interaction = self.interaction_manager.save(interaction).await?;
                 Ok(saved_interaction)
@@ -229,7 +235,8 @@ impl InteractionService {
             Prompt::None => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
                 let new_id = Uuid::new_v4();
-                let user = user.with_interaction(new_id).update(&self.provider).await?;
+                let user = user.with_interaction(new_id);
+                let user = self.user_manager.update(user, None).await?;
                 let interaction = Interaction::none_with_id(new_id, request, user);
                 let saved_interaction = self.interaction_manager.save(interaction).await?;
                 Ok(saved_interaction)
@@ -277,8 +284,8 @@ mod tests {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
     use crate::configuration::OpenIDProviderConfiguration;
     use crate::context::test_utils::setup_provider;
-    use crate::manager::grant_manager::GrantManager;
     use crate::manager::interaction_manager::InteractionManager;
+    use crate::manager::user_manager::UserManager;
     use crate::models::client::ClientInformation;
     use crate::services::interaction::InteractionService;
     use crate::services::prompt::PromptService;
@@ -306,6 +313,7 @@ mod tests {
     async fn test_begin_login_interaction_due_to_user_max_age_expired() {
         init_logging();
         let provider = Arc::new(setup_provider());
+        let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, Some(1));
@@ -319,8 +327,9 @@ mod tests {
         };
 
         let auth_time = OffsetDateTime::now_utc() - Duration::minutes(5);
-        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save(&provider)
+        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None);
+        let user = user_manager
+            .save(user, None)
             .await
             .expect("User should be saved");
 
@@ -342,6 +351,7 @@ mod tests {
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
         let provider = Arc::new(setup_provider());
+        let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
 
         let result = service
@@ -353,8 +363,9 @@ mod tests {
         };
 
         let auth_time = OffsetDateTime::now_utc();
-        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save(&provider)
+        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None);
+        let user = user_manager
+            .save(user, None)
             .await
             .expect("User should be saved");
 
@@ -376,6 +387,7 @@ mod tests {
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
         let provider = Arc::new(setup_provider());
+        let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
         let result = service
             .begin_interaction(session_id, auth_request.clone(), create_client())
@@ -386,8 +398,9 @@ mod tests {
         };
 
         let auth_time = OffsetDateTime::now_utc();
-        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save(&provider)
+        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None);
+        let user = user_manager
+            .save(user, None)
             .await
             .expect("User should be saved");
 
@@ -416,6 +429,7 @@ mod tests {
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, None);
         let provider = Arc::new(setup_provider());
+        let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
         let result = service
             .begin_interaction(session_id, auth_request.clone(), create_client())
@@ -426,8 +440,9 @@ mod tests {
         };
 
         let auth_time = OffsetDateTime::now_utc();
-        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None)
-            .save(&provider)
+        let user = AuthenticatedUser::new(session, Subject::new("sub"), auth_time, id, None, None);
+        let user = user_manager
+            .save(user, None)
             .await
             .expect("User should be saved");
 
@@ -536,14 +551,8 @@ mod tests {
     }
 
     fn prepare_service(provider: Arc<OpenIDProviderConfiguration>) -> InteractionService {
-        let grant_manager = GrantManager::new(provider.clone());
         let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
         let prompt_service = Arc::new(PromptService::new(provider.clone()));
-        InteractionService::new(
-            provider.clone(),
-            Arc::new(grant_manager),
-            interaction_manager,
-            prompt_service,
-        )
+        InteractionService::new(provider.clone(), prompt_service)
     }
 }

@@ -11,7 +11,7 @@ use tower_http::ServiceBuilderExt;
 use oidc_admin::InteractionServiceClient;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::manager::grant_manager::GrantManager;
-use oidc_core::manager::interaction_manager::InteractionManager;
+use oidc_core::request_object::RequestObjectProcessor;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
@@ -73,12 +73,9 @@ trait RouterExt {
 impl RouterExt for Router {
     async fn apply_extensions(self, provider: Arc<OpenIDProviderConfiguration>) -> Router {
         let grant_manager = Arc::new(GrantManager::new(provider.clone()));
-        let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
         let prompt_service = Arc::new(PromptService::new(provider.clone()));
         let interaction_service = Arc::new(InteractionService::new(
             provider.clone(),
-            grant_manager.clone(),
-            interaction_manager.clone(),
             prompt_service.clone(),
         ));
         let authorisation_service = Arc::new(AuthorisationService::new(
@@ -91,6 +88,7 @@ impl RouterExt for Router {
 
         let token_service = Arc::new(TokenService::new(provider.clone(), grant_manager.clone()));
         let userinfo_service = Arc::new(UserInfoService::new(provider.clone()));
+        let request_object = RequestObjectProcessor::new(provider.clone());
         let interaction_client = InteractionServiceClient::connect(LOCAL_CLIENT)
             .await
             .expect("expected successful gRPC connection");
@@ -105,6 +103,7 @@ impl RouterExt for Router {
                 .add_extension(token_service)
                 .add_extension(userinfo_service)
                 .add_extension(interaction_client)
+                .add_extension(request_object)
                 .add_extension(provider),
         )
     }

@@ -26,6 +26,7 @@ pub async fn authorise<R, E>(
     auth_service: Extension<Arc<AuthorisationService<R, E>>>,
     encoder: Extension<Arc<DynamicResponseModeEncoder>>,
     Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
+    Extension(req_obj_processor): Extension<RequestObjectProcessor>,
     session: SessionHolder,
 ) -> Result<Response, AuthorisationErrorWrapper>
 where
@@ -33,7 +34,7 @@ where
     E: ResponseModeEncoder,
 {
     let client = Arc::new(get_client(&provider, &request).await?);
-    let request_object = RequestObjectProcessor::process(&provider, &request.0, &client).await;
+    let request_object = req_obj_processor.process(&request.0, &client).await;
     let authorization_request = match request_object {
         Ok(Some(request)) => request,
         Ok(None) => request.0,

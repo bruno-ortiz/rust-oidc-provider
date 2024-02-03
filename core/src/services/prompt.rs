@@ -6,7 +6,6 @@ use oidc_types::prompt::Prompt;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
-use crate::manager::interaction_manager::InteractionManager;
 use crate::models::client::ClientInformation;
 use crate::prompt::PromptError;
 use crate::user::AuthenticatedUser;
