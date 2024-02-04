@@ -102,7 +102,7 @@ impl AuthorisationCodeGrantResolver {
             let sub = resolve_sub(&self.provider, grant.subject(), &client)
                 .map_err(OpenIdError::server_error)?;
             let mut id_token_builder = IdTokenBuilder::new(signing_key)
-                .with_issuer(&self.provider.issuer())
+                .with_issuer(self.provider.issuer())
                 .with_sub(&sub)
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)

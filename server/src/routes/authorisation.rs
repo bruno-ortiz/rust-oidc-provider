@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::extract::{Extension, Query};
+use axum::extract::{Query, State};
 use axum::response::{IntoResponse, Redirect, Response, Result};
 
 use oidc_core::authorisation_request::AuthorisationRequest;
@@ -11,9 +11,8 @@ use oidc_core::models::client::ClientInformation;
 use oidc_core::request_object::RequestObjectProcessor;
 use oidc_core::response_mode::encoder::{
     encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
-    ResponseModeEncoder,
 };
-use oidc_core::response_type::resolver::ResponseTypeResolver;
+use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_types::response_mode::ResponseMode;
 
@@ -21,18 +20,16 @@ use crate::extractors::SessionHolder;
 use crate::routes::error::AuthorisationErrorWrapper;
 
 // #[axum_macros::debug_handler]
-pub async fn authorise<R, E>(
+pub async fn authorise(
     request: Query<AuthorisationRequest>,
-    auth_service: Extension<Arc<AuthorisationService<R, E>>>,
-    encoder: Extension<Arc<DynamicResponseModeEncoder>>,
-    Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
-    Extension(req_obj_processor): Extension<RequestObjectProcessor>,
+    State(auth_service): State<
+        Arc<AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>>,
+    >,
+    State(encoder): State<Arc<DynamicResponseModeEncoder>>,
+    State(provider): State<Arc<OpenIDProviderConfiguration>>,
+    State(req_obj_processor): State<Arc<RequestObjectProcessor>>,
     session: SessionHolder,
-) -> Result<Response, AuthorisationErrorWrapper>
-where
-    R: ResponseTypeResolver,
-    E: ResponseModeEncoder,
-{
+) -> Result<Response, AuthorisationErrorWrapper> {
     let client = Arc::new(get_client(&provider, &request).await?);
     let request_object = req_obj_processor.process(&request.0, &client).await;
     let authorization_request = match request_object {

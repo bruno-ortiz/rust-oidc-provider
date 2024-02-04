@@ -49,12 +49,12 @@ impl OidcServer {
             rx.await.ok();
         });
         server_ready.await.expect("Admin server should be ready");
-        let oidc_router = oidc_router(self.custom_routes, provider).await;
+        let router = oidc_router(self.custom_routes, provider).await;
         let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
         let tcp_listener = TcpListener::bind(addr).await?;
         info!("OpenId Server listening on {}", addr);
 
-        axum::serve(tcp_listener, oidc_router.into_make_service())
+        axum::serve(tcp_listener, router)
             .with_graceful_shutdown(shutdown_signal())
             .await?;
         let _ = tx.send(());

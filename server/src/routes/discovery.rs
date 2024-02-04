@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{Extension, Json};
+use axum::Json;
 use tracing::error;
 use url::Url;
 
@@ -14,7 +15,7 @@ use oidc_types::scopes::Scope;
 pub const DISCOVERY_ROUTE: &str = "/.well-known/openid-configuration";
 
 pub async fn discovery<'a>(
-    Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
+    State(provider): State<Arc<OpenIDProviderConfiguration>>,
 ) -> axum::response::Result<Response> {
     let issuer = provider.issuer();
     let routes = provider.routes();

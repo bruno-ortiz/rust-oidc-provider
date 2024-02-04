@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use axum::extract::State;
 use axum::response::Result;
-use axum::{Extension, Json};
+use axum::Json;
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
@@ -18,9 +19,9 @@ use crate::routes::error::OpenIdErrorResponse;
 // #[axum_macros::debug_handler]
 pub async fn userinfo(
     bearer_token: TypedHeader<Authorization<Bearer>>,
-    Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
-    Extension(service): Extension<Arc<UserInfoService>>,
-    Extension(token_service): Extension<Arc<TokenService>>,
+    State(provider): State<Arc<OpenIDProviderConfiguration>>,
+    State(service): State<Arc<UserInfoService>>,
+    State(token_service): State<Arc<TokenService>>,
 ) -> Result<Json<UserInfo>, OpenIdErrorResponse> {
     //TODO: review error to respond wwwAuthenticate Header
     let token = find_access_token(&provider, bearer_token).await?;

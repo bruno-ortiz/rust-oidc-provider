@@ -3,12 +3,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use axum::routing::{get, post};
 use axum::Router;
+use axum_macros::FromRef;
+use oidc_admin::InteractionServiceClient;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
 
-use oidc_admin::InteractionServiceClient;
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::manager::grant_manager::GrantManager;
 use oidc_core::request_object::RequestObjectProcessor;
@@ -43,25 +44,25 @@ pub(crate) async fn oidc_router(
     let routes = provider.routes();
     let mut router = Router::new()
         .route(DISCOVERY_ROUTE, get(discovery))
-        .route(
-            routes.authorisation,
-            get(authorise::<DynamicResponseTypeResolver, DynamicResponseModeEncoder>),
-        )
+        .route(routes.authorisation, get(authorise))
         .route(routes.jwks, get(jwks))
         .route(routes.token, post(token))
-        .route(routes.userinfo, get(userinfo).post(userinfo));
+        .route(routes.userinfo, get(userinfo).post(userinfo))
+        .with_state::<()>(AppState::new(provider.clone()));
     if let Some(custom_routes) = custom_routes {
         router = router.nest("/", custom_routes);
     }
-    router
-        .route_layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(CookieManagerLayer::new())
-                .layer(SessionManagerLayer::signed(&[0; 32])), //TODO: key configuration
-        )
-        .apply_extensions(provider)
+    let interaction_client = InteractionServiceClient::connect(LOCAL_CLIENT)
         .await
+        .expect("expected successful gRPC connection");
+    router.route_layer(
+        ServiceBuilder::new()
+            .add_extension(interaction_client)
+            .add_extension(provider.clone())
+            .layer(TraceLayer::new_for_http())
+            .layer(CookieManagerLayer::new())
+            .layer(SessionManagerLayer::signed(&[0; 32])), //TODO: key configuration
+    )
 }
 
 #[async_trait]
@@ -69,9 +70,20 @@ trait RouterExt {
     async fn apply_extensions(self, provider: Arc<OpenIDProviderConfiguration>) -> Router;
 }
 
-#[async_trait]
-impl RouterExt for Router {
-    async fn apply_extensions(self, provider: Arc<OpenIDProviderConfiguration>) -> Router {
+#[derive(Clone, FromRef)]
+pub(crate) struct AppState {
+    provider: Arc<OpenIDProviderConfiguration>,
+    authorisation_service:
+        Arc<AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>>,
+    interaction_service: Arc<InteractionService>,
+    token_service: Arc<TokenService>,
+    userinfo_service: Arc<UserInfoService>,
+    request_object_processor: Arc<RequestObjectProcessor>,
+    encoder: Arc<DynamicResponseModeEncoder>,
+}
+
+impl AppState {
+    pub fn new(provider: Arc<OpenIDProviderConfiguration>) -> Self {
         let grant_manager = Arc::new(GrantManager::new(provider.clone()));
         let prompt_service = Arc::new(PromptService::new(provider.clone()));
         let interaction_service = Arc::new(InteractionService::new(
@@ -85,26 +97,18 @@ impl RouterExt for Router {
             interaction_service.clone(),
             grant_manager.clone(),
         ));
-
         let token_service = Arc::new(TokenService::new(provider.clone(), grant_manager.clone()));
         let userinfo_service = Arc::new(UserInfoService::new(provider.clone()));
-        let request_object = RequestObjectProcessor::new(provider.clone());
-        let interaction_client = InteractionServiceClient::connect(LOCAL_CLIENT)
-            .await
-            .expect("expected successful gRPC connection");
-        self.route_layer(
-            ServiceBuilder::new()
-                .add_extension(Arc::new(DynamicResponseModeEncoder::from(
-                    provider.as_ref(),
-                )))
-                .add_extension(authorisation_service)
-                .add_extension(interaction_service)
-                .add_extension(prompt_service)
-                .add_extension(token_service)
-                .add_extension(userinfo_service)
-                .add_extension(interaction_client)
-                .add_extension(request_object)
-                .add_extension(provider),
-        )
+        let request_object_processor = Arc::new(RequestObjectProcessor::new(provider.clone()));
+        let encoder = Arc::new(DynamicResponseModeEncoder::from(provider.as_ref()));
+        Self {
+            provider,
+            authorisation_service,
+            interaction_service,
+            token_service,
+            userinfo_service,
+            request_object_processor,
+            encoder,
+        }
     }
 }

@@ -3,11 +3,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
-use axum::extract::{FromRequest, FromRequestParts};
+use axum::extract::{FromRequest, FromRequestParts, State};
 use axum::http::header::{CACHE_CONTROL, PRAGMA};
 use axum::http::Request;
 use axum::response::{AppendHeaders, IntoResponse, Response};
-use axum::{Extension, Json};
+use axum::Json;
 use axum_extra::headers::{HeaderMap, HeaderName};
 use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
@@ -27,8 +27,8 @@ use crate::routes::error::OpenIdErrorResponse;
 
 // #[axum_macros::debug_handler]
 pub async fn token(
-    Extension(provider): Extension<Arc<OpenIDProviderConfiguration>>,
-    Extension(service): Extension<Arc<TokenService>>,
+    State(provider): State<Arc<OpenIDProviderConfiguration>>,
+    State(service): State<Arc<TokenService>>,
     request: TokenRequest,
 ) -> axum::response::Result<
     (

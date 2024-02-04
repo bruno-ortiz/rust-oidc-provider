@@ -101,7 +101,7 @@ impl RefreshTokenGrantResolver {
                 .map_err(OpenIdError::server_error)?;
             let id_token = IdTokenBuilder::new(signing_key)
                 .with_sub(&sub)
-                .with_issuer(&self.provider.issuer())
+                .with_issuer(self.provider.issuer())
                 .with_audience(vec![client.id().into()])
                 .with_exp(now + ttl.id_token)
                 .with_iat(now)
