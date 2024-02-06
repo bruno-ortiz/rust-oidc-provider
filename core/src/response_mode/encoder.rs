@@ -1,9 +1,9 @@
-use indexmap::IndexMap;
 use std::collections::HashMap;
+use std::sync::Arc;
 
+use indexmap::IndexMap;
 use url::Url;
 
-use format as f;
 use oidc_types::response_mode::ResponseMode;
 use oidc_types::state::State;
 use oidc_types::url_encodable::UrlEncodable;
@@ -16,6 +16,9 @@ use crate::response_mode::encoder::jwt::JwtEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::errors::EncodingError;
 use crate::services::authorisation::AuthorisationError;
+use crate::services::keystore::KeystoreService;
+
+use format as f;
 
 pub(crate) mod fragment;
 pub(crate) mod jwt;
@@ -28,6 +31,7 @@ pub struct EncodingContext<'a> {
     pub redirect_uri: &'a Url,
     pub response_mode: ResponseMode,
     pub provider: &'a OpenIDProviderConfiguration,
+    pub keystore_service: Arc<KeystoreService>,
 }
 
 pub trait ResponseModeEncoder {

@@ -8,11 +8,13 @@ use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
 use crate::prompt::PromptError;
+use crate::services::keystore::KeystoreService;
 use crate::user::AuthenticatedUser;
 
 #[derive(new)]
 pub struct PromptService {
     provider: Arc<OpenIDProviderConfiguration>,
+    keystore_service: Arc<KeystoreService>,
 }
 
 impl PromptService {
@@ -34,7 +36,13 @@ impl PromptService {
             let prompt_checks = self.provider.prompts();
             for selector in prompt_checks {
                 if selector
-                    .should_run(&self.provider, user, request, client)
+                    .should_run(
+                        &self.provider,
+                        &self.keystore_service,
+                        user,
+                        request,
+                        client,
+                    )
                     .await?
                 {
                     prompt = Some(selector.prompt());

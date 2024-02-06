@@ -16,6 +16,7 @@ use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
 use oidc_core::services::interaction::InteractionError;
 use oidc_core::services::interaction::InteractionService as CoreInteractionService;
+use oidc_core::services::keystore::KeystoreService;
 use oidc_core::services::prompt::PromptService;
 use oidc_core::services::types::Interaction;
 use oidc_core::user::AuthenticatedUser;
@@ -43,9 +44,13 @@ pub struct InteractionServiceImpl {
 
 impl InteractionServiceImpl {
     pub fn new(provider: Arc<OpenIDProviderConfiguration>) -> Self {
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let grant_manager = Arc::new(GrantManager::new(provider.clone()));
         let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
-        let prompt_service = Arc::new(PromptService::new(provider.clone()));
+        let prompt_service = Arc::new(PromptService::new(
+            provider.clone(),
+            keystore_service.clone(),
+        ));
         let interaction_service = Arc::new(CoreInteractionService::new(
             provider.clone(),
             prompt_service.clone(),
@@ -56,6 +61,7 @@ impl InteractionServiceImpl {
             provider.clone(),
             interaction_service.clone(),
             grant_manager.clone(),
+            keystore_service.clone(),
         );
         Self {
             authorisation_service,

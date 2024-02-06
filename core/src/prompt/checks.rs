@@ -16,6 +16,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
 use crate::prompt::PromptError;
+use crate::services::keystore::KeystoreService;
 use crate::user::AuthenticatedUser;
 use crate::utils::resolve_sub;
 
@@ -27,6 +28,7 @@ pub type PromptCheck = Box<
 
 pub struct CheckContext<'a> {
     pub provider: &'a OpenIDProviderConfiguration,
+    pub keystore_service: &'a KeystoreService,
     pub prompt: Prompt,
     pub user: Option<&'a AuthenticatedUser>,
     pub request: &'a ValidatedAuthorisationRequest,
@@ -151,6 +153,7 @@ pub async fn check_id_token_hint(
     CheckContext {
         user,
         request,
+        keystore_service,
         client,
         provider,
         ..
@@ -158,7 +161,7 @@ pub async fn check_id_token_hint(
 ) -> Result<bool, PromptError> {
     let Some(user) = user else { return Ok(true) };
     if let Some(hint) = &request
-        .id_token_hint(provider, client)
+        .id_token_hint(keystore_service, client)
         .map_err(|err| PromptError::Internal(err.into()))?
     {
         if client.metadata().subject_type == SubjectType::Pairwise {

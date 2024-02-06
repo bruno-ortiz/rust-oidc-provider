@@ -24,6 +24,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
+use crate::services::keystore::KeystoreService;
 use crate::utils::get_jose_algorithm;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -66,11 +67,11 @@ impl ValidatedAuthorisationRequest {
 
     pub fn id_token_hint(
         &self,
-        provider: &OpenIDProviderConfiguration,
+        keystore_service: &KeystoreService,
         client: &ClientInformation,
     ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
         validate_id_token_hint(
-            provider,
+            keystore_service,
             self.id_token_hint.as_ref().map(|it| it.as_ref()),
             client,
         )
@@ -104,6 +105,7 @@ pub struct AuthorisationRequest {
 impl AuthorisationRequest {
     pub async fn validate(
         self,
+        keystore_service: &KeystoreService,
         client: &ClientInformation,
         provider: &OpenIDProviderConfiguration,
     ) -> Result<ValidatedAuthorisationRequest, (OpenIdError, Self)> {
@@ -157,7 +159,7 @@ impl AuthorisationRequest {
         };
 
         let id_token_hint =
-            match validate_id_token_hint(provider, this.id_token_hint.as_deref(), client) {
+            match validate_id_token_hint(keystore_service, this.id_token_hint.as_deref(), client) {
                 Ok(validated_jwt) => validated_jwt,
                 Err(err) => return Err((err, this)),
             };
@@ -274,13 +276,13 @@ fn parse_claims(
 }
 
 fn validate_id_token_hint(
-    provider: &OpenIDProviderConfiguration,
+    keystore_service: &KeystoreService,
     id_token: Option<&str>,
     client: &ClientInformation,
 ) -> Result<Option<ValidJWT<GenericJWT>>, OpenIdError> {
     if let Some(hint) = id_token {
         let alg = get_alg(hint)?;
-        let keystore = client.server_keystore(provider, &alg);
+        let keystore = keystore_service.server_keystore(client, &alg);
         let jwt = GenericJWT::parse(hint, &keystore).map_err(OpenIdError::server_error)?;
         let valid_jwt = ValidJWT::validate(jwt, &keystore).map_err(OpenIdError::server_error)?;
         Ok(Some(valid_jwt))

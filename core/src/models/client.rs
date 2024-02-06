@@ -51,38 +51,6 @@ impl ClientInformation {
         self.metadata
     }
 
-    pub fn server_keystore(
-        &self,
-        provider: &OpenIDProviderConfiguration,
-        alg: &impl Algorithm,
-    ) -> Arc<KeyStore> {
-        if alg.is_symmetric() {
-            self.symmetric_keystore(provider)
-        } else {
-            provider.keystore()
-        }
-    }
-
-    pub async fn keystore(
-        &self,
-        provider: &OpenIDProviderConfiguration,
-        alg: &impl Algorithm,
-    ) -> anyhow::Result<Arc<KeyStore>> {
-        if alg.is_symmetric() {
-            Ok(self.symmetric_keystore(provider))
-        } else {
-            self.asymmetric_keystore().await
-        }
-    }
-
-    pub fn symmetric_keystore(&self, provider: &OpenIDProviderConfiguration) -> Arc<KeyStore> {
-        keystore::create_symmetric(provider, self)
-    }
-
-    pub async fn asymmetric_keystore(&self) -> anyhow::Result<Arc<KeyStore>> {
-        Ok(keystore::create_asymmetric(self).await?)
-    }
-
     pub fn encrypt_id_token(&self) -> bool {
         self.metadata.id_token_encryption_data().is_some()
     }

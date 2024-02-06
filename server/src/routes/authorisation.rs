@@ -14,6 +14,7 @@ use oidc_core::response_mode::encoder::{
 };
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
+use oidc_core::services::keystore::KeystoreService;
 use oidc_types::response_mode::ResponseMode;
 
 use crate::extractors::SessionHolder;
@@ -28,6 +29,7 @@ pub async fn authorise(
     State(encoder): State<Arc<DynamicResponseModeEncoder>>,
     State(provider): State<Arc<OpenIDProviderConfiguration>>,
     State(req_obj_processor): State<Arc<RequestObjectProcessor>>,
+    State(keystore_service): State<Arc<KeystoreService>>,
     session: SessionHolder,
 ) -> Result<Response, AuthorisationErrorWrapper> {
     let client = Arc::new(get_client(&provider, &request).await?);
@@ -36,26 +38,50 @@ pub async fn authorise(
         Ok(Some(request)) => request,
         Ok(None) => request.0,
         Err(err) => {
-            return handle_validation_error(&provider, &encoder, &client, err, request.0);
+            return handle_validation_error(
+                &provider,
+                keystore_service.clone(),
+                &encoder,
+                &client,
+                err,
+                request.0,
+            );
         }
     };
     validate_redirect_uri(&authorization_request, &client)?;
-    match authorization_request.validate(&client, &provider).await {
+    match authorization_request
+        .validate(&keystore_service, &client, &provider)
+        .await
+    {
         Ok(req) => {
             let res = auth_service
                 .authorise(session.session_id(), client.clone(), req)
                 .await;
             match res {
                 Ok(res) => Ok(respond(res)),
-                Err(err) => handle_authorization_error(&provider, &encoder, &client, err),
+                Err(err) => handle_authorization_error(
+                    &provider,
+                    keystore_service.clone(),
+                    &encoder,
+                    &client,
+                    err,
+                ),
             }
         }
-        Err((err, request)) => handle_validation_error(&provider, &encoder, &client, err, request),
+        Err((err, request)) => handle_validation_error(
+            &provider,
+            keystore_service.clone(),
+            &encoder,
+            &client,
+            err,
+            request,
+        ),
     }
 }
 
 fn handle_authorization_error(
     provider: &OpenIDProviderConfiguration,
+    keystore_service: Arc<KeystoreService>,
     encoder: &DynamicResponseModeEncoder,
     client: &ClientInformation,
     err: AuthorisationError,
@@ -72,6 +98,7 @@ fn handle_authorization_error(
                 redirect_uri: &redirect_uri,
                 response_mode,
                 provider,
+                keystore_service,
             };
             let response = encode_response(encoding_context, encoder, err, state)?;
             Ok(respond(response))
@@ -82,13 +109,14 @@ fn handle_authorization_error(
 
 fn handle_validation_error(
     provider: &OpenIDProviderConfiguration,
+    keystore_service: Arc<KeystoreService>,
     encoder: &DynamicResponseModeEncoder,
     client: &ClientInformation,
     err: OpenIdError,
     mut request: AuthorisationRequest,
 ) -> Result<Response, AuthorisationErrorWrapper> {
     let state = request.state.take();
-    let encoding_context = encoding_context(provider, client, &request)?;
+    let encoding_context = encoding_context(provider, keystore_service, client, &request)?;
     let response = encode_response(encoding_context, encoder, err, state)?;
     Ok(respond(response))
 }
@@ -102,6 +130,7 @@ fn respond(response: AuthorisationResponse) -> Response {
 
 fn encoding_context<'a>(
     provider: &'a OpenIDProviderConfiguration,
+    keystore_service: Arc<KeystoreService>,
     client: &'a ClientInformation,
     request: &'a AuthorisationRequest,
 ) -> Result<EncodingContext<'a>, AuthorisationError> {
@@ -119,6 +148,7 @@ fn encoding_context<'a>(
         redirect_uri,
         response_mode,
         provider,
+        keystore_service,
     })
 }
 

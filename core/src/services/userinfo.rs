@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use derive_new::new;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use serde_json::Value;
@@ -19,17 +20,16 @@ use crate::keystore::KeyUse;
 use crate::models::access_token::ActiveAccessToken;
 use crate::models::client::ClientInformation;
 use crate::profile::ProfileData;
+use crate::services::keystore::KeystoreService;
 use crate::utils::encrypt;
 
+#[derive(new)]
 pub struct UserInfoService {
     provider: Arc<OpenIDProviderConfiguration>,
+    keystore_service: Arc<KeystoreService>,
 }
 
 impl UserInfoService {
-    pub fn new(provider: Arc<OpenIDProviderConfiguration>) -> Self {
-        Self { provider }
-    }
-
     pub async fn get_user_info(&self, at: ActiveAccessToken) -> Result<UserInfo, OpenIdError> {
         let grant = at.grant();
         let client = retrieve_client_info(&self.provider, grant.client_id())
@@ -57,7 +57,7 @@ impl UserInfoService {
                 .sign_user_info(claims, &client, alg)
                 .map_err(OpenIdError::server_error)?;
             if let Some(enc_config) = client.metadata().userinfo_encryption_data() {
-                let encrypted = encrypt(&self.provider, signed, &client, &enc_config)
+                let encrypted = encrypt(&self.keystore_service, signed, &client, &enc_config)
                     .await
                     .map_err(OpenIdError::server_error)?;
                 result = UserInfo::Encrypted(encrypted)
@@ -77,7 +77,7 @@ impl UserInfoService {
         client: &ClientInformation,
         alg: &SigningAlgorithm,
     ) -> anyhow::Result<SignedJWT> {
-        let keystore = client.server_keystore(&self.provider, alg);
+        let keystore = self.keystore_service.server_keystore(client, alg);
         let signing_key = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())

@@ -17,6 +17,7 @@ use crate::prompt::checks::{
     check_user_must_have_consented, CheckContext, PromptCheck,
 };
 use crate::prompt::PromptError::{ConsentRequired, LoginRequired};
+use crate::services::keystore::KeystoreService;
 use crate::user::AuthenticatedUser;
 
 pub mod checks;
@@ -78,6 +79,7 @@ impl PromptSelector {
     pub async fn should_run(
         &self,
         provider: &OpenIDProviderConfiguration,
+        keystore_service: &KeystoreService,
         user: Option<&AuthenticatedUser>,
         request: &ValidatedAuthorisationRequest,
         client: &ClientInformation,
@@ -85,6 +87,7 @@ impl PromptSelector {
         for (name, check) in &self.checks {
             let ctx = CheckContext {
                 provider,
+                keystore_service,
                 prompt: self.prompt,
                 request,
                 user,

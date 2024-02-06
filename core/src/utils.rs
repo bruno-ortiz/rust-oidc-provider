@@ -12,6 +12,7 @@ use crate::jwt::GenericJWT;
 use crate::keystore::KeyUse;
 use crate::models::client::ClientInformation;
 use crate::pairwise::PairwiseError;
+use crate::services::keystore::KeystoreService;
 
 pub(crate) fn resolve_sub(
     provider: &OpenIDProviderConfiguration,
@@ -30,12 +31,12 @@ pub(crate) fn resolve_sub(
 }
 
 pub(crate) async fn encrypt(
-    provider: &OpenIDProviderConfiguration,
+    keystore_service: &KeystoreService,
     signed_jwt: SignedJWT,
     client: &ClientInformation,
     enc_config: &EncryptionData<'_>,
 ) -> anyhow::Result<EncryptedJWT<SignedJWT>> {
-    let keystore = client.keystore(provider, enc_config.alg).await?;
+    let keystore = keystore_service.keystore(client, enc_config.alg).await?;
     let encryption_key = keystore
         .select(KeyUse::Enc)
         .alg(enc_config.alg.name())

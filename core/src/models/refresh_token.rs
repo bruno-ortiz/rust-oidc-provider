@@ -9,9 +9,7 @@ use oidc_types::nonce::Nonce;
 use oidc_types::scopes::Scopes;
 use oidc_types::state::State;
 
-use crate::adapter::PersistenceError;
 use crate::configuration::clock::{Clock, ClockProvider};
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::grant::GrantID;
 use crate::models::Status;

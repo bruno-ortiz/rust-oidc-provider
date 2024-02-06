@@ -4,8 +4,10 @@ use oidc_types::response_type::Flow;
 
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::keystore::KeyStore;
 use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
+use crate::services::keystore::KeystoreService;
 use crate::user::AuthenticatedUser;
 
 pub struct OpenIDContext<'a> {
@@ -14,6 +16,7 @@ pub struct OpenIDContext<'a> {
     pub request: ValidatedAuthorisationRequest,
     pub grant: Grant,
     pub provider: &'a OpenIDProviderConfiguration,
+    pub keystore_service: Arc<KeystoreService>,
 }
 
 impl<'a> OpenIDContext<'a> {
@@ -23,6 +26,7 @@ impl<'a> OpenIDContext<'a> {
         request: ValidatedAuthorisationRequest,
         grant: Grant,
         provider: &'a OpenIDProviderConfiguration,
+        keystore_service: Arc<KeystoreService>,
     ) -> Self {
         OpenIDContext {
             client,
@@ -30,6 +34,7 @@ impl<'a> OpenIDContext<'a> {
             request,
             grant,
             provider,
+            keystore_service,
         }
     }
 

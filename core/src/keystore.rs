@@ -1,19 +1,10 @@
-use std::collections::HashSet;
-use std::sync::Arc;
-
-use cached::proc_macro::cached;
 use derive_builder::Builder;
 use josekit::jwk::Jwk;
-use oidc_types::jose::Algorithm;
 use thiserror::Error;
 
-use oidc_types::auth_method::AuthMethod;
-use oidc_types::client::ClientID;
 use oidc_types::jose::jwk_set::{JwkSet, PublicJwkSet};
 
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::macros::true_or_return;
-use crate::models::client::ClientInformation;
 
 #[derive(Debug, Copy, Clone)]
 pub enum KeyUse {
@@ -103,78 +94,6 @@ impl KeyStore {
 
     pub fn public(&self) -> PublicJwkSet {
         PublicJwkSet::new(&self.jwks)
-    }
-}
-
-#[cached(
-    key = "ClientID",
-    convert = r#"{ client.id() }"#,
-    time = 300,
-    size = 1000
-)]
-pub fn create_symmetric(
-    provider: &OpenIDProviderConfiguration,
-    client: &ClientInformation,
-) -> Arc<KeyStore> {
-    let mut algorithms = HashSet::new();
-    let client_metadata = client.metadata();
-    if client_metadata.token_endpoint_auth_method == AuthMethod::ClientSecretJwt {
-        if let Some(alg) = client_metadata.token_endpoint_auth_signing_alg.as_ref() {
-            if alg.is_symmetric() {
-                algorithms.insert(alg.clone());
-            }
-        } else {
-            let algs = provider
-                .token_endpoint_auth_signing_alg_values_supported()
-                .iter()
-                .filter(|&it| it.is_symmetric())
-                .cloned()
-                .collect::<Vec<_>>();
-            for alg in algs {
-                algorithms.insert(alg);
-            }
-        }
-    }
-    if client_metadata.id_token_signed_response_alg.is_symmetric() {
-        algorithms.insert(client_metadata.id_token_signed_response_alg.clone());
-    }
-    let keys = algorithms
-        .into_iter()
-        .map(|alg| {
-            let mut jwk = Jwk::new("oct");
-            jwk.set_algorithm(alg.name());
-            jwk.set_key_use("sig");
-            jwk.set_key_value(client.secret());
-            jwk.set_key_operations(vec!["sign", "verify"]);
-            jwk
-        })
-        .collect();
-    Arc::new(KeyStore::new(JwkSet::new(keys)))
-}
-
-#[cached(
-    key = "ClientID",
-    convert = r#"{ client.id() }"#,
-    result = true,
-    time = 300,
-    size = 1000
-)]
-pub async fn create_asymmetric(client: &ClientInformation) -> Result<Arc<KeyStore>, KeyStoreError> {
-    let jwks = client.metadata().jwks.as_ref();
-    let jwks_uri = client.metadata().jwks_uri.as_ref();
-    if jwks.is_some() && jwks_uri.is_some() {
-        return Err(KeyStoreError::DualJwkSet);
-    }
-    if let Some(jwks_uri) = jwks_uri {
-        let jwks = reqwest::get(jwks_uri.as_str())
-            .await?
-            .json::<JwkSet>()
-            .await?;
-        Ok(Arc::new(KeyStore::new(jwks)))
-    } else if let Some(jwks) = jwks {
-        Ok(Arc::new(KeyStore::new(jwks.clone())))
-    } else {
-        Err(KeyStoreError::Unset)
     }
 }
 

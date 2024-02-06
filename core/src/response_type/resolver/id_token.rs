@@ -36,7 +36,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let client = context.client.clone();
         let client_metadata = client.metadata();
         let alg = &client_metadata.id_token_signed_response_alg;
-        let keystore = client.server_keystore(context.provider, alg);
+        let keystore = context.keystore_service.server_keystore(&client, alg);
         let signing_key = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())
@@ -81,7 +81,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         })?;
 
         id_token
-            .return_or_encrypt_simple_id_token(context.provider, &context.client)
+            .return_or_encrypt_simple_id_token(&context.keystore_service, &context.client)
             .await
             .map_err(OpenIdError::server_error)
     }

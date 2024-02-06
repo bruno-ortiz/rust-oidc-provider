@@ -28,7 +28,9 @@ impl ResponseModeEncoder for JwtEncoder {
         parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let alg = &context.client.metadata().authorization_signed_response_alg;
-        let keystore = context.client.server_keystore(context.provider, alg);
+        let keystore = context
+            .keystore_service
+            .server_keystore(context.client, alg);
         let signing_key = keystore
             .select(KeyUse::Sig)
             .alg(alg.name())

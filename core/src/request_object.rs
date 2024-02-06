@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use derive_new::new;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
-use std::sync::Arc;
 use url::Url;
 
 use oidc_types::jose::error::JWTError;
@@ -13,11 +14,13 @@ use crate::error::OpenIdError;
 use crate::id_token_builder::JwtPayloadExt;
 use crate::jwt::{GenericJWT, ValidJWT};
 use crate::models::client::ClientInformation;
+use crate::services::keystore::KeystoreService;
 use crate::utils::get_jose_algorithm;
 
 #[derive(Clone, new)]
 pub struct RequestObjectProcessor {
     provider: Arc<OpenIDProviderConfiguration>,
+    keystore_service: Arc<KeystoreService>,
 }
 
 impl RequestObjectProcessor {
@@ -38,8 +41,9 @@ impl RequestObjectProcessor {
                     "Request object must be signed",
                 ))
             } else {
-                let keystore = client
-                    .keystore(&self.provider, &alg)
+                let keystore = self
+                    .keystore_service
+                    .keystore(client, &alg)
                     .await
                     .map_err(OpenIdError::server_error)?;
                 let validated = ValidJWT::validate(request_obj, &keystore)
@@ -70,7 +74,7 @@ impl RequestObjectProcessor {
                 let alg = get_jose_algorithm(request_obj)
                     .map_err(parse_err)?
                     .ok_or_else(missing_alg)?;
-                let keystore = client.server_keystore(&self.provider, &alg);
+                let keystore = self.keystore_service.server_keystore(client, &alg);
                 let jwt = GenericJWT::parse(request_obj, &keystore).map_err(parse_err)?;
                 Ok(Some(jwt))
             }
@@ -79,7 +83,7 @@ impl RequestObjectProcessor {
                 let alg = get_jose_algorithm(&request_obj)
                     .map_err(parse_err)?
                     .ok_or_else(missing_alg)?;
-                let keystore = client.server_keystore(&self.provider, &alg);
+                let keystore = self.keystore_service.server_keystore(client, &alg);
                 let jwt = GenericJWT::parse(&request_obj, &keystore).map_err(parse_err)?;
                 Ok(Some(jwt))
             }

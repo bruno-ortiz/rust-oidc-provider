@@ -15,6 +15,7 @@ use crate::manager::grant_manager::GrantManager;
 use crate::manager::refresh_token_manager::RefreshTokenManager;
 use crate::models::access_token::{AccessToken, ActiveAccessToken, TokenError};
 use crate::models::client::AuthenticatedClient;
+use crate::services::keystore::KeystoreService;
 
 pub struct TokenService {
     provider: Arc<OpenIDProviderConfiguration>,
@@ -32,6 +33,7 @@ impl TokenService {
         access_token_manager: Arc<AccessTokenManager>,
         refresh_token_manager: Arc<RefreshTokenManager>,
         auth_code_manager: Arc<AuthorisationCodeManager>,
+        keystore_service: Arc<KeystoreService>,
     ) -> Self {
         TokenService {
             provider: provider.clone(),
@@ -42,6 +44,7 @@ impl TokenService {
                 grant_manager.clone(),
                 access_token_manager.clone(),
                 refresh_token_manager.clone(),
+                keystore_service.clone(),
             ),
             auth_code_grant_resolver: AuthorisationCodeGrantResolver::new(
                 provider.clone(),
@@ -49,6 +52,7 @@ impl TokenService {
                 access_token_manager.clone(),
                 refresh_token_manager.clone(),
                 auth_code_manager.clone(),
+                keystore_service.clone(),
             ),
             cc_grant_resolver: ClientCredentialsGrantResolver::new(
                 provider.clone(),

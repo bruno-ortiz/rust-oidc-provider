@@ -21,6 +21,7 @@ use crate::models::access_token::AccessToken;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshToken;
 use crate::profile::ProfileData;
+use crate::services::keystore::KeystoreService;
 use crate::utils::resolve_sub;
 
 #[derive(new)]
@@ -29,6 +30,7 @@ pub(crate) struct RefreshTokenGrantResolver {
     grant_manager: Arc<GrantManager>,
     access_token_manager: Arc<AccessTokenManager>,
     refresh_token_manager: Arc<RefreshTokenManager>,
+    keystore_service: Arc<KeystoreService>,
 }
 
 impl RefreshTokenGrantResolver {
@@ -105,7 +107,7 @@ impl RefreshTokenGrantResolver {
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
-            let keystore = client.as_ref().server_keystore(&self.provider, alg);
+            let keystore = self.keystore_service.server_keystore(client.as_ref(), alg);
             let signing_key = keystore
                 .select(KeyUse::Sig)
                 .alg(alg.name())
@@ -129,7 +131,7 @@ impl RefreshTokenGrantResolver {
 
             simple_id_token = Some(
                 id_token
-                    .return_or_encrypt_simple_id_token(&self.provider, &client)
+                    .return_or_encrypt_simple_id_token(&self.keystore_service, &client)
                     .await
                     .map_err(OpenIdError::server_error)?,
             );

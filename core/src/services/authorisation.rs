@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use derive_new::new;
 use thiserror::Error;
 use url::Url;
 
@@ -22,6 +23,7 @@ use crate::response_mode::encoder::{
 };
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::interaction::{InteractionError, InteractionService};
+use crate::services::keystore::KeystoreService;
 use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
@@ -48,12 +50,14 @@ pub enum AuthorisationError {
     InternalError(#[from] anyhow::Error),
 }
 
+#[derive(new)]
 pub struct AuthorisationService<R, E> {
     resolver: R,
     encoder: E,
     provider: Arc<OpenIDProviderConfiguration>,
     interaction_service: Arc<InteractionService>,
     grant_manager: Arc<GrantManager>,
+    keystore_service: Arc<KeystoreService>,
 }
 
 impl<R, E> AuthorisationService<R, E>
@@ -61,22 +65,6 @@ where
     R: ResponseTypeResolver,
     E: ResponseModeEncoder,
 {
-    pub fn new(
-        resolver: R,
-        encoder: E,
-        provider: Arc<OpenIDProviderConfiguration>,
-        interaction_service: Arc<InteractionService>,
-        grant_manager: Arc<GrantManager>,
-    ) -> Self {
-        Self {
-            resolver,
-            encoder,
-            provider,
-            interaction_service,
-            grant_manager,
-        }
-    }
-
     pub async fn authorise(
         &self,
         session: SessionID,
@@ -108,7 +96,14 @@ where
             AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
         })?;
         let grant = self.find_grant(grant_id).await?;
-        let context = OpenIDContext::new(client.clone(), user, request, grant, &self.provider);
+        let context = OpenIDContext::new(
+            client.clone(),
+            user,
+            request,
+            grant,
+            &self.provider,
+            self.keystore_service.clone(),
+        );
         let auth_result = self.resolver.resolve(&context).await;
 
         let encoding_context = EncodingContext {
@@ -118,6 +113,7 @@ where
                 .request
                 .response_mode(self.provider.jwt_secure_response_mode()),
             provider: self.provider.as_ref(),
+            keystore_service: self.keystore_service.clone(),
         };
         let parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
         encode_response(

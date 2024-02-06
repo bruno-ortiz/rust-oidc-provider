@@ -25,6 +25,7 @@ use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshTokenBuilder;
 use crate::models::Status;
 use crate::profile::ProfileData;
+use crate::services::keystore::KeystoreService;
 use crate::utils::resolve_sub;
 
 #[derive(new)]
@@ -34,6 +35,7 @@ pub(crate) struct AuthorisationCodeGrantResolver {
     access_token_manager: Arc<AccessTokenManager>,
     refresh_token_manager: Arc<RefreshTokenManager>,
     auth_code_manager: Arc<AuthorisationCodeManager>,
+    keystore_service: Arc<KeystoreService>,
 }
 
 impl AuthorisationCodeGrantResolver {
@@ -99,7 +101,7 @@ impl AuthorisationCodeGrantResolver {
             let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
 
             let alg = client.id_token_signing_alg();
-            let keystore = client.as_ref().server_keystore(&self.provider, alg);
+            let keystore = self.keystore_service.server_keystore(client.as_ref(), alg);
             let signing_key = keystore
                 .select(KeyUse::Sig)
                 .alg(alg.name())
@@ -132,7 +134,7 @@ impl AuthorisationCodeGrantResolver {
 
             simple_id_token = Some(
                 id_token
-                    .return_or_encrypt_simple_id_token(&self.provider, &client)
+                    .return_or_encrypt_simple_id_token(&self.keystore_service, &client)
                     .await
                     .map_err(OpenIdError::server_error)?,
             );
