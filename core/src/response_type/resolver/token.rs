@@ -1,3 +1,4 @@
+use crate::configuration::clock::Clock;
 use async_trait::async_trait;
 
 use crate::context::OpenIDContext;
@@ -13,8 +14,9 @@ impl ResponseTypeResolver for TokenResolver {
     async fn resolve(&self, context: &OpenIDContext) -> Result<Self::Output, OpenIdError> {
         let ttl = context.provider.ttl();
         let at_ttl = ttl.access_token_ttl(context.client.as_ref());
+        let clock = context.provider.clock_provider();
         let token = AccessToken::bearer(
-            context.provider.clock_provider(),
+            clock.now(),
             context.grant.id(),
             at_ttl,
             Some(context.request.scope.clone()),

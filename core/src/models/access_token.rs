@@ -10,8 +10,6 @@ use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
 
 use crate::adapter::PersistenceError;
-use crate::configuration::clock::{Clock, ClockProvider};
-use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::grant::{Grant, GrantID};
 
@@ -47,7 +45,7 @@ impl AccessToken {
     pub const BEARER_TYPE: &'static str = "Bearer";
 
     pub fn new<TT: Into<String>>(
-        clock: &ClockProvider,
+        created_at: OffsetDateTime,
         token_type: TT,
         expires_in: Duration,
         scopes: Option<Scopes>,
@@ -56,7 +54,7 @@ impl AccessToken {
         Self::new_with_value(
             Uuid::new_v4(),
             token_type,
-            clock.now(),
+            created_at,
             expires_in,
             scopes,
             grant_id,
@@ -82,33 +80,18 @@ impl AccessToken {
     }
 
     pub fn bearer(
-        clock: &ClockProvider,
+        created_at: OffsetDateTime,
         grant_id: GrantID,
         expires_in: Duration,
         scopes: Option<Scopes>,
     ) -> Self {
         Self::new(
-            clock,
+            created_at,
             AccessToken::BEARER_TYPE,
             expires_in,
             scopes,
             grant_id,
         )
-    }
-
-    pub async fn find(
-        provider: &OpenIDProviderConfiguration,
-        id: &str,
-    ) -> Result<Option<AccessToken>, PersistenceError> {
-        let id = Uuid::parse_str(id).map_err(|err| PersistenceError::Internal(err.into()))?; //todo: revisit this code later, return err?
-        provider.adapter().token().find(&id).await
-    }
-
-    pub async fn save(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<AccessToken, PersistenceError> {
-        provider.adapter().token().insert(self, None).await
     }
 }
 
@@ -143,6 +126,8 @@ pub enum TokenError {
     Expired,
     #[error("Invalid grant")]
     InvalidGrant,
+    #[error("Invalid access token")]
+    InvalidAccessToken,
     #[error(transparent)]
     PersistenceError(#[from] PersistenceError),
 }
@@ -153,6 +138,7 @@ impl From<TokenError> for OpenIdError {
             TokenError::Expired => OpenIdError::invalid_grant(err.to_string()),
             TokenError::InvalidGrant => OpenIdError::invalid_grant(err.to_string()),
             TokenError::PersistenceError(e) => OpenIdError::server_error(e),
+            TokenError::InvalidAccessToken => OpenIdError::invalid_grant(err.to_string()),
         }
     }
 }

@@ -45,39 +45,9 @@ impl RefreshToken {
             .map_err(OpenIdError::server_error)
     }
 
-    pub async fn save(
-        self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<RefreshToken, PersistenceError> {
-        provider.adapter().refresh().insert(self, None).await
-    }
-
     pub fn is_expired(&self, clock: &ClockProvider) -> bool {
         let now = clock.now();
         self.expires_in <= now
-    }
-
-    pub async fn consume(
-        mut self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<RefreshToken, OpenIdError> {
-        self.status = Status::Consumed;
-        provider
-            .adapter()
-            .refresh()
-            .update(self, None)
-            .await
-            .map_err(OpenIdError::server_error)
-    }
-
-    pub fn validate(&self, provider: &OpenIDProviderConfiguration) -> Result<(), OpenIdError> {
-        if self.status == Status::Consumed {
-            return Err(OpenIdError::invalid_grant("Refresh token already used"));
-        }
-        if self.is_expired(provider.clock_provider()) {
-            return Err(OpenIdError::invalid_grant("Refresh token is expired"));
-        }
-        Ok(())
     }
 
     pub fn total_lifetime(&self, clock: &ClockProvider) -> Duration {

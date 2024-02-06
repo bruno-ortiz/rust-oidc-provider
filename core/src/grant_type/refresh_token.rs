@@ -11,10 +11,13 @@ use crate::claims::get_id_token_claims;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
-use crate::grant_type::{create_access_token, RTContext};
+use crate::grant_type::RTContext;
 use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
+use crate::manager::access_token_manager::AccessTokenManager;
 use crate::manager::grant_manager::GrantManager;
+use crate::manager::refresh_token_manager::RefreshTokenManager;
+use crate::models::access_token::AccessToken;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshToken;
 use crate::profile::ProfileData;
@@ -24,6 +27,8 @@ use crate::utils::resolve_sub;
 pub(crate) struct RefreshTokenGrantResolver {
     provider: Arc<OpenIDProviderConfiguration>,
     grant_manager: Arc<GrantManager>,
+    access_token_manager: Arc<AccessTokenManager>,
+    refresh_token_manager: Arc<RefreshTokenManager>,
 }
 
 impl RefreshTokenGrantResolver {
@@ -35,10 +40,8 @@ impl RefreshTokenGrantResolver {
         let clock = self.provider.clock_provider();
 
         let mut refresh_token = self
-            .provider
-            .adapter()
-            .refresh()
-            .find(&grant_type.refresh_token)
+            .refresh_token_manager
+            .find(grant_type.refresh_token)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Refresh token not found"))?;
 
@@ -53,7 +56,10 @@ impl RefreshTokenGrantResolver {
                 "Client mismatch for refresh token",
             ));
         }
-        if let Err(err) = refresh_token.validate(&self.provider) {
+        if let Err(err) = self.refresh_token_manager.validate(&refresh_token) {
+            self.refresh_token_manager
+                .consume(refresh_token, None)
+                .await?;
             // invalidate entire token chain
             self.grant_manager.consume(grant).await?;
             return Err(err);
@@ -69,19 +75,28 @@ impl RefreshTokenGrantResolver {
 
         let mut rt_token = None;
         if self.provider.rotate_refresh_token(context) {
-            let old_rt = refresh_token.consume(&self.provider).await?;
-            refresh_token = RefreshToken::new_from(old_rt)?.save(&self.provider).await?;
+            let old_rt = self
+                .refresh_token_manager
+                .consume(refresh_token, None)
+                .await?;
+            let new_rt = RefreshToken::new_from(old_rt)?;
+            refresh_token = self.refresh_token_manager.save(new_rt, None).await?;
             rt_token = Some(refresh_token.token)
         }
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token = create_access_token(
-            &self.provider,
+        let access_token = AccessToken::bearer(
+            clock.now(),
             grant.id(),
             at_duration,
             Some(refresh_token.scopes.clone()),
-        )
-        .await?;
+        );
+        let access_token = self
+            .access_token_manager
+            .save(access_token)
+            .await
+            .map_err(OpenIdError::server_error)?;
+
         let mut simple_id_token = None;
         if refresh_token.scopes.contains(&OPEN_ID) {
             let profile = ProfileData::get(&self.provider, &grant, client.as_ref())

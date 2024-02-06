@@ -28,42 +28,6 @@ pub struct AuthorisationCode {
     pub nonce: Option<Nonce>,
 }
 
-impl AuthorisationCode {
-    pub fn is_expired(&self, clock: &ClockProvider) -> bool {
-        let now = clock.now();
-        self.expires_in <= now
-    }
-
-    pub fn validate(
-        self,
-        grant: &AuthorisationCodeGrant,
-        clock: &ClockProvider,
-    ) -> Result<Self, OpenIdError> {
-        if self.is_expired(clock) {
-            return Err(OpenIdError::invalid_grant("Authorization code is expired"));
-        }
-        validate_pkce(
-            grant,
-            self.code_challenge.as_ref(),
-            self.code_challenge_method,
-        )?;
-        Ok(self)
-    }
-
-    pub async fn consume(
-        mut self,
-        provider: &OpenIDProviderConfiguration,
-    ) -> Result<AuthorisationCode, OpenIdError> {
-        self.status = Status::Consumed;
-        provider
-            .adapter()
-            .code()
-            .update(self, None)
-            .await
-            .map_err(OpenIdError::server_error)
-    }
-}
-
 impl Identifiable<Code> for AuthorisationCode {
     fn id(&self) -> &Code {
         &self.code

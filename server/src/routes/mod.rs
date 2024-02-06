@@ -11,7 +11,10 @@ use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
 
 use oidc_core::configuration::OpenIDProviderConfiguration;
+use oidc_core::manager::access_token_manager::AccessTokenManager;
+use oidc_core::manager::auth_code_manager::AuthorisationCodeManager;
 use oidc_core::manager::grant_manager::GrantManager;
+use oidc_core::manager::refresh_token_manager::RefreshTokenManager;
 use oidc_core::request_object::RequestObjectProcessor;
 use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
@@ -85,6 +88,9 @@ pub(crate) struct AppState {
 impl AppState {
     pub fn new(provider: Arc<OpenIDProviderConfiguration>) -> Self {
         let grant_manager = Arc::new(GrantManager::new(provider.clone()));
+        let at_manager = Arc::new(AccessTokenManager::new(provider.clone()));
+        let rt_manager = Arc::new(RefreshTokenManager::new(provider.clone()));
+        let ac_manager = Arc::new(AuthorisationCodeManager::new(provider.clone()));
         let prompt_service = Arc::new(PromptService::new(provider.clone()));
         let interaction_service = Arc::new(InteractionService::new(
             provider.clone(),
@@ -97,7 +103,13 @@ impl AppState {
             interaction_service.clone(),
             grant_manager.clone(),
         ));
-        let token_service = Arc::new(TokenService::new(provider.clone(), grant_manager.clone()));
+        let token_service = Arc::new(TokenService::new(
+            provider.clone(),
+            grant_manager.clone(),
+            at_manager.clone(),
+            rt_manager.clone(),
+            ac_manager.clone(),
+        ));
         let userinfo_service = Arc::new(UserInfoService::new(provider.clone()));
         let request_object_processor = Arc::new(RequestObjectProcessor::new(provider.clone()));
         let encoder = Arc::new(DynamicResponseModeEncoder::from(provider.as_ref()));

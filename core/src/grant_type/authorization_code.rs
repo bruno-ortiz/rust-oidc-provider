@@ -14,10 +14,13 @@ use crate::claims::get_id_token_claims;
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
-use crate::grant_type::create_access_token;
 use crate::id_token_builder::IdTokenBuilder;
 use crate::keystore::KeyUse;
+use crate::manager::access_token_manager::AccessTokenManager;
+use crate::manager::auth_code_manager::AuthorisationCodeManager;
 use crate::manager::grant_manager::GrantManager;
+use crate::manager::refresh_token_manager::RefreshTokenManager;
+use crate::models::access_token::AccessToken;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshTokenBuilder;
 use crate::models::Status;
@@ -28,6 +31,9 @@ use crate::utils::resolve_sub;
 pub(crate) struct AuthorisationCodeGrantResolver {
     provider: Arc<OpenIDProviderConfiguration>,
     grant_manager: Arc<GrantManager>,
+    access_token_manager: Arc<AccessTokenManager>,
+    refresh_token_manager: Arc<RefreshTokenManager>,
+    auth_code_manager: Arc<AuthorisationCodeManager>,
 }
 
 impl AuthorisationCodeGrantResolver {
@@ -38,14 +44,12 @@ impl AuthorisationCodeGrantResolver {
     ) -> Result<TokenResponse, OpenIdError> {
         let clock = self.provider.clock_provider();
         let code = self
-            .provider
-            .adapter()
-            .code()
+            .auth_code_manager
             .find(&grant_type.code)
             .await?
-            .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?
-            .validate(&grant_type, self.provider.clock_provider())?;
+            .ok_or_else(|| OpenIdError::invalid_grant("Authorization code not found"))?;
 
+        self.auth_code_manager.validate(&grant_type, &code)?;
         let grant = self
             .grant_manager
             .find(code.grant_id)
@@ -58,7 +62,7 @@ impl AuthorisationCodeGrantResolver {
                 "Authorization code already consumed",
             ));
         }
-        let code = code.consume(&self.provider).await?;
+        let code = self.auth_code_manager.consume(code, None).await?;
         if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for Authorization Code",
@@ -73,13 +77,18 @@ impl AuthorisationCodeGrantResolver {
 
         let ttl = self.provider.ttl();
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token = create_access_token(
-            &self.provider,
+
+        let access_token = AccessToken::bearer(
+            clock.now(),
             grant.id(),
             at_duration,
             Some(code.scopes.clone()),
-        )
-        .await?;
+        );
+        let access_token = self
+            .access_token_manager
+            .save(access_token)
+            .await
+            .map_err(OpenIdError::server_error)?;
 
         let now = clock.now();
         let mut simple_id_token = None;
@@ -141,9 +150,8 @@ impl AuthorisationCodeGrantResolver {
                 .expires_in(now + rt_ttl)
                 .created(now)
                 .build()
-                .map_err(OpenIdError::server_error)?
-                .save(&self.provider)
-                .await?;
+                .map_err(OpenIdError::server_error)?;
+            let refresh_token = self.refresh_token_manager.save(refresh_token, None).await?;
             rt = Some(refresh_token.token)
         }
 

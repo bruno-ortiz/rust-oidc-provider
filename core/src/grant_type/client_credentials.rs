@@ -15,6 +15,7 @@ use crate::configuration::clock::Clock;
 use crate::configuration::credentials::ClientCredentialConfiguration;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
+use crate::manager::access_token_manager::AccessTokenManager;
 use crate::manager::grant_manager::GrantManager;
 use crate::models::access_token::AccessToken;
 use crate::models::client::{AuthenticatedClient, ClientInformation};
@@ -25,6 +26,7 @@ use crate::models::Status;
 pub(crate) struct ClientCredentialsGrantResolver {
     provider: Arc<OpenIDProviderConfiguration>,
     grant_manager: Arc<GrantManager>,
+    access_token_manager: Arc<AccessTokenManager>,
 }
 
 impl ClientCredentialsGrantResolver {
@@ -64,15 +66,13 @@ impl ClientCredentialsGrantResolver {
             .map_err(OpenIdError::server_error)?;
 
         let at_duration = ttl.client_credentials_ttl(client.as_ref());
-        let access_token = AccessToken::bearer(
-            self.provider.clock_provider(),
-            grant.id(),
-            at_duration,
-            scopes,
-        )
-        .save(&self.provider)
-        .await
-        .map_err(OpenIdError::server_error)?;
+        let access_token = AccessToken::bearer(clock.now(), grant.id(), at_duration, scopes);
+        let access_token = self
+            .access_token_manager
+            .save(access_token)
+            .await
+            .map_err(OpenIdError::server_error)?;
+
         Ok(TokenResponse::new(
             access_token.token,
             access_token.t_type,
