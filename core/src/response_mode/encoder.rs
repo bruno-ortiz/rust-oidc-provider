@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use indexmap::IndexMap;
 use url::Url;
@@ -18,8 +17,6 @@ use crate::response_mode::errors::EncodingError;
 use crate::services::authorisation::AuthorisationError;
 use crate::services::keystore::KeystoreService;
 
-use format as f;
-
 pub(crate) mod fragment;
 pub(crate) mod jwt;
 pub(crate) mod query;
@@ -31,7 +28,7 @@ pub struct EncodingContext<'a> {
     pub redirect_uri: &'a Url,
     pub response_mode: ResponseMode,
     pub provider: &'a OpenIDProviderConfiguration,
-    pub keystore_service: Arc<KeystoreService>,
+    pub keystore_service: &'a KeystoreService,
 }
 
 pub trait ResponseModeEncoder {
@@ -42,18 +39,13 @@ pub trait ResponseModeEncoder {
     ) -> Result<AuthorisationResponse>;
 }
 
-pub trait EncoderDecider: ResponseModeEncoder {
-    fn can_encode(&self, response_mode: ResponseMode) -> bool;
-}
-
 pub enum AuthorisationResponse {
     Redirect(Url),
     FormPost(Url, HashMap<String, String>),
 }
 
-pub struct DynamicResponseModeEncoder {
-    encoders: Vec<Box<dyn EncoderDecider + Send + Sync>>,
-}
+#[derive(Default, Copy, Clone)]
+pub struct DynamicResponseModeEncoder;
 
 impl ResponseModeEncoder for DynamicResponseModeEncoder {
     fn encode(
@@ -62,39 +54,21 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
         parameters: IndexMap<String, String>,
     ) -> Result<AuthorisationResponse> {
         let response_mode = context.response_mode;
-        let encoder = self
-            .encoders
-            .iter()
-            .find(|&decider| decider.can_encode(response_mode))
-            .ok_or_else(|| {
-                EncodingError::InternalError(f!(
-                    "Encoder not found for response_mode {response_mode:?}"
-                ))
-            })?;
-        encoder.encode(context, parameters)
-    }
-}
 
-impl From<&OpenIDProviderConfiguration> for DynamicResponseModeEncoder {
-    fn from(cfg: &OpenIDProviderConfiguration) -> Self {
-        let mut encoder = DynamicResponseModeEncoder::new();
-        encoder.push(Box::new(QueryEncoder));
-        encoder.push(Box::new(FragmentEncoder));
-
-        if cfg.jwt_secure_response_mode() {
-            encoder.push(Box::new(JwtEncoder))
+        if !context
+            .provider
+            .response_modes_supported()
+            .contains(&response_mode)
+        {
+            todo!("Return error, unsupported responde mode")
         }
-        encoder
-    }
-}
 
-impl DynamicResponseModeEncoder {
-    fn new() -> Self {
-        DynamicResponseModeEncoder { encoders: vec![] }
-    }
-
-    pub fn push(&mut self, encoder: Box<dyn EncoderDecider + Send + Sync>) {
-        self.encoders.push(encoder);
+        match response_mode {
+            ResponseMode::Query => QueryEncoder.encode(context, parameters),
+            ResponseMode::Fragment => FragmentEncoder.encode(context, parameters),
+            ResponseMode::FormPost => todo!("implement form post encoder"),
+            _ => JwtEncoder.encode(context, parameters),
+        }
     }
 }
 

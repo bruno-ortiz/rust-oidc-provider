@@ -57,7 +57,7 @@ impl InteractionServiceImpl {
         ));
         let authorisation_service = AuthorisationService::new(
             DynamicResponseTypeResolver::from(provider.as_ref()),
-            DynamicResponseModeEncoder::from(provider.as_ref()),
+            DynamicResponseModeEncoder,
             provider.clone(),
             interaction_service.clone(),
             grant_manager.clone(),

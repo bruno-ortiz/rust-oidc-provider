@@ -1,9 +1,7 @@
 use form_urlencoded::Serializer;
 use indexmap::IndexMap;
 
-use oidc_types::response_mode::ResponseMode;
-
-use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
+use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 
 pub(crate) struct FragmentEncoder;
@@ -21,12 +19,6 @@ impl ResponseModeEncoder for FragmentEncoder {
     }
 }
 
-impl EncoderDecider for FragmentEncoder {
-    fn can_encode(&self, response_mode: ResponseMode) -> bool {
-        response_mode == ResponseMode::Fragment
-    }
-}
-
 impl FragmentEncoder {
     fn encode_fragment(parameters: IndexMap<String, String>) -> String {
         let mut serializer = Serializer::new("".to_string());
@@ -37,7 +29,6 @@ impl FragmentEncoder {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
-
     use url::Url;
 
     use crate::response_mode::encoder::fragment::FragmentEncoder;

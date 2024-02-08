@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -28,7 +29,7 @@ use crate::services::types::Interaction;
 use crate::session::SessionID;
 use crate::user::AuthenticatedUser;
 
-#[derive(Error, Debug)]
+#[derive(Error)]
 pub enum AuthorisationError {
     #[error("Invalid redirect_uri")]
     InvalidRedirectUri,
@@ -45,9 +46,18 @@ pub enum AuthorisationError {
         response_mode: ResponseMode,
         redirect_uri: Url,
         state: Option<State>,
+        provider: Arc<OpenIDProviderConfiguration>,
+        keystore_service: Arc<KeystoreService>,
+        client: Arc<ClientInformation>,
     },
     #[error(transparent)]
     InternalError(#[from] anyhow::Error),
+}
+
+impl Debug for AuthorisationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 #[derive(new)]
@@ -75,7 +85,14 @@ where
             .interaction_service
             .begin_interaction(session, request, client.clone())
             .await
-            .map_err(handle_prompt_err)?;
+            .map_err(|err| {
+                handle_prompt_err(
+                    err,
+                    self.provider.clone(),
+                    client.clone(),
+                    self.keystore_service.clone(),
+                )
+            })?;
         match interaction {
             Interaction::Login { .. } | Interaction::Consent { .. } => Ok(
                 AuthorisationResponse::Redirect(interaction.uri(&self.provider)),
@@ -113,7 +130,7 @@ where
                 .request
                 .response_mode(self.provider.jwt_secure_response_mode()),
             provider: self.provider.as_ref(),
-            keystore_service: self.keystore_service.clone(),
+            keystore_service: &self.keystore_service,
         };
         let parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
         encode_response(
@@ -137,7 +154,12 @@ where
     }
 }
 
-fn handle_prompt_err(err: InteractionError) -> AuthorisationError {
+fn handle_prompt_err(
+    err: InteractionError,
+    provider: Arc<OpenIDProviderConfiguration>,
+    client: Arc<ClientInformation>,
+    keystore_service: Arc<KeystoreService>,
+) -> AuthorisationError {
     let description = err.to_string();
     match err {
         InteractionError::PromptError(PromptError::LoginRequired {
@@ -149,6 +171,9 @@ fn handle_prompt_err(err: InteractionError) -> AuthorisationError {
             redirect_uri,
             response_mode,
             state,
+            provider,
+            keystore_service,
+            client,
         },
         InteractionError::PromptError(PromptError::ConsentRequired {
             redirect_uri,
@@ -159,6 +184,9 @@ fn handle_prompt_err(err: InteractionError) -> AuthorisationError {
             redirect_uri,
             response_mode,
             state,
+            provider,
+            keystore_service,
+            client,
         },
         _ => AuthorisationError::InternalError(err.into()),
     }

@@ -1,7 +1,6 @@
 use indexmap::IndexMap;
-use oidc_types::response_mode::ResponseMode;
 
-use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
+use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 
 pub(crate) struct QueryEncoder;
@@ -18,11 +17,5 @@ impl ResponseModeEncoder for QueryEncoder {
             .extend_pairs(parameters)
             .finish();
         Ok(AuthorisationResponse::Redirect(callback_uri))
-    }
-}
-
-impl EncoderDecider for QueryEncoder {
-    fn can_encode(&self, response_mode: ResponseMode) -> bool {
-        response_mode == ResponseMode::Query
     }
 }

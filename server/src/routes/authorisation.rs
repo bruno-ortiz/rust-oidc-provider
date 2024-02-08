@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::extract::{Query, State};
-use axum::response::{IntoResponse, Redirect, Response, Result};
+use axum::response::{Response, Result};
 
 use oidc_core::authorisation_request::AuthorisationRequest;
 use oidc_core::client::retrieve_client_info_by_unparsed;
@@ -9,9 +9,7 @@ use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::models::client::ClientInformation;
 use oidc_core::request_object::RequestObjectProcessor;
-use oidc_core::response_mode::encoder::{
-    encode_response, AuthorisationResponse, DynamicResponseModeEncoder, EncodingContext,
-};
+use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_core::services::keystore::KeystoreService;
@@ -19,137 +17,51 @@ use oidc_types::response_mode::ResponseMode;
 
 use crate::extractors::SessionHolder;
 use crate::routes::error::AuthorisationErrorWrapper;
+use crate::routes::respond;
 
 // #[axum_macros::debug_handler]
 pub async fn authorise(
-    request: Query<AuthorisationRequest>,
+    Query(mut request): Query<AuthorisationRequest>,
     State(auth_service): State<
         Arc<AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>>,
     >,
-    State(encoder): State<Arc<DynamicResponseModeEncoder>>,
     State(provider): State<Arc<OpenIDProviderConfiguration>>,
     State(req_obj_processor): State<Arc<RequestObjectProcessor>>,
     State(keystore_service): State<Arc<KeystoreService>>,
     session: SessionHolder,
 ) -> Result<Response, AuthorisationErrorWrapper> {
     let client = Arc::new(get_client(&provider, &request).await?);
-    let request_object = req_obj_processor.process(&request.0, &client).await;
-    let authorization_request = match request_object {
-        Ok(Some(request)) => request,
-        Ok(None) => request.0,
-        Err(err) => {
-            return handle_validation_error(
-                &provider,
-                keystore_service.clone(),
-                &encoder,
-                &client,
+    let request_object = req_obj_processor
+        .process(&request, &client)
+        .await
+        .map_err(|err| {
+            convert_to_authorisation_error(
                 err,
-                request.0,
-            );
-        }
-    };
+                &mut request,
+                provider.clone(),
+                keystore_service.clone(),
+                client.clone(),
+            )
+        })?;
+    let authorization_request = request_object.unwrap_or(request);
     validate_redirect_uri(&authorization_request, &client)?;
-    match authorization_request
+
+    let validated_request = authorization_request
         .validate(&keystore_service, &client, &provider)
         .await
-    {
-        Ok(req) => {
-            let res = auth_service
-                .authorise(session.session_id(), client.clone(), req)
-                .await;
-            match res {
-                Ok(res) => Ok(respond(res)),
-                Err(err) => handle_authorization_error(
-                    &provider,
-                    keystore_service.clone(),
-                    &encoder,
-                    &client,
-                    err,
-                ),
-            }
-        }
-        Err((err, request)) => handle_validation_error(
-            &provider,
-            keystore_service.clone(),
-            &encoder,
-            &client,
-            err,
-            request,
-        ),
-    }
-}
-
-fn handle_authorization_error(
-    provider: &OpenIDProviderConfiguration,
-    keystore_service: Arc<KeystoreService>,
-    encoder: &DynamicResponseModeEncoder,
-    client: &ClientInformation,
-    err: AuthorisationError,
-) -> Result<Response, AuthorisationErrorWrapper> {
-    match err {
-        AuthorisationError::RedirectableErr {
-            redirect_uri,
-            response_mode,
-            state,
-            err,
-        } => {
-            let encoding_context = EncodingContext {
-                client,
-                redirect_uri: &redirect_uri,
-                response_mode,
-                provider,
-                keystore_service,
-            };
-            let response = encode_response(encoding_context, encoder, err, state)?;
-            Ok(respond(response))
-        }
-        _ => Err(AuthorisationErrorWrapper::from(err)),
-    }
-}
-
-fn handle_validation_error(
-    provider: &OpenIDProviderConfiguration,
-    keystore_service: Arc<KeystoreService>,
-    encoder: &DynamicResponseModeEncoder,
-    client: &ClientInformation,
-    err: OpenIdError,
-    mut request: AuthorisationRequest,
-) -> Result<Response, AuthorisationErrorWrapper> {
-    let state = request.state.take();
-    let encoding_context = encoding_context(provider, keystore_service, client, &request)?;
-    let response = encode_response(encoding_context, encoder, err, state)?;
-    Ok(respond(response))
-}
-
-fn respond(response: AuthorisationResponse) -> Response {
-    match response {
-        AuthorisationResponse::Redirect(url) => Redirect::to(url.as_str()).into_response(),
-        AuthorisationResponse::FormPost(_, _) => todo!(),
-    }
-}
-
-fn encoding_context<'a>(
-    provider: &'a OpenIDProviderConfiguration,
-    keystore_service: Arc<KeystoreService>,
-    client: &'a ClientInformation,
-    request: &'a AuthorisationRequest,
-) -> Result<EncodingContext<'a>, AuthorisationError> {
-    let redirect_uri = request
-        .redirect_uri
-        .as_ref()
-        .ok_or(AuthorisationError::MissingRedirectUri)?;
-    let response_mode = request
-        .response_type
-        .as_ref()
-        .map_or(ResponseMode::Query, |rt| rt.default_response_mode());
-
-    Ok(EncodingContext {
-        client,
-        redirect_uri,
-        response_mode,
-        provider,
-        keystore_service,
-    })
+        .map_err(|(err, mut request)| {
+            convert_to_authorisation_error(
+                err,
+                &mut request,
+                provider.clone(),
+                keystore_service.clone(),
+                client.clone(),
+            )
+        })?;
+    let res = auth_service
+        .authorise(session.session_id(), client.clone(), validated_request)
+        .await?;
+    Ok(respond(res))
 }
 
 fn validate_redirect_uri(
@@ -178,4 +90,29 @@ async fn get_client(
     retrieve_client_info_by_unparsed(provider, client_id)
         .await?
         .ok_or_else(|| AuthorisationError::MissingClient)
+}
+
+fn convert_to_authorisation_error(
+    err: OpenIdError,
+    req: &mut AuthorisationRequest,
+    provider: Arc<OpenIDProviderConfiguration>,
+    keystore_service: Arc<KeystoreService>,
+    client: Arc<ClientInformation>,
+) -> AuthorisationError {
+    let Some(redirect_uri) = req.redirect_uri.take() else {
+        return AuthorisationError::MissingRedirectUri;
+    };
+    let response_mode = req
+        .response_type
+        .as_ref()
+        .map_or(ResponseMode::Query, |rt| rt.default_response_mode());
+    AuthorisationError::RedirectableErr {
+        err,
+        state: req.state.take(),
+        provider,
+        keystore_service,
+        redirect_uri,
+        response_mode,
+        client,
+    }
 }

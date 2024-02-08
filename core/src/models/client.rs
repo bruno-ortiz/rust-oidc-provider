@@ -1,5 +1,4 @@
 use std::ops::Deref;
-use std::sync::Arc;
 
 use getset::{CopyGetters, Getters};
 use time::OffsetDateTime;
@@ -9,12 +8,7 @@ use oidc_types::client::{ClientID, ClientMetadata};
 use oidc_types::grant_type::GrantType;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::jose::jws::SigningAlgorithm;
-use oidc_types::jose::Algorithm;
 use oidc_types::secret::HashedSecret;
-
-use crate::configuration::OpenIDProviderConfiguration;
-use crate::keystore;
-use crate::keystore::KeyStore;
 
 #[derive(Debug, Clone, CopyGetters, Getters)]
 pub struct ClientInformation {

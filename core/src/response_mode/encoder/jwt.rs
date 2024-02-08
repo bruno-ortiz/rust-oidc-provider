@@ -13,7 +13,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::keystore::KeyUse;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
-use crate::response_mode::encoder::{AuthorisationResponse, EncoderDecider, ResponseModeEncoder};
+use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 use crate::response_mode::errors::EncodingError;
 
@@ -55,25 +55,16 @@ impl ResponseModeEncoder for JwtEncoder {
     }
 }
 
-impl EncoderDecider for JwtEncoder {
-    fn can_encode(&self, response_mode: ResponseMode) -> bool {
-        response_mode == ResponseMode::Jwt
-            || response_mode == ResponseMode::QueryJwt
-            || response_mode == ResponseMode::FragmentJwt
-            || response_mode == ResponseMode::FormPostJwt
-    }
-}
-
 impl JwtEncoder {
     fn build_payload(
         &self,
-        configuration: &OpenIDProviderConfiguration,
+        provider: &OpenIDProviderConfiguration,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
     ) -> JwtPayload {
-        let clock = configuration.clock_provider();
+        let clock = provider.clock_provider();
         let mut payload = JwtPayload::new();
-        payload.set_issuer(configuration.issuer());
+        payload.set_issuer(provider.issuer());
         payload.set_audience(vec![context.client.id().to_string()]);
         let exp = clock.now() + Duration::minutes(EXP_IN_MINUTES); //TODO: review this exp
         payload.set_expires_at(&exp.into());

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::Router;
 use axum_macros::FromRef;
@@ -16,7 +17,7 @@ use oidc_core::manager::auth_code_manager::AuthorisationCodeManager;
 use oidc_core::manager::grant_manager::GrantManager;
 use oidc_core::manager::refresh_token_manager::RefreshTokenManager;
 use oidc_core::request_object::RequestObjectProcessor;
-use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
+use oidc_core::response_mode::encoder::{AuthorisationResponse, DynamicResponseModeEncoder};
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
 use oidc_core::services::interaction::InteractionService;
@@ -84,7 +85,7 @@ pub(crate) struct AppState {
     userinfo_service: Arc<UserInfoService>,
     request_object_processor: Arc<RequestObjectProcessor>,
     keystore_service: Arc<KeystoreService>,
-    encoder: Arc<DynamicResponseModeEncoder>,
+    encoder: DynamicResponseModeEncoder,
 }
 
 impl AppState {
@@ -104,7 +105,7 @@ impl AppState {
         ));
         let authorisation_service = Arc::new(AuthorisationService::new(
             DynamicResponseTypeResolver::from(provider.as_ref()),
-            DynamicResponseModeEncoder::from(provider.as_ref()),
+            DynamicResponseModeEncoder,
             provider.clone(),
             interaction_service.clone(),
             grant_manager.clone(),
@@ -126,7 +127,6 @@ impl AppState {
             provider.clone(),
             keystore_service.clone(),
         ));
-        let encoder = Arc::new(DynamicResponseModeEncoder::from(provider.as_ref()));
         Self {
             provider,
             authorisation_service,
@@ -135,7 +135,13 @@ impl AppState {
             userinfo_service,
             request_object_processor,
             keystore_service,
-            encoder,
+            encoder: DynamicResponseModeEncoder,
         }
+    }
+}
+pub(crate) fn respond(response: AuthorisationResponse) -> Response {
+    match response {
+        AuthorisationResponse::Redirect(url) => Redirect::to(url.as_str()).into_response(),
+        AuthorisationResponse::FormPost(_, _) => todo!(),
     }
 }
