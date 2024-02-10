@@ -49,17 +49,14 @@ impl ClientAuthenticator for ClientCredential {
 impl ClientAuthenticator for ClientSecretCredential {
     async fn authenticate(
         self,
-        provider: &OpenIDProviderConfiguration,
+        _provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
         let secret = self.secret();
         if secret.len() < MIN_SECRET_LEN {
             return Err(ClientAuthenticationError::InvalidSecret(secret.into()));
         }
-        if client
-            .secret()
-            .verify(provider.secret_hasher(), secret.as_str())
-        {
+        if client.secret() == secret.as_str() {
             Ok(AuthenticatedClient::new(client))
         } else {
             Err(ClientAuthenticationError::InvalidSecret(secret.into()))

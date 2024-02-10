@@ -40,7 +40,7 @@ pub async fn register_client(
     configuration
         .adapter()
         .client()
-        .insert(client, txn.clone_self())
+        .insert(client, txn.clone_some())
         .await?;
     txn_manager.commit(txn).await.unwrap();
     Ok(())

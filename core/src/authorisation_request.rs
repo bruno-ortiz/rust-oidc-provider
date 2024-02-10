@@ -290,6 +290,7 @@ fn validate_id_token_hint(
         Ok(None)
     }
 }
+
 fn get_alg(id_token: &str) -> Result<SigningAlgorithm, OpenIdError> {
     let alg = get_jose_algorithm(id_token)
         .map_err(|err| OpenIdError::invalid_request(err.to_string()))?

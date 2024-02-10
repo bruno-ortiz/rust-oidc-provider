@@ -43,6 +43,12 @@ impl Display for PlainTextSecret {
     }
 }
 
+impl PartialEq<str> for PlainTextSecret {
+    fn eq(&self, other: &str) -> bool {
+        self.0.as_str() == other
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct HashedSecret(String);
 

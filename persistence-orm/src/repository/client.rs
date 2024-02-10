@@ -8,7 +8,7 @@ use oidc_core::models::client::ClientInformation;
 use oidc_core::persistence::TransactionId;
 use oidc_migration::async_trait::async_trait;
 use oidc_types::client::ClientID;
-use oidc_types::secret::HashedSecret;
+use oidc_types::secret::{HashedSecret, PlainTextSecret};
 
 use crate::entities::client_information::{ActiveModel, Model};
 use crate::entities::prelude::ClientInformation as ClientEntity;
@@ -82,7 +82,7 @@ impl TryFrom<Model> for ClientInformation {
         Ok(ClientInformation::new(
             ClientID::try_from(value.id)?,
             value.issue_date,
-            HashedSecret::from(value.secret),
+            PlainTextSecret::from(value.secret),
             value.secret_expires_at,
             serde_json::from_value(value.metadata)?,
         ))

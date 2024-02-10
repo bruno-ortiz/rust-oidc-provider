@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -7,11 +6,13 @@ use tokio::sync::mpsc::Sender;
 use tracing::error;
 use uuid::Uuid;
 
+use crate::adapter::PersistenceError;
+
 #[async_trait]
 pub trait TransactionManager {
-    async fn begin_txn(&self) -> Result<TransactionId, Box<dyn Error>>;
-    async fn commit(&self, id: TransactionId) -> Result<(), Box<dyn Error>>;
-    async fn rollback(&self, id: TransactionId) -> Result<(), Box<dyn Error>>;
+    async fn begin_txn(&self) -> Result<TransactionId, PersistenceError>;
+    async fn commit(&self, id: TransactionId) -> Result<(), PersistenceError>;
+    async fn rollback(&self, id: TransactionId) -> Result<(), PersistenceError>;
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -26,7 +27,7 @@ impl TransactionId {
         self.0 .0
     }
 
-    pub fn clone_self(&self) -> Option<Self> {
+    pub fn clone_some(&self) -> Option<Self> {
         Some(self.clone())
     }
 }
@@ -69,15 +70,15 @@ pub struct NoOpTransactionManager;
 
 #[async_trait]
 impl TransactionManager for NoOpTransactionManager {
-    async fn begin_txn(&self) -> Result<TransactionId, Box<dyn Error>> {
+    async fn begin_txn(&self) -> Result<TransactionId, PersistenceError> {
         Ok(TransactionId::new(Uuid::new_v4(), None))
     }
 
-    async fn commit(&self, _id: TransactionId) -> Result<(), Box<dyn Error>> {
+    async fn commit(&self, _id: TransactionId) -> Result<(), PersistenceError> {
         Ok(())
     }
 
-    async fn rollback(&self, _id: TransactionId) -> Result<(), Box<dyn Error>> {
+    async fn rollback(&self, _id: TransactionId) -> Result<(), PersistenceError> {
         Ok(())
     }
 }

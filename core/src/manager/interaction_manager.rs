@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
+use crate::persistence::TransactionId;
 use crate::services::types::Interaction;
 
 pub struct InteractionManager {
@@ -19,19 +20,27 @@ impl InteractionManager {
         self.provider.adapter().interaction().find(&id).await
     }
 
-    pub async fn save(&self, interaction: Interaction) -> Result<Interaction, PersistenceError> {
+    pub async fn save(
+        &self,
+        interaction: Interaction,
+        txn: Option<TransactionId>,
+    ) -> Result<Interaction, PersistenceError> {
         self.provider
             .adapter()
             .interaction()
-            .insert(interaction, None)
+            .insert(interaction, txn)
             .await
     }
 
-    pub async fn update(&self, interaction: Interaction) -> Result<Interaction, PersistenceError> {
+    pub async fn update(
+        &self,
+        interaction: Interaction,
+        txn: Option<TransactionId>,
+    ) -> Result<Interaction, PersistenceError> {
         self.provider
             .adapter()
             .interaction()
-            .update(interaction, None)
+            .update(interaction, txn)
             .await
     }
 }

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
+use josekit::jwe::alg::aeskw::AeskwJweAlgorithm;
+use josekit::jwe::JweAlgorithm;
 use josekit::jwk::alg::ec::EcCurve;
 use josekit::jwk::Jwk;
 use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm;
@@ -22,11 +24,18 @@ pub struct JwkSet {
 
 impl Default for JwkSet {
     fn default() -> Self {
-        let mut jwk = Jwk::generate_ec_key(EcCurve::P256).unwrap();
-        jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.to_string());
+        let mut jwk =
+            Jwk::generate_ec_key(EcCurve::P256).expect("Error computing default signing key");
+        jwk.set_algorithm(EcdsaJwsAlgorithm::Es256.name());
         jwk.set_key_id("default-key");
         jwk.set_key_use("sig");
-        JwkSet::new(vec![jwk])
+
+        let mut jwk_enc =
+            Jwk::generate_ec_key(EcCurve::P256).expect("Error computing default encryption key");
+        jwk_enc.set_algorithm(AeskwJweAlgorithm::A128kw.name());
+        jwk_enc.set_key_id("default-key");
+        jwk_enc.set_key_use("enc");
+        JwkSet::new(vec![jwk, jwk_enc])
     }
 }
 

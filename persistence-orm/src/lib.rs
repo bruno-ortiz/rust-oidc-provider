@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -12,6 +11,7 @@ use tokio::task;
 use tracing::{debug, error};
 use uuid::Uuid;
 
+use oidc_core::adapter::PersistenceError;
 use oidc_core::persistence::{TransactionId, TransactionManager};
 use oidc_migration::async_trait::async_trait;
 
@@ -69,28 +69,36 @@ impl ConnWrapper {
 
 #[async_trait]
 impl TransactionManager for ConnWrapper {
-    async fn begin_txn(&self) -> Result<TransactionId, Box<dyn Error>> {
-        let txn = self.conn.begin().await?;
+    async fn begin_txn(&self) -> Result<TransactionId, PersistenceError> {
+        let txn = self
+            .conn
+            .begin()
+            .await
+            .map_err(|err| PersistenceError::DB(err.into()))?;
         let id = Uuid::new_v4();
         self.transaction_map.insert(id, txn);
         Ok(TransactionId::new(id, Some(self.rollback_channel.clone())))
     }
 
-    async fn commit(&self, id: TransactionId) -> Result<(), Box<dyn Error>> {
+    async fn commit(&self, id: TransactionId) -> Result<(), PersistenceError> {
         let (_, txn) = self
             .transaction_map
             .remove(&id.id())
             .ok_or(anyhow!("Transaction with id {:?} does not exist", id.id()))?;
-        txn.commit().await?;
+        txn.commit()
+            .await
+            .map_err(|err| PersistenceError::DB(err.into()))?;
         Ok(())
     }
 
-    async fn rollback(&self, id: TransactionId) -> Result<(), Box<dyn Error>> {
+    async fn rollback(&self, id: TransactionId) -> Result<(), PersistenceError> {
         let (_, txn) = self
             .transaction_map
             .remove(&id.id())
             .ok_or(anyhow!("Transaction with id {:?} does not exist", id.id()))?;
-        txn.rollback().await?;
+        txn.rollback()
+            .await
+            .map_err(|err| PersistenceError::DB(err.into()))?;
         Ok(())
     }
 }

@@ -25,7 +25,7 @@ impl ResponseTypeResolver for TokenResolver {
             .provider
             .adapter()
             .token()
-            .insert(token, None)
+            .insert(token, context.txn_id.clone_some())
             .await
             .map_err(OpenIdError::server_error)?;
         Ok(token)

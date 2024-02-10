@@ -10,6 +10,7 @@ use oidc_types::response_mode::ResponseMode;
 use oidc_types::state::State;
 use oidc_types::url_encodable::UrlEncodable;
 
+use crate::adapter::PersistenceError;
 use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::client::ClientError;
 use crate::configuration::OpenIDProviderConfiguration;
@@ -18,6 +19,7 @@ use crate::error::OpenIdError;
 use crate::manager::grant_manager::GrantManager;
 use crate::models::client::ClientInformation;
 use crate::models::grant::{Grant, GrantID};
+use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
 use crate::response_mode::encoder::{
     encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
@@ -52,6 +54,8 @@ pub enum AuthorisationError {
     },
     #[error(transparent)]
     InternalError(#[from] anyhow::Error),
+    #[error(transparent)]
+    Persistence(#[from] PersistenceError),
 }
 
 impl Debug for AuthorisationError {
@@ -81,9 +85,12 @@ where
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
+        let txn_manager = self.provider.adapter().transaction_manager();
+        let txn_id = txn_manager.begin_txn().await?;
+
         let interaction = self
             .interaction_service
-            .begin_interaction(session, request, client.clone())
+            .begin_interaction(session, request, client.clone(), txn_id.clone())
             .await
             .map_err(|err| {
                 handle_prompt_err(
@@ -93,14 +100,18 @@ where
                     self.keystore_service.clone(),
                 )
             })?;
-        match interaction {
-            Interaction::Login { .. } | Interaction::Consent { .. } => Ok(
-                AuthorisationResponse::Redirect(interaction.uri(&self.provider)),
-            ),
-            Interaction::None { request, user, .. } => {
-                Ok(self.do_authorise(user, client, request).await?)
+
+        let response = match interaction {
+            Interaction::Login { .. } | Interaction::Consent { .. } => {
+                AuthorisationResponse::Redirect(interaction.uri(&self.provider))
             }
-        }
+            Interaction::None { request, user, .. } => {
+                self.do_authorise(user, client, request, txn_id.clone())
+                    .await?
+            }
+        };
+        txn_manager.commit(txn_id).await?;
+        Ok(response)
     }
 
     pub async fn do_authorise(
@@ -108,6 +119,7 @@ where
         user: AuthenticatedUser,
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
+        txn_id: TransactionId,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
         let grant_id = user.grant_id().ok_or_else(|| {
             AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
@@ -120,6 +132,7 @@ where
             grant,
             &self.provider,
             self.keystore_service.clone(),
+            txn_id.clone(),
         );
         let auth_result = self.resolver.resolve(&context).await;
 

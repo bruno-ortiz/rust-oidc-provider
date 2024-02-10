@@ -6,6 +6,7 @@ use crate::authorisation_request::ValidatedAuthorisationRequest;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::client::ClientInformation;
 use crate::models::grant::Grant;
+use crate::persistence::TransactionId;
 use crate::services::keystore::KeystoreService;
 use crate::user::AuthenticatedUser;
 
@@ -16,6 +17,7 @@ pub struct OpenIDContext<'a> {
     pub grant: Grant,
     pub provider: &'a OpenIDProviderConfiguration,
     pub keystore_service: Arc<KeystoreService>,
+    pub txn_id: TransactionId,
 }
 
 impl<'a> OpenIDContext<'a> {
@@ -26,6 +28,7 @@ impl<'a> OpenIDContext<'a> {
         grant: Grant,
         provider: &'a OpenIDProviderConfiguration,
         keystore_service: Arc<KeystoreService>,
+        txn_id: TransactionId,
     ) -> Self {
         OpenIDContext {
             client,
@@ -34,6 +37,7 @@ impl<'a> OpenIDContext<'a> {
             grant,
             provider,
             keystore_service,
+            txn_id,
         }
     }
 

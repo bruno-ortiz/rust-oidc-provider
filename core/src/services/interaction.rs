@@ -25,6 +25,7 @@ use crate::manager::interaction_manager::InteractionManager;
 use crate::manager::user_manager::UserManager;
 use crate::models::client::ClientInformation;
 use crate::models::grant::GrantBuilder;
+use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
 use crate::response_type::resolver::ResponseTypeResolver;
@@ -46,7 +47,7 @@ pub enum InteractionError {
     Persistence(#[from] PersistenceError),
     #[error("Unexpected prompt error {}", .0)]
     PromptError(#[from] PromptError),
-    #[error("Unexpected error authorizing user: {}",.0)]
+    #[error("Unexpected error authorizing user: {}", .0)]
     Authorization(anyhow::Error),
     #[error("Unexpected error resolving user interaction")]
     Internal(#[from] anyhow::Error),
@@ -83,6 +84,7 @@ impl InteractionService {
         session: SessionID,
         request: ValidatedAuthorisationRequest,
         client: Arc<ClientInformation>,
+        txn_id: TransactionId,
     ) -> Result<Interaction, InteractionError> {
         let user = self.user_manager.find_by_session(session).await?;
         let prompt = self
@@ -91,7 +93,7 @@ impl InteractionService {
             .await?;
         if let Some(prompt) = prompt {
             let interaction = self
-                .select_interaction_for_prompt(prompt, session, user, request)
+                .select_interaction_for_prompt(prompt, session, user, request, txn_id)
                 .await?;
             Ok(interaction)
         } else {
@@ -108,6 +110,7 @@ impl InteractionService {
         subject: Subject,
         acr: Option<Acr>,
         amr: Option<Amr>,
+        txn_id: TransactionId,
     ) -> Result<Url, InteractionError> {
         let clock = self.provider.clock_provider();
         match self.interaction_manager.find(interaction_id).await {
@@ -116,11 +119,14 @@ impl InteractionService {
             })) => {
                 let user =
                     AuthenticatedUser::new(session, subject, clock.now(), interaction_id, acr, amr);
-                let user = self.user_manager.save(user, None).await?;
+                let user = self.user_manager.save(user, txn_id.clone_some()).await?;
 
                 let interaction =
                     Interaction::consent_with_id(user.interaction_id(), request, user);
-                let interaction = self.interaction_manager.update(interaction).await?;
+                let interaction = self
+                    .interaction_manager
+                    .update(interaction, txn_id.clone_some())
+                    .await?;
                 Ok(interaction.uri(&self.provider))
             }
             Ok(None) => Err(InteractionError::NotFound(interaction_id)),
@@ -135,6 +141,7 @@ impl InteractionService {
         auth_service: &AuthorisationService<R, E>,
         interaction_id: Uuid,
         scopes: Scopes,
+        txn_id: TransactionId,
     ) -> Result<Url, InteractionError>
     where
         R: ResponseTypeResolver,
@@ -173,15 +180,17 @@ impl InteractionService {
                 let grant = self.grant_manager.save(grant).await?;
 
                 let user = user.with_grant(grant.id());
-                let user = self.user_manager.update(user, None).await?;
+                let user = self.user_manager.update(user, txn_id.clone_some()).await?;
                 let client = retrieve_client_info(&self.provider, request.client_id)
                     .await
                     .map_err(|err| Internal(err.into()))?
                     .ok_or(InteractionError::ClientNotFound(request.client_id))?;
 
-                let (user, request) = self.finalize_interaction(request, user).await?;
+                let (user, request) = self
+                    .finalize_interaction(request, user, txn_id.clone())
+                    .await?;
                 let res = auth_service
-                    .do_authorise(user, Arc::new(client), request)
+                    .do_authorise(user, Arc::new(client), request, txn_id.clone())
                     .await
                     .map_err(|err| InteractionError::Authorization(err.into()))?;
                 if let AuthorisationResponse::Redirect(url) = res {
@@ -201,10 +210,11 @@ impl InteractionService {
         &self,
         request: ValidatedAuthorisationRequest,
         user: AuthenticatedUser,
+        txn_id: TransactionId,
     ) -> Result<(AuthenticatedUser, ValidatedAuthorisationRequest), InteractionError> {
         let interaction = Interaction::none_with_id(user.interaction_id(), request, user);
         self.interaction_manager
-            .update(interaction)
+            .update(interaction, txn_id.clone_some())
             .await?
             .consume_authenticated()
             .ok_or_else(|| Internal(anyhow!("Unable to consume this interaction")))
@@ -216,29 +226,39 @@ impl InteractionService {
         session: SessionID,
         user: Option<AuthenticatedUser>,
         request: ValidatedAuthorisationRequest,
+        txn_id: TransactionId,
     ) -> Result<Interaction, PromptError> {
         match prompt {
             Prompt::Login => {
                 let interaction = Interaction::login(session, request);
-                let saved_interaction = self.interaction_manager.save(interaction).await?;
+                let saved_interaction = self
+                    .interaction_manager
+                    .save(interaction, txn_id.clone_some())
+                    .await?;
                 Ok(saved_interaction)
             }
             Prompt::Consent => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
                 let new_id = Uuid::new_v4();
                 let user = user.with_interaction(new_id);
-                let user = self.user_manager.update(user, None).await?;
+                let user = self.user_manager.update(user, txn_id.clone_some()).await?;
                 let interaction = Interaction::consent_with_id(new_id, request, user);
-                let saved_interaction = self.interaction_manager.save(interaction).await?;
+                let saved_interaction = self
+                    .interaction_manager
+                    .save(interaction, txn_id.clone_some())
+                    .await?;
                 Ok(saved_interaction)
             }
             Prompt::None => {
                 let user = user.ok_or_else(|| PromptError::login_required(&request))?;
                 let new_id = Uuid::new_v4();
                 let user = user.with_interaction(new_id);
-                let user = self.user_manager.update(user, None).await?;
+                let user = self.user_manager.update(user, txn_id.clone_some()).await?;
                 let interaction = Interaction::none_with_id(new_id, request, user);
-                let saved_interaction = self.interaction_manager.save(interaction).await?;
+                let saved_interaction = self
+                    .interaction_manager
+                    .save(interaction, txn_id.clone_some())
+                    .await?;
                 Ok(saved_interaction)
             }
             Prompt::SelectAccount => todo!("Not implemented"),
@@ -288,6 +308,7 @@ mod tests {
     use crate::manager::user_manager::UserManager;
     use crate::models::client::ClientInformation;
     use crate::services::interaction::InteractionService;
+    use crate::services::keystore::KeystoreService;
     use crate::services::prompt::PromptService;
     use crate::services::types::Interaction;
     use crate::session::SessionID;
@@ -298,9 +319,13 @@ mod tests {
         let session_id = SessionID::new();
         let provider = setup_provider();
         let service = prepare_service(Arc::new(provider));
+
+        let txn_manager = provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.unwrap();
+
         let auth_request = create_request(None, None, None);
         let result = service
-            .begin_interaction(session_id, auth_request, create_client())
+            .begin_interaction(session_id, auth_request, create_client(), txn)
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, .. }) = result else {
@@ -318,8 +343,16 @@ mod tests {
         let session_id = SessionID::new();
         let auth_request = create_request(None, None, Some(1));
 
+        let txn_manager = provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.unwrap();
+
         let result = service
-            .begin_interaction(session_id, auth_request.clone(), create_client())
+            .begin_interaction(
+                session_id,
+                auth_request.clone(),
+                create_client(),
+                txn.clone(),
+            )
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
@@ -335,8 +368,10 @@ mod tests {
 
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         let result = service
-            .begin_interaction(session_id, auth_request, create_client())
+            .begin_interaction(session_id, auth_request, create_client(), txn.clone())
             .await;
+
+        txn_manager.commit(txn).await.unwrap();
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -354,8 +389,16 @@ mod tests {
         let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
 
+        let txn_manager = provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.unwrap();
+
         let result = service
-            .begin_interaction(session_id, auth_request.clone(), create_client())
+            .begin_interaction(
+                session_id,
+                auth_request.clone(),
+                create_client(),
+                txn.clone(),
+            )
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
@@ -371,7 +414,12 @@ mod tests {
 
         let request_with_prompt = create_request(Some(IndexSet::from([Prompt::Login])), None, None);
         let result = service
-            .begin_interaction(session_id, request_with_prompt, create_client())
+            .begin_interaction(
+                session_id,
+                request_with_prompt,
+                create_client(),
+                txn.clone(),
+            )
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
@@ -389,8 +437,17 @@ mod tests {
         let provider = Arc::new(setup_provider());
         let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
+
+        let txn_manager = provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.unwrap();
+
         let result = service
-            .begin_interaction(session_id, auth_request.clone(), create_client())
+            .begin_interaction(
+                session_id,
+                auth_request.clone(),
+                create_client(),
+                txn.clone(),
+            )
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
@@ -413,8 +470,11 @@ mod tests {
             None,
         );
         let result = service
-            .begin_interaction(session_id, request_with_acr, create_client())
+            .begin_interaction(session_id, request_with_acr, create_client(), txn.clone())
             .await;
+
+        txn_manager.commit(txn).await.unwrap();
+
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
             panic!("Expected login interactions")
@@ -431,8 +491,17 @@ mod tests {
         let provider = Arc::new(setup_provider());
         let user_manager = UserManager::new(provider.clone());
         let service = prepare_service(provider.clone());
+
+        let txn_manager = provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.unwrap();
+
         let result = service
-            .begin_interaction(session_id, auth_request.clone(), create_client())
+            .begin_interaction(
+                session_id,
+                auth_request.clone(),
+                create_client(),
+                txn.clone(),
+            )
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
@@ -449,7 +518,7 @@ mod tests {
         let request_with_acr =
             create_request(None, Some(Acr::new(vec!["acr:test:xpto".into()])), None);
         let result = service
-            .begin_interaction(session_id, request_with_acr, create_client())
+            .begin_interaction(session_id, request_with_acr, create_client(), txn.clone())
             .await;
         assert!(result.is_ok());
         let Ok(Interaction::Login { session, id, .. }) = result else {
@@ -552,7 +621,11 @@ mod tests {
 
     fn prepare_service(provider: Arc<OpenIDProviderConfiguration>) -> InteractionService {
         let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
-        let prompt_service = Arc::new(PromptService::new(provider.clone()));
+        let keystore_service = KeystoreService::new(provider.clone());
+        let prompt_service = Arc::new(PromptService::new(
+            provider.clone(),
+            Arc::new(keystore_service),
+        ));
         InteractionService::new(provider.clone(), prompt_service)
     }
 }

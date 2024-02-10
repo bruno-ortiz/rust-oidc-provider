@@ -33,7 +33,7 @@ use oidc_types::jose::{EdDSA, UnsecuredJwsAlgorithm, ES256, PS256, RS256};
 use oidc_types::response_type::ResponseTypeValue;
 use oidc_types::response_type::ResponseTypeValue::{IdToken, Token};
 use oidc_types::scopes;
-use oidc_types::secret::HashedSecret;
+use oidc_types::secret::PlainTextSecret;
 use ResponseTypeValue::Code;
 
 use crate::profile::MockProfileResolver;
@@ -143,12 +143,10 @@ async fn create_client(
         .build()
         .expect("Valid client metadata");
 
-    let secret1 =
-        HashedSecret::hash_string(config.secret_hasher(), secret).expect("Expected hashed secret");
     let client = ClientInformation::new(
         ClientID::from_str(id).unwrap(),
         OffsetDateTime::now_utc(),
-        secret1,
+        PlainTextSecret::from(secret.to_owned()),
         None,
         client_metadata,
     );

@@ -115,6 +115,9 @@ impl InteractionService for InteractionServiceImpl {
         let interaction_id = Uuid::try_parse(c_request.interaction_id.as_str()).map_err(|err| {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
+
+        let txn_manager = self.provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.map_err(persist_err)?;
         let redirect_uri = self
             .interaction_service
             .complete_login(
@@ -122,9 +125,11 @@ impl InteractionService for InteractionServiceImpl {
                 Subject::new(c_request.sub),
                 c_request.acr.map(Acr::from),
                 c_request.amr.map(Amr::from),
+                txn.clone(),
             )
             .await
             .map_err(convert_err)?;
+        txn_manager.commit(txn).await.map_err(persist_err)?;
         Ok(Response::new(CompleteLoginReply {
             redirect_uri: redirect_uri.to_string(),
         }))
@@ -138,12 +143,23 @@ impl InteractionService for InteractionServiceImpl {
         let interaction_id = Uuid::try_parse(request.interaction_id.as_str()).map_err(|err| {
             Status::invalid_argument(format!("Failed to parse interaction id. {err}"))
         })?;
+
+        let txn_manager = self.provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.map_err(persist_err)?;
+
         let scopes = Scopes::from(request.scopes);
         let redirect_uri = self
             .interaction_service
-            .confirm_consent(&self.authorisation_service, interaction_id, scopes)
+            .confirm_consent(
+                &self.authorisation_service,
+                interaction_id,
+                scopes,
+                txn.clone(),
+            )
             .await
             .map_err(convert_err)?;
+
+        txn_manager.commit(txn).await.map_err(persist_err)?;
         Ok(Response::new(ConfirmConsentReply {
             redirect_uri: redirect_uri.to_string(),
         }))
@@ -279,6 +295,10 @@ fn convert_err(err: InteractionError) -> Status {
         InteractionError::Authorization(_) => Status::internal(err.to_string()),
         InteractionError::PromptError(_) => Status::internal(err.to_string()),
     }
+}
+
+fn persist_err(err: PersistenceError) -> Status {
+    Status::internal(err.to_string())
 }
 
 fn convert_client_err(err: ClientError) -> Status {

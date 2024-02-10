@@ -36,7 +36,7 @@ impl ResponseTypeResolver for CodeResolver {
             .provider
             .adapter()
             .code()
-            .insert(code, None)
+            .insert(code, context.txn_id.clone_some())
             .await
             .map_err(OpenIdError::server_error)?;
         return Ok(code.code);

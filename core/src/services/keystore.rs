@@ -87,6 +87,7 @@ impl KeystoreService {
         }
     }
 
+    //TODO: finish implementation of symmetric keystore
     fn create_symmetric(&self, client: &ClientInformation) -> Arc<KeyStore> {
         let mut algorithms = HashSet::new();
         let client_metadata = client.metadata();

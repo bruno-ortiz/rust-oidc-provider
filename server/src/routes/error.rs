@@ -51,6 +51,9 @@ impl IntoResponse for AuthorisationErrorWrapper {
                     Err(auth_err) => AuthorisationErrorWrapper(auth_err).into_response(),
                 }
             }
+            AuthorisationError::Persistence(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_string()).into_response()
+            }
         }
     }
 }
