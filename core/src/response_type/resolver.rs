@@ -120,15 +120,25 @@ mod tests {
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue::Code;
     use oidc_types::response_type::ResponseTypeValue::IdToken;
+    use std::sync::Arc;
 
     use crate::context::test_utils::{setup_context, setup_provider};
     use crate::response_type::resolver::{DynamicResponseTypeResolver, ResponseTypeResolver};
+    use crate::services::keystore::KeystoreService;
 
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code() {
-        let provider = setup_provider();
-        let context = setup_context(&provider, response_type!(Code), None, None).await;
-        let resolver = DynamicResponseTypeResolver::from(&provider);
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
+        let context = setup_context(
+            &provider,
+            keystore_service,
+            response_type!(Code),
+            None,
+            None,
+        )
+        .await;
+        let resolver = DynamicResponseTypeResolver::from(provider.as_ref());
         let result = ResponseTypeResolver::resolve(&resolver, &context)
             .await
             .expect("Expected Ok value");
@@ -138,15 +148,17 @@ mod tests {
 
     #[tokio::test]
     async fn can_resolve_resolve_response_type_code_id_token() {
-        let provider = setup_provider();
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let context = setup_context(
             &provider,
+            keystore_service,
             response_type!(Code, IdToken),
             None,
             Some(Nonce::new("some-nonce")),
         )
         .await;
-        let resolver = DynamicResponseTypeResolver::from(&provider);
+        let resolver = DynamicResponseTypeResolver::from(provider.as_ref());
         let result = ResponseTypeResolver::resolve(&resolver, &context)
             .await
             .expect("Expected Ok value");

@@ -37,16 +37,20 @@ mod tests {
     use oidc_types::identifiable::Identifiable;
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
+    use std::sync::Arc;
 
     use crate::context::test_utils::{setup_context, setup_provider};
     use crate::response_type::resolver::token::TokenResolver;
     use crate::response_type::resolver::ResponseTypeResolver;
+    use crate::services::keystore::KeystoreService;
 
     #[tokio::test]
     async fn test_can_create_access_token() {
-        let provider = setup_provider();
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let context = setup_context(
             &provider,
+            keystore_service,
             response_type!(ResponseTypeValue::Token),
             None,
             None,

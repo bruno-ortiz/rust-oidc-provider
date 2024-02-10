@@ -21,6 +21,7 @@ use crate::models::access_token::AccessToken;
 use crate::models::client::{AuthenticatedClient, ClientInformation};
 use crate::models::grant::{GrantBuilder, GrantID};
 use crate::models::Status;
+use crate::persistence::TransactionId;
 
 #[derive(new)]
 pub(crate) struct ClientCredentialsGrantResolver {
@@ -34,6 +35,7 @@ impl ClientCredentialsGrantResolver {
         &self,
         grant_type: ClientCredentialsGrant,
         client: AuthenticatedClient,
+        txn: TransactionId,
     ) -> Result<TokenResponse, OpenIdError> {
         let clock = self.provider.clock_provider();
         let cc_config = self.provider.client_credentials();
@@ -61,7 +63,7 @@ impl ClientCredentialsGrantResolver {
 
         let grant = self
             .grant_manager
-            .save(grant)
+            .save(grant, txn.clone_some())
             .await
             .map_err(OpenIdError::server_error)?;
 
@@ -69,7 +71,7 @@ impl ClientCredentialsGrantResolver {
         let access_token = AccessToken::bearer(clock.now(), grant.id(), at_duration, scopes);
         let access_token = self
             .access_token_manager
-            .save(access_token)
+            .save(access_token, txn.clone_some())
             .await
             .map_err(OpenIdError::server_error)?;
 

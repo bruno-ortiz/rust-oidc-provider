@@ -27,6 +27,7 @@ impl<'a> IDTokenResolver<'a> {
         IDTokenResolver { code, token }
     }
 }
+
 #[async_trait]
 impl ResponseTypeResolver for IDTokenResolver<'_> {
     type Output = SimpleIdToken;
@@ -89,6 +90,8 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use oidc_types::issuer::Issuer;
     use oidc_types::jose::jwt2::{SignedJWT, JWT};
     use oidc_types::nonce::Nonce;
@@ -100,6 +103,7 @@ mod tests {
     use crate::context::test_utils::{setup_context, setup_provider};
     use crate::error::OpenIdErrorType;
     use crate::hash::TokenHasher;
+    use crate::services::keystore::KeystoreService;
 
     use super::*;
 
@@ -107,9 +111,11 @@ mod tests {
     async fn can_generate_id_token() {
         let state = State::new("mock-state");
         let nonce = Nonce::new("some-nonce");
-        let provider = setup_provider();
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let context = setup_context(
             &provider,
+            keystore_service,
             response_type![ResponseTypeValue::Code],
             Some(state.clone()),
             Some(nonce.clone()),
@@ -164,9 +170,11 @@ mod tests {
     #[tokio::test]
     async fn nonce_is_required_when_hybrid_flow() {
         let state = State::new("mock-state");
-        let provider = setup_provider();
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let context = setup_context(
             &provider,
+            keystore_service,
             response_type![ResponseTypeValue::Code, ResponseTypeValue::IdToken],
             Some(state.clone()),
             None,

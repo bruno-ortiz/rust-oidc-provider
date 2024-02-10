@@ -5,6 +5,7 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::models::grant::{Grant, GrantID};
 use crate::models::Status;
+use crate::persistence::TransactionId;
 
 pub struct GrantManager {
     provider: Arc<OpenIDProviderConfiguration>,
@@ -25,16 +26,30 @@ impl GrantManager {
             .filter(|it| it.status() != Status::Consumed))
     }
 
-    pub async fn save(&self, grant: Grant) -> Result<Grant, PersistenceError> {
-        self.provider.adapter().grant().insert(grant, None).await
+    pub async fn save(
+        &self,
+        grant: Grant,
+        txn: Option<TransactionId>,
+    ) -> Result<Grant, PersistenceError> {
+        self.provider.adapter().grant().insert(grant, txn).await
     }
 
-    pub async fn update(&self, grant: Grant) -> Result<Grant, PersistenceError> {
-        self.provider.adapter().grant().update(grant, None).await
+    pub async fn update(
+        &self,
+        grant: Grant,
+        txn: Option<TransactionId>,
+    ) -> Result<Grant, PersistenceError> {
+        self.provider.adapter().grant().update(grant, txn).await
     }
 
-    pub async fn consume(&self, mut grant: Grant) -> Result<Grant, OpenIdError> {
+    pub async fn consume(
+        &self,
+        mut grant: Grant,
+        txn: Option<TransactionId>,
+    ) -> Result<Grant, OpenIdError> {
         grant.set_status(Status::Consumed);
-        self.update(grant).await.map_err(OpenIdError::server_error)
+        self.update(grant, txn)
+            .await
+            .map_err(OpenIdError::server_error)
     }
 }

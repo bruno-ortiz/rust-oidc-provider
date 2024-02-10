@@ -20,6 +20,7 @@ use crate::manager::refresh_token_manager::RefreshTokenManager;
 use crate::models::access_token::AccessToken;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshToken;
+use crate::persistence::TransactionId;
 use crate::profile::ProfileData;
 use crate::services::keystore::KeystoreService;
 use crate::utils::resolve_sub;
@@ -38,6 +39,7 @@ impl RefreshTokenGrantResolver {
         &self,
         grant_type: RefreshTokenGrant,
         client: AuthenticatedClient,
+        txn: TransactionId,
     ) -> Result<TokenResponse, OpenIdError> {
         let clock = self.provider.clock_provider();
 
@@ -60,10 +62,10 @@ impl RefreshTokenGrantResolver {
         }
         if let Err(err) = self.refresh_token_manager.validate(&refresh_token) {
             self.refresh_token_manager
-                .consume(refresh_token, None)
+                .consume(refresh_token, txn.clone_some())
                 .await?;
             // invalidate entire token chain
-            self.grant_manager.consume(grant).await?;
+            self.grant_manager.consume(grant, txn.clone_some()).await?;
             return Err(err);
         }
 
@@ -79,10 +81,13 @@ impl RefreshTokenGrantResolver {
         if self.provider.rotate_refresh_token(context) {
             let old_rt = self
                 .refresh_token_manager
-                .consume(refresh_token, None)
+                .consume(refresh_token, txn.clone_some())
                 .await?;
             let new_rt = RefreshToken::new_from(old_rt)?;
-            refresh_token = self.refresh_token_manager.save(new_rt, None).await?;
+            refresh_token = self
+                .refresh_token_manager
+                .save(new_rt, txn.clone_some())
+                .await?;
             rt_token = Some(refresh_token.token)
         }
 
@@ -95,7 +100,7 @@ impl RefreshTokenGrantResolver {
         );
         let access_token = self
             .access_token_manager
-            .save(access_token)
+            .save(access_token, txn.clone_some())
             .await
             .map_err(OpenIdError::server_error)?;
 

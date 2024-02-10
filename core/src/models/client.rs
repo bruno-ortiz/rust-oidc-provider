@@ -8,7 +8,7 @@ use oidc_types::client::{ClientID, ClientMetadata};
 use oidc_types::grant_type::GrantType;
 use oidc_types::identifiable::Identifiable;
 use oidc_types::jose::jws::SigningAlgorithm;
-use oidc_types::secret::{HashedSecret, PlainTextSecret};
+use oidc_types::secret::PlainTextSecret;
 
 #[derive(Debug, Clone, CopyGetters, Getters)]
 pub struct ClientInformation {
@@ -17,7 +17,8 @@ pub struct ClientInformation {
     #[get_copy = "pub"]
     issue_date: OffsetDateTime,
     #[get = "pub"]
-    secret: PlainTextSecret, // This needs to be plaintext because of the symmetric key creation, should encrypt this in the database
+    secret: PlainTextSecret,
+    // This needs to be plaintext because of the symmetric key creation, should encrypt this in the database
     #[get_copy = "pub"]
     secret_expires_at: Option<OffsetDateTime>,
     #[get = "pub"]

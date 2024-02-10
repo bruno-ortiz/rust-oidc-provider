@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::adapter::PersistenceError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::models::access_token::AccessToken;
+use crate::persistence::TransactionId;
 
 pub struct AccessTokenManager {
     provider: Arc<OpenIDProviderConfiguration>,
@@ -20,11 +21,15 @@ impl AccessTokenManager {
         self.provider.adapter().token().find(&id).await
     }
 
-    pub async fn save(&self, access_token: AccessToken) -> Result<AccessToken, PersistenceError> {
+    pub async fn save(
+        &self,
+        access_token: AccessToken,
+        txn: Option<TransactionId>,
+    ) -> Result<AccessToken, PersistenceError> {
         self.provider
             .adapter()
             .token()
-            .insert(access_token, None)
+            .insert(access_token, txn)
             .await
     }
 }

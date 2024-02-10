@@ -67,6 +67,7 @@ impl TokenService {
         token_request_body: TokenRequestBody,
         client: AuthenticatedClient,
     ) -> Result<TokenResponse, OpenIdError> {
+        let txn_manager = self.provider.adapter().transaction_manager();
         let grant_type = token_request_body.grant_type();
         if !self.provider.grant_types_supported().contains(&grant_type) {
             return Err(OpenIdError::unsupported_grant_type(
@@ -78,17 +79,26 @@ impl TokenService {
                 "The authenticated client is not authorized to use this authorization grant type",
             ));
         }
-        match token_request_body {
+        let txn = txn_manager.begin_txn().await?;
+        let token_response = match token_request_body {
             TokenRequestBody::AuthorisationCodeGrant(inner) => {
-                self.auth_code_grant_resolver.execute(inner, client).await
+                self.auth_code_grant_resolver
+                    .execute(inner, client, txn.clone())
+                    .await
             }
             TokenRequestBody::RefreshTokenGrant(inner) => {
-                self.rt_grant_resolver.execute(inner, client).await
+                self.rt_grant_resolver
+                    .execute(inner, client, txn.clone())
+                    .await
             }
             TokenRequestBody::ClientCredentialsGrant(inner) => {
-                self.cc_grant_resolver.execute(inner, client).await
+                self.cc_grant_resolver
+                    .execute(inner, client, txn.clone())
+                    .await
             }
-        }
+        }?;
+        txn_manager.commit(txn).await?;
+        Ok(token_response)
     }
 
     pub async fn find(&self, bearer_token: &str) -> Result<AccessToken, TokenError> {

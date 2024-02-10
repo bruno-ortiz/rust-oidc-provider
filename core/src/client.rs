@@ -35,13 +35,10 @@ pub async fn register_client(
     configuration: &OpenIDProviderConfiguration,
     client: ClientInformation,
 ) -> Result<(), ClientError> {
-    let txn_manager = configuration.adapter().transaction_manager();
-    let txn = txn_manager.begin_txn().await.unwrap();
     configuration
         .adapter()
         .client()
-        .insert(client, txn.clone_some())
+        .insert(client, None)
         .await?;
-    txn_manager.commit(txn).await.unwrap();
     Ok(())
 }

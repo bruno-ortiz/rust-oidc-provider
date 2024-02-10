@@ -84,12 +84,14 @@ pub mod test_utils {
     use crate::keystore::KeyStore;
     use crate::models::client::ClientInformation;
     use crate::models::grant::GrantBuilder;
+    use crate::services::keystore::KeystoreService;
     use crate::session::SessionID;
     use crate::user::AuthenticatedUser;
 
     //noinspection DuplicatedCode
     pub async fn setup_context(
         provider: &OpenIDProviderConfiguration,
+        keystore_service: Arc<KeystoreService>,
         response_type: ResponseType,
         state: Option<State>,
         nonce: Option<Nonce>,
@@ -114,7 +116,7 @@ pub mod test_utils {
             id_token_hint: None,
             login_hint: None,
         };
-        let (hashed, _) = HashedSecret::random(HasherConfig::Sha256).unwrap();
+        let (_, plain) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let metadata = ClientMetadata {
             redirect_uris: vec![],
             token_endpoint_auth_method: AuthMethod::None,
@@ -156,7 +158,7 @@ pub mod test_utils {
         };
 
         let client =
-            ClientInformation::new(client_id, OffsetDateTime::now_utc(), hashed, None, metadata);
+            ClientInformation::new(client_id, OffsetDateTime::now_utc(), plain, None, metadata);
 
         let user = AuthenticatedUser::new(
             SessionID::default(),
@@ -189,8 +191,20 @@ pub mod test_utils {
             .insert(grant, None)
             .await
             .unwrap();
-        let user = user.with_grant(grant.id()).save(provider).await.unwrap();
-        OpenIDContext::new(Arc::new(client), user, request, grant, provider)
+        let user = user.with_grant(grant.id());
+        let user = provider.adapter().user().insert(user, None).await.unwrap();
+
+        let txn_manager = provider.adapter().transaction_manager();
+        let txn = txn_manager.begin_txn().await.unwrap();
+        OpenIDContext::new(
+            Arc::new(client),
+            user,
+            request,
+            grant,
+            provider,
+            keystore_service,
+            txn,
+        )
     }
 
     pub fn setup_provider() -> OpenIDProviderConfiguration {

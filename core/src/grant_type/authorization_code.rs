@@ -24,6 +24,7 @@ use crate::models::access_token::AccessToken;
 use crate::models::client::AuthenticatedClient;
 use crate::models::refresh_token::RefreshTokenBuilder;
 use crate::models::Status;
+use crate::persistence::TransactionId;
 use crate::profile::ProfileData;
 use crate::services::keystore::KeystoreService;
 use crate::utils::resolve_sub;
@@ -43,6 +44,7 @@ impl AuthorisationCodeGrantResolver {
         &self,
         grant_type: AuthorisationCodeGrant,
         client: AuthenticatedClient,
+        txn: TransactionId,
     ) -> Result<TokenResponse, OpenIdError> {
         let clock = self.provider.clock_provider();
         let code = self
@@ -59,12 +61,15 @@ impl AuthorisationCodeGrantResolver {
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
         if code.status != Status::Awaiting {
-            self.grant_manager.consume(grant).await?;
+            self.grant_manager.consume(grant, txn.clone_some()).await?;
             return Err(OpenIdError::invalid_grant(
                 "Authorization code already consumed",
             ));
         }
-        let code = self.auth_code_manager.consume(code, None).await?;
+        let code = self
+            .auth_code_manager
+            .consume(code, txn.clone_some())
+            .await?;
         if grant.client_id() != client.id() {
             return Err(OpenIdError::invalid_grant(
                 "Client mismatch for Authorization Code",
@@ -88,7 +93,7 @@ impl AuthorisationCodeGrantResolver {
         );
         let access_token = self
             .access_token_manager
-            .save(access_token)
+            .save(access_token, txn.clone_some())
             .await
             .map_err(OpenIdError::server_error)?;
 
@@ -153,7 +158,10 @@ impl AuthorisationCodeGrantResolver {
                 .created(now)
                 .build()
                 .map_err(OpenIdError::server_error)?;
-            let refresh_token = self.refresh_token_manager.save(refresh_token, None).await?;
+            let refresh_token = self
+                .refresh_token_manager
+                .save(refresh_token, txn.clone_some())
+                .await?;
             rt = Some(refresh_token.token)
         }
 

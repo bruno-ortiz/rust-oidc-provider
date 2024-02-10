@@ -45,19 +45,24 @@ impl ResponseTypeResolver for CodeResolver {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use oidc_types::response_type;
     use oidc_types::response_type::ResponseTypeValue;
 
     use crate::context::test_utils::{setup_context, setup_provider};
     use crate::models::Status;
+    use crate::services::keystore::KeystoreService;
 
     use super::*;
 
     #[tokio::test]
     async fn can_generate_authorisation_code() {
-        let provider = setup_provider();
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let context = setup_context(
             &provider,
+            keystore_service,
             response_type![ResponseTypeValue::Code],
             None,
             None,
@@ -99,9 +104,11 @@ mod tests {
 
     #[tokio::test]
     async fn can_find_authorisation_code() {
-        let provider = setup_provider();
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
         let context = setup_context(
             &provider,
+            keystore_service,
             response_type![ResponseTypeValue::Code],
             None,
             None,

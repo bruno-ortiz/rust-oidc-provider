@@ -141,7 +141,7 @@ impl InteractionService {
         auth_service: &AuthorisationService<R, E>,
         interaction_id: Uuid,
         scopes: Scopes,
-        txn_id: TransactionId,
+        txn: TransactionId,
     ) -> Result<Url, InteractionError>
     where
         R: ResponseTypeResolver,
@@ -152,7 +152,7 @@ impl InteractionService {
                 if let Some(old_grant_id) = user.grant_id() {
                     if let Some(old_grant) = self.grant_manager.find(old_grant_id).await? {
                         self.grant_manager
-                            .consume(old_grant)
+                            .consume(old_grant, txn.clone_some())
                             .await
                             .context(format!(
                                 "Failed to consume old grant with id {} from user {}",
@@ -177,20 +177,20 @@ impl InteractionService {
                     .claims(claims)
                     .build()
                     .map_err(|err| Internal(err.into()))?;
-                let grant = self.grant_manager.save(grant).await?;
+                let grant = self.grant_manager.save(grant, txn.clone_some()).await?;
 
                 let user = user.with_grant(grant.id());
-                let user = self.user_manager.update(user, txn_id.clone_some()).await?;
+                let user = self.user_manager.update(user, txn.clone_some()).await?;
                 let client = retrieve_client_info(&self.provider, request.client_id)
                     .await
                     .map_err(|err| Internal(err.into()))?
                     .ok_or(InteractionError::ClientNotFound(request.client_id))?;
 
                 let (user, request) = self
-                    .finalize_interaction(request, user, txn_id.clone())
+                    .finalize_interaction(request, user, txn.clone())
                     .await?;
                 let res = auth_service
-                    .do_authorise(user, Arc::new(client), request, txn_id.clone())
+                    .do_authorise(user, Arc::new(client), request, txn.clone())
                     .await
                     .map_err(|err| InteractionError::Authorization(err.into()))?;
                 if let AuthorisationResponse::Redirect(url) = res {
@@ -317,8 +317,8 @@ mod tests {
     #[tokio::test]
     async fn test_begin_login_interaction_successful() {
         let session_id = SessionID::new();
-        let provider = setup_provider();
-        let service = prepare_service(Arc::new(provider));
+        let provider = Arc::new(setup_provider());
+        let service = prepare_service(provider.clone());
 
         let txn_manager = provider.adapter().transaction_manager();
         let txn = txn_manager.begin_txn().await.unwrap();
@@ -563,7 +563,7 @@ mod tests {
     //noinspection DuplicatedCode
     fn create_client() -> Arc<ClientInformation> {
         let client_id = ClientID::new(Uuid::new_v4());
-        let (hashed, _) = HashedSecret::random(HasherConfig::Sha256).unwrap();
+        let (_, plain) = HashedSecret::random(HasherConfig::Sha256).unwrap();
         let metadata = ClientMetadata {
             redirect_uris: vec![],
             token_endpoint_auth_method: AuthMethod::None,
@@ -607,7 +607,7 @@ mod tests {
         Arc::new(ClientInformation::new(
             client_id,
             OffsetDateTime::now_utc(),
-            hashed,
+            plain,
             None,
             metadata,
         ))
