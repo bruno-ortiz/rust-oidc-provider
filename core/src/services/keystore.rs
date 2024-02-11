@@ -5,11 +5,13 @@ use std::time::Duration;
 use josekit::jwk::Jwk;
 use quick_cache::sync::Cache;
 use quick_cache::GuardResult;
+use sha2::{Digest, Sha256, Sha384, Sha512};
 
 use oidc_types::auth_method::AuthMethod;
-use oidc_types::client::ClientID;
+use oidc_types::client::{ClientID, ClientMetadata};
 use oidc_types::jose::jwk_set::JwkSet;
-use oidc_types::jose::Algorithm;
+use oidc_types::jose::{Algorithm, SizableAlgorithm};
+use oidc_types::secret::PlainTextSecret;
 
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::keystore::{KeyStore, KeyStoreError};
@@ -87,43 +89,138 @@ impl KeystoreService {
         }
     }
 
-    //TODO: finish implementation of symmetric keystore
     fn create_symmetric(&self, client: &ClientInformation) -> Arc<KeyStore> {
-        let mut algorithms = HashSet::new();
         let client_metadata = client.metadata();
+        if let Some(client_secret) = client.secret() {
+            let signing_keys = self.create_signing_keys(client_metadata, client_secret);
+            let enc_keys = self.create_encryption_keys(client_metadata, client_secret);
+            let cek_keys = self.create_content_encryption_keys(client_metadata, client_secret);
+            Arc::new(KeyStore::new(JwkSet::new(
+                [signing_keys, enc_keys, cek_keys].concat(),
+            )))
+        } else {
+            Arc::new(KeyStore::empty())
+        }
+    }
+
+    fn create_signing_keys(
+        &self,
+        client_metadata: &ClientMetadata,
+        client_secret: &PlainTextSecret,
+    ) -> Vec<Jwk> {
+        let mut signing_algorithms = HashSet::new();
         if client_metadata.token_endpoint_auth_method == AuthMethod::ClientSecretJwt {
             if let Some(alg) = client_metadata.token_endpoint_auth_signing_alg.as_ref() {
                 if alg.is_symmetric() {
-                    algorithms.insert(alg.clone());
+                    signing_algorithms.insert(alg.clone());
                 }
             } else {
-                let algs = self
-                    .provider
+                self.provider
                     .token_endpoint_auth_signing_alg_values_supported()
                     .iter()
                     .filter(|&it| it.is_symmetric())
                     .cloned()
-                    .collect::<Vec<_>>();
-                for alg in algs {
-                    algorithms.insert(alg);
-                }
+                    .for_each(|alg| {
+                        signing_algorithms.insert(alg);
+                    });
             }
         }
-        if client_metadata.id_token_signed_response_alg.is_symmetric() {
-            algorithms.insert(client_metadata.id_token_signed_response_alg.clone());
+        [
+            Some(&client_metadata.id_token_signed_response_alg),
+            client_metadata.userinfo_signed_response_alg.as_ref(),
+            Some(&client_metadata.authorization_signed_response_alg),
+            client_metadata.request_object_signing_alg.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|alg| alg.is_symmetric())
+        .cloned()
+        .for_each(|alg| {
+            signing_algorithms.insert(alg);
+        });
+
+        if client_metadata.request_object_signing_alg.is_none() {
+            self.provider
+                .request_object_signing_alg_values_supported()
+                .iter()
+                .filter(|&it| it.is_symmetric())
+                .cloned()
+                .for_each(|alg| {
+                    signing_algorithms.insert(alg);
+                });
         }
-        let keys = algorithms
+
+        let keys = signing_algorithms
             .into_iter()
             .map(|alg| {
                 let mut jwk = Jwk::new("oct");
                 jwk.set_algorithm(alg.name());
                 jwk.set_key_use("sig");
-                jwk.set_key_value(client.secret());
+                jwk.set_key_value(client_secret);
                 jwk.set_key_operations(vec!["sign", "verify"]);
                 jwk
             })
             .collect();
-        Arc::new(KeyStore::new(JwkSet::new(keys)))
+        keys
+    }
+
+    fn create_encryption_keys(
+        &self,
+        client_metadata: &ClientMetadata,
+        client_secret: &PlainTextSecret,
+    ) -> Vec<Jwk> {
+        let mut algorithms = HashSet::new();
+        [
+            client_metadata.id_token_encrypted_response_alg.as_ref(),
+            client_metadata.userinfo_encrypted_response_alg.as_ref(),
+            client_metadata
+                .authorization_encrypted_response_alg
+                .as_ref(),
+            client_metadata.request_object_encryption_alg.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|alg| alg.is_symmetric())
+        .cloned()
+        .for_each(|alg| {
+            algorithms.insert(alg);
+        });
+
+        self.provider
+            .request_object_encryption_alg_values_supported()
+            .iter()
+            .flatten()
+            .filter(|&it| it.is_symmetric())
+            .cloned()
+            .for_each(|alg| {
+                algorithms.insert(alg);
+            });
+
+        create_enc_jwk(client_secret, algorithms)
+    }
+
+    fn create_content_encryption_keys(
+        &self,
+        client_metadata: &ClientMetadata,
+        client_secret: &PlainTextSecret,
+    ) -> Vec<Jwk> {
+        let mut algorithms = HashSet::new();
+        [
+            client_metadata.id_token_encrypted_response_enc.as_ref(),
+            client_metadata.userinfo_encrypted_response_enc.as_ref(),
+            client_metadata
+                .authorization_encrypted_response_enc
+                .as_ref(),
+            client_metadata.request_object_encryption_enc.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|alg| alg.is_symmetric())
+        .cloned()
+        .for_each(|alg| {
+            algorithms.insert(alg);
+        });
+        create_enc_jwk(client_secret, algorithms)
     }
 
     async fn create_asymmetric(
@@ -146,5 +243,32 @@ impl KeystoreService {
         } else {
             Err(KeyStoreError::Unset)
         }
+    }
+}
+
+fn create_enc_jwk<A: SizableAlgorithm>(
+    client_secret: &PlainTextSecret,
+    algorithms: HashSet<A>,
+) -> Vec<Jwk> {
+    algorithms
+        .into_iter()
+        .filter_map(|alg| {
+            alg.length().map(|len| {
+                let mut jwk = Jwk::new("oct");
+                jwk.set_algorithm(alg.name());
+                jwk.set_key_use("enc");
+                jwk.set_key_value(derive_encryption_key(client_secret.as_ref(), len));
+                jwk
+            })
+        })
+        .collect()
+}
+
+fn derive_encryption_key(secret: &str, length: usize) -> Vec<u8> {
+    match length {
+        len if len <= 32 => Sha256::digest(secret)[0..length].to_vec(),
+        len if len <= 48 => Sha384::digest(secret)[0..length].to_vec(),
+        len if len <= 64 => Sha512::digest(secret)[0..length].to_vec(),
+        _ => panic!("Unsupported symmetric encryption key derivation"),
     }
 }

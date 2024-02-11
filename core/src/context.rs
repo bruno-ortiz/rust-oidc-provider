@@ -157,8 +157,13 @@ pub mod test_utils {
             software_id: None,
         };
 
-        let client =
-            ClientInformation::new(client_id, OffsetDateTime::now_utc(), plain, None, metadata);
+        let client = ClientInformation::new(
+            client_id,
+            OffsetDateTime::now_utc(),
+            Some(plain),
+            None,
+            metadata,
+        );
 
         let user = AuthenticatedUser::new(
             SessionID::default(),

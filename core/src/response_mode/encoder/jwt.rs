@@ -2,6 +2,7 @@ use indexmap::IndexMap;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::Value;
+use oidc_types::jose::Algorithm;
 use time::Duration;
 
 use oidc_types::jose::jws::JwsHeaderExt;

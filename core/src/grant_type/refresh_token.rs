@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use derive_new::new;
+use oidc_types::jose::Algorithm;
 
 use oidc_types::scopes::OPEN_ID;
 use oidc_types::token::TokenResponse;

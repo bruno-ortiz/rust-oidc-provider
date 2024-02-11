@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 use derive_new::new;
+use oidc_types::jose::Algorithm;
 use tracing::error;
 use uuid::Uuid;
 

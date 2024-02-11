@@ -146,7 +146,7 @@ async fn create_client(
     let client = ClientInformation::new(
         ClientID::from_str(id).unwrap(),
         OffsetDateTime::now_utc(),
-        PlainTextSecret::from(secret.to_owned()),
+        Some(PlainTextSecret::from(secret.to_owned())),
         None,
         client_metadata,
     );

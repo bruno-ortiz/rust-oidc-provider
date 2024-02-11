@@ -1,8 +1,8 @@
 use anyhow::anyhow;
 use josekit::jwe::{
     Dir, JweDecrypter, JweEncrypter, A128GCMKW, A128KW, A192GCMKW, A192KW, A256GCMKW, A256KW,
-    ECDH_ES, ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW, PBES2_HS256_A128KW,
-    PBES2_HS384_A192KW, PBES2_HS512_A256KW, RSA_OAEP, RSA_OAEP_256, RSA_OAEP_384, RSA_OAEP_512,
+    ECDH_ES, ECDH_ES_A128KW, ECDH_ES_A192KW, ECDH_ES_A256KW, RSA_OAEP, RSA_OAEP_256, RSA_OAEP_384,
+    RSA_OAEP_512,
 };
 use josekit::jwk::Jwk;
 use josekit::jws::{
@@ -91,9 +91,6 @@ impl JwkExt for Jwk {
             "ECDH-ES+A128KW" => Box::new(ECDH_ES_A128KW.decrypter_from_jwk(self)?),
             "ECDH-ES+A192KW" => Box::new(ECDH_ES_A192KW.decrypter_from_jwk(self)?),
             "ECDH-ES+A256KW" => Box::new(ECDH_ES_A256KW.decrypter_from_jwk(self)?),
-            "PBES2-HS256+A128KW" => Box::new(PBES2_HS256_A128KW.decrypter_from_jwk(self)?),
-            "PBES2-HS384+A192KW" => Box::new(PBES2_HS384_A192KW.decrypter_from_jwk(self)?),
-            "PBES2-HS512+A256KW" => Box::new(PBES2_HS512_A256KW.decrypter_from_jwk(self)?),
             "RSA-OAEP" => Box::new(RSA_OAEP.decrypter_from_jwk(self)?),
             "RSA-OAEP-256" => Box::new(RSA_OAEP_256.decrypter_from_jwk(self)?),
             "RSA-OAEP-384" => Box::new(RSA_OAEP_384.decrypter_from_jwk(self)?),
@@ -120,9 +117,6 @@ impl JwkExt for Jwk {
             "ECDH-ES+A128KW" => Box::new(ECDH_ES_A128KW.encrypter_from_jwk(self)?),
             "ECDH-ES+A192KW" => Box::new(ECDH_ES_A192KW.encrypter_from_jwk(self)?),
             "ECDH-ES+A256KW" => Box::new(ECDH_ES_A256KW.encrypter_from_jwk(self)?),
-            "PBES2-HS256+A128KW" => Box::new(PBES2_HS256_A128KW.encrypter_from_jwk(self)?),
-            "PBES2-HS384+A192KW" => Box::new(PBES2_HS384_A192KW.encrypter_from_jwk(self)?),
-            "PBES2-HS512+A256KW" => Box::new(PBES2_HS512_A256KW.encrypter_from_jwk(self)?),
             "RSA-OAEP" => Box::new(RSA_OAEP.encrypter_from_jwk(self)?),
             "RSA-OAEP-256" => Box::new(RSA_OAEP_256.encrypter_from_jwk(self)?),
             "RSA-OAEP-384" => Box::new(RSA_OAEP_384.encrypter_from_jwk(self)?),

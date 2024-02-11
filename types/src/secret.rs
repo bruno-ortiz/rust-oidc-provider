@@ -31,6 +31,12 @@ impl AsRef<[u8]> for PlainTextSecret {
     }
 }
 
+impl AsRef<str> for PlainTextSecret {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 impl From<String> for PlainTextSecret {
     fn from(s: String) -> Self {
         Self(s)

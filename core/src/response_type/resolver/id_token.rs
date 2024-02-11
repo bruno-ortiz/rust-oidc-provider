@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use tracing::error;
 
 use oidc_types::code::Code;
+use oidc_types::jose::Algorithm;
 use oidc_types::response_type::Flow;
 use oidc_types::simple_id_token::SimpleIdToken;
 

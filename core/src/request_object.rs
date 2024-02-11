@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use derive_new::new;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
+use oidc_types::jose::Algorithm;
 use url::Url;
 
 use oidc_types::jose::error::JWTError;

@@ -8,7 +8,7 @@ use oidc_core::models::client::ClientInformation;
 use oidc_core::persistence::TransactionId;
 use oidc_migration::async_trait::async_trait;
 use oidc_types::client::ClientID;
-use oidc_types::secret::{HashedSecret, PlainTextSecret};
+use oidc_types::secret::PlainTextSecret;
 
 use crate::entities::client_information::{ActiveModel, Model};
 use crate::entities::prelude::ClientInformation as ClientEntity;
@@ -28,7 +28,7 @@ impl ClientRepository {
         let model = ActiveModel {
             id: Set(item.id().as_ref().to_owned()),
             issue_date: Set(item.issue_date()),
-            secret: Set(item.secret().to_string()),
+            secret: Set(item.secret().as_ref().map(|s| s.to_string())),
             secret_expires_at: Set(item.secret_expires_at()),
             metadata: Set(item.metadata().to_json_value()?),
         };
@@ -82,7 +82,7 @@ impl TryFrom<Model> for ClientInformation {
         Ok(ClientInformation::new(
             ClientID::try_from(value.id)?,
             value.issue_date,
-            PlainTextSecret::from(value.secret),
+            value.secret.map(PlainTextSecret::from),
             value.secret_expires_at,
             serde_json::from_value(value.metadata)?,
         ))

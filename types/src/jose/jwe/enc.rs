@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::prelude::v1::Result::Err;
 
 use josekit::jwe::enc::aescbc_hmac::AescbcHmacJweEncryption;
@@ -8,7 +9,7 @@ use josekit::jwe::JweContentEncryption;
 use serde::de::{Error, StdError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::jose::Algorithm;
+use crate::jose::{Algorithm, SizableAlgorithm};
 
 #[derive(Debug, Clone)]
 pub struct ContentEncryptionAlgorithm(Box<dyn JweContentEncryption>);
@@ -17,15 +18,35 @@ impl ContentEncryptionAlgorithm {
     pub fn new(jwe_algorithm: Box<dyn JweContentEncryption>) -> Self {
         ContentEncryptionAlgorithm(jwe_algorithm)
     }
-
-    pub fn name(&self) -> &str {
-        self.0.name()
-    }
 }
 
 impl Algorithm for ContentEncryptionAlgorithm {
     fn is_symmetric(&self) -> bool {
         true
+    }
+
+    fn name(&self) -> &str {
+        self.0.name()
+    }
+}
+
+impl SizableAlgorithm for ContentEncryptionAlgorithm {
+    fn length(&self) -> Option<usize> {
+        match self.name() {
+            "A128CBC-HS256" => Some(32),
+            "A192CBC-HS384" => Some(48),
+            "A256CBC-HS512" => Some(64),
+            "A128GCM" => Some(16),
+            "A192GCM" => Some(24),
+            "A256GCM" => Some(32),
+            _ => None,
+        }
+    }
+}
+
+impl Hash for ContentEncryptionAlgorithm {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.name().hash(state)
     }
 }
 

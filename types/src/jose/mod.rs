@@ -1,10 +1,9 @@
+use std::collections::HashMap;
+
 pub use josekit::jwe::alg::aesgcmkw::AesgcmkwJweAlgorithm::{A128gcmkw, A192gcmkw, A256gcmkw};
 pub use josekit::jwe::alg::aeskw::AeskwJweAlgorithm::{A128kw, A192kw, A256kw};
 pub use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm::{
     EcdhEs, EcdhEsA128kw, EcdhEsA192kw, EcdhEsA256kw,
-};
-pub use josekit::jwe::alg::pbes2_hmac_aeskw::Pbes2HmacAeskwJweAlgorithm::{
-    Pbes2Hs256A128kw, Pbes2Hs384A192kw, Pbes2Hs512A256kw,
 };
 pub use josekit::jwe::alg::rsaes::RsaesJweAlgorithm::{
     RsaOaep, RsaOaep256, RsaOaep384, RsaOaep512,
@@ -14,7 +13,6 @@ pub use josekit::jws::*;
 pub use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use josekit::jwt::JwtPayload;
 use serde_json::Value;
-use std::collections::HashMap;
 
 pub mod error;
 pub mod jwe;
@@ -25,6 +23,12 @@ pub mod jwt2;
 
 pub trait Algorithm {
     fn is_symmetric(&self) -> bool;
+
+    fn name(&self) -> &str;
+}
+
+pub trait SizableAlgorithm: Algorithm {
+    fn length(&self) -> Option<usize>;
 }
 
 pub trait JwtPayloadExt {

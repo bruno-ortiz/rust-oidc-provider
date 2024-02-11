@@ -6,6 +6,7 @@ use josekit::jwe::JweContext;
 use josekit::jws::JwsAlgorithm;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use josekit::jwt::JwtPayload;
+use oidc_types::jose::Algorithm;
 use serde::{Serialize, Serializer};
 use serde_json::{Map, Value};
 

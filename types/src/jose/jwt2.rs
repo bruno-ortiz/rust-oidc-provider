@@ -1,6 +1,7 @@
 use std::fmt::Formatter;
 use std::str::FromStr;
 
+use crate::jose::Algorithm;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as base64_engine;
 use base64::Engine;
 use josekit::jwe::{JweContext, JweHeader};

@@ -85,6 +85,12 @@ impl KeyStore {
         Self { jwks }
     }
 
+    pub fn empty() -> Self {
+        Self {
+            jwks: JwkSet::new(vec![]),
+        }
+    }
+
     pub fn select(&self, key_use: KeyUse) -> SelectOptionBuilder {
         match key_use {
             KeyUse::Sig => SelectOptionBuilder::use_sig(self),

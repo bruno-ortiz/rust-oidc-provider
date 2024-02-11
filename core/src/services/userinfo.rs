@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use oidc_types::jose::jws::{JwsHeaderExt, SigningAlgorithm};
 use oidc_types::jose::jwt2::SignedJWT;
-use oidc_types::jose::JwtPayloadExt;
+use oidc_types::jose::{Algorithm, JwtPayloadExt};
 use oidc_types::userinfo::UserInfo;
 
 use crate::claims::get_userinfo_claims;

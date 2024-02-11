@@ -4,6 +4,7 @@ use oidc_types::client::encryption::EncryptionData;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jws::SigningAlgorithm;
 use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT};
+use oidc_types::jose::Algorithm;
 use oidc_types::subject::Subject;
 use oidc_types::subject_type::SubjectType;
 

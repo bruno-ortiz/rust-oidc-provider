@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use oidc_types::client::encryption::EncryptionData;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt2::{EncryptedJWT, SignedJWT, JWT};
+use oidc_types::jose::Algorithm;
 use oidc_types::simple_id_token::SimpleIdToken;
 use IdTokenError::EncryptingErr;
 use JWTError::{KeyNotFound, KeystoreCreation};

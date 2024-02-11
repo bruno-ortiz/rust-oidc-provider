@@ -20,15 +20,15 @@ impl SigningAlgorithm {
     pub fn new(jws_algorithm: Box<dyn JwsAlgorithm>) -> Self {
         SigningAlgorithm(jws_algorithm)
     }
-
-    pub fn name(&self) -> &str {
-        self.0.name()
-    }
 }
 
 impl Algorithm for SigningAlgorithm {
     fn is_symmetric(&self) -> bool {
         self.0.name().starts_with("HS")
+    }
+
+    fn name(&self) -> &str {
+        self.0.name()
     }
 }
 

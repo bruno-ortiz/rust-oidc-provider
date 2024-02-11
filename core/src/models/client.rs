@@ -17,7 +17,7 @@ pub struct ClientInformation {
     #[get_copy = "pub"]
     issue_date: OffsetDateTime,
     #[get = "pub"]
-    secret: PlainTextSecret,
+    secret: Option<PlainTextSecret>,
     // This needs to be plaintext because of the symmetric key creation, should encrypt this in the database
     #[get_copy = "pub"]
     secret_expires_at: Option<OffsetDateTime>,
@@ -29,7 +29,7 @@ impl ClientInformation {
     pub fn new(
         id: ClientID,
         issue_date: OffsetDateTime,
-        secret: PlainTextSecret,
+        secret: Option<PlainTextSecret>,
         secret_expires_at: Option<OffsetDateTime>,
         metadata: ClientMetadata,
     ) -> Self {

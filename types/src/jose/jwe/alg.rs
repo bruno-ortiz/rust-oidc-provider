@@ -1,18 +1,18 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::prelude::v1::Result::Err;
 
 use josekit::jwe::alg::aesgcmkw::AesgcmkwJweAlgorithm;
 use josekit::jwe::alg::aeskw::AeskwJweAlgorithm;
 use josekit::jwe::alg::direct::DirectJweAlgorithm;
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
-use josekit::jwe::alg::pbes2_hmac_aeskw::Pbes2HmacAeskwJweAlgorithm;
 use josekit::jwe::alg::rsaes::RsaesJweAlgorithm;
 use josekit::jwe::JweAlgorithm;
 use serde::de::{Error, StdError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::jose::Algorithm;
+use crate::jose::{Algorithm, SizableAlgorithm};
 
 #[derive(Debug, Clone)]
 pub struct EncryptionAlgorithm(Box<dyn JweAlgorithm>);
@@ -21,16 +21,36 @@ impl EncryptionAlgorithm {
     pub fn new(jwe_algorithm: Box<dyn JweAlgorithm>) -> Self {
         EncryptionAlgorithm(jwe_algorithm)
     }
-
-    pub fn name(&self) -> &str {
-        self.0.name()
-    }
 }
 
 impl Algorithm for EncryptionAlgorithm {
     fn is_symmetric(&self) -> bool {
         let name = self.0.name();
-        name.starts_with("PBES2") || (name.starts_with('A') && name.ends_with("KW"))
+        name.starts_with('A') && name.ends_with("KW")
+    }
+
+    fn name(&self) -> &str {
+        self.0.name()
+    }
+}
+
+impl SizableAlgorithm for EncryptionAlgorithm {
+    fn length(&self) -> Option<usize> {
+        match self.name() {
+            "A128GCMKW" => Some(16),
+            "A192GCMKW" => Some(24),
+            "A256GCMKW" => Some(32),
+            "A128KW" => Some(16),
+            "A192KW" => Some(24),
+            "A256KW" => Some(32),
+            _ => None,
+        }
+    }
+}
+
+impl Hash for EncryptionAlgorithm {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.name().hash(state)
     }
 }
 
@@ -90,9 +110,6 @@ impl<'de> Deserialize<'de> for EncryptionAlgorithm {
                     "ECDH-ES+A128KW" => Ok(EcdhEsJweAlgorithm::EcdhEsA128kw.into()),
                     "ECDH-ES+A192KW" => Ok(EcdhEsJweAlgorithm::EcdhEsA192kw.into()),
                     "ECDH-ES+A256KW" => Ok(EcdhEsJweAlgorithm::EcdhEsA256kw.into()),
-                    "PBES2-HS256+A128KW" => Ok(Pbes2HmacAeskwJweAlgorithm::Pbes2Hs256A128kw.into()),
-                    "PBES2-HS384+A192KW" => Ok(Pbes2HmacAeskwJweAlgorithm::Pbes2Hs384A192kw.into()),
-                    "PBES2-HS512+A256KW" => Ok(Pbes2HmacAeskwJweAlgorithm::Pbes2Hs512A256kw.into()),
                     "RSA-OAEP" => Ok(RsaesJweAlgorithm::RsaOaep.into()),
                     "RSA-OAEP-256" => Ok(RsaesJweAlgorithm::RsaOaep256.into()),
                     "RSA-OAEP-384" => Ok(RsaesJweAlgorithm::RsaOaep384.into()),

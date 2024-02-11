@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use derive_builder::Builder;
-use josekit::jws::RS256;
+use josekit::jws::alg::ecdsa::EcdsaJwsAlgorithm::Es256;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -173,7 +173,7 @@ impl Default for ClientMetadata {
             subject_type: SubjectType::Public,
             // For all "enc" values below:
             //   Default when {endpoint}_encrypted_response_alg is specified should be A128CBC-HS256
-            id_token_signed_response_alg: RS256.into(),
+            id_token_signed_response_alg: Es256.into(),
             id_token_encrypted_response_alg: None,
             id_token_encrypted_response_enc: None,
             userinfo_signed_response_alg: None,
@@ -182,7 +182,7 @@ impl Default for ClientMetadata {
             request_object_signing_alg: None,
             request_object_encryption_alg: None,
             request_object_encryption_enc: None,
-            authorization_signed_response_alg: RS256.into(),
+            authorization_signed_response_alg: Es256.into(),
             authorization_encrypted_response_alg: None,
             authorization_encrypted_response_enc: None,
             token_endpoint_auth_method: Default::default(),

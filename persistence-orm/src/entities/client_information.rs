@@ -12,7 +12,7 @@ pub struct Model {
     )]
     pub id: Vec<u8>,
     pub issue_date: TimeDateTimeWithTimeZone,
-    pub secret: String,
+    pub secret: Option<String>,
     pub secret_expires_at: Option<TimeDateTimeWithTimeZone>,
     pub metadata: Json,
 }

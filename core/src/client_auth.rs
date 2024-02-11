@@ -15,6 +15,8 @@ use crate::models::client::{AuthenticatedClient, ClientInformation};
 pub enum ClientAuthenticationError {
     #[error("Invalid secret {}", .0)]
     InvalidSecret(PlainTextSecret),
+    #[error("Invalid authentication method")]
+    InvalidAuthMethod,
 }
 
 #[async_trait]
@@ -56,10 +58,14 @@ impl ClientAuthenticator for ClientSecretCredential {
         if secret.len() < MIN_SECRET_LEN {
             return Err(ClientAuthenticationError::InvalidSecret(secret.into()));
         }
-        if client.secret() == secret.as_str() {
-            Ok(AuthenticatedClient::new(client))
+        if let Some(client_secret) = client.secret() {
+            if client_secret == secret.as_str() {
+                Ok(AuthenticatedClient::new(client))
+            } else {
+                Err(ClientAuthenticationError::InvalidSecret(secret.into()))
+            }
         } else {
-            Err(ClientAuthenticationError::InvalidSecret(secret.into()))
+            Err(ClientAuthenticationError::InvalidAuthMethod)
         }
     }
 }

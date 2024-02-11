@@ -607,7 +607,7 @@ mod tests {
         Arc::new(ClientInformation::new(
             client_id,
             OffsetDateTime::now_utc(),
-            plain,
+            Some(plain),
             None,
             metadata,
         ))

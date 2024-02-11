@@ -24,11 +24,7 @@ impl MigrationTrait for Migration {
                             .timestamp_with_time_zone()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(ClientInformation::Secret)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(ClientInformation::Secret).string())
                     .col(
                         ColumnDef::new(ClientInformation::SecretExpiresAt)
                             .timestamp_with_time_zone(),
