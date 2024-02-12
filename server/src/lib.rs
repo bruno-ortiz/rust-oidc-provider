@@ -3,6 +3,7 @@ pub use oidc_core::configuration::{
     routes as config_routes, ttl,
 };
 
+mod authenticated_request;
 mod credentials;
 pub(crate) mod extractors;
 pub mod middleware;

@@ -12,6 +12,7 @@ use crate::client_credentials::CredentialError::MissingParam;
 const SECRET_KEY: &str = "client_secret";
 const ASSERTION_KEY: &str = "client_assertion";
 const ASSERTION_TYPE_KEY: &str = "client_assertion_type";
+const EXPECTED_ASSERTION_TYPE: &str = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
 #[derive(Debug, Error)]
 pub enum CredentialError {
@@ -23,6 +24,8 @@ pub enum CredentialError {
     MissingParam(&'static str),
     #[error("Error parsing body into credential")]
     InvalidClientAssertion(#[from] JWTError),
+    #[error("Invalid client assertion type: {}", .0)]
+    InvalidClientAssertionType(String),
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +102,11 @@ impl TryFrom<&HashMap<String, String>> for JWTCredential {
             .ok_or(MissingParam(ASSERTION_TYPE_KEY))
             .cloned()?;
 
+        if client_assertion != EXPECTED_ASSERTION_TYPE {
+            return Err(CredentialError::InvalidClientAssertionType(
+                client_assertion_type,
+            ));
+        }
         let client_assertion = SignedJWT::decode_no_verify(client_assertion)?;
         Ok(Self {
             client_assertion: ClientAssertion(client_assertion),

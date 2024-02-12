@@ -304,7 +304,6 @@ mod tests {
     use crate::authorisation_request::ValidatedAuthorisationRequest;
     use crate::configuration::OpenIDProviderConfiguration;
     use crate::context::test_utils::setup_provider;
-    use crate::manager::interaction_manager::InteractionManager;
     use crate::manager::user_manager::UserManager;
     use crate::models::client::ClientInformation;
     use crate::services::interaction::InteractionService;
@@ -620,7 +619,6 @@ mod tests {
     }
 
     fn prepare_service(provider: Arc<OpenIDProviderConfiguration>) -> InteractionService {
-        let interaction_manager = Arc::new(InteractionManager::new(provider.clone()));
         let keystore_service = KeystoreService::new(provider.clone());
         let prompt_service = Arc::new(PromptService::new(
             provider.clone(),

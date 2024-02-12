@@ -35,6 +35,13 @@ impl ClientAuthenticator for ClientCredential {
         provider: &OpenIDProviderConfiguration,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
+        let auth_method = client.metadata().token_endpoint_auth_method;
+        if !provider
+            .token_endpoint_auth_methods_supported()
+            .contains(&auth_method)
+        {
+            return Err(ClientAuthenticationError::InvalidAuthMethod);
+        }
         match self {
             ClientSecretBasic(inner) => inner.authenticate(provider, client).await,
             ClientSecretPost(inner) => inner.authenticate(provider, client).await,
