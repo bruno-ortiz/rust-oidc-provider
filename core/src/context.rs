@@ -143,6 +143,10 @@ pub mod test_utils {
             request_object_signing_alg: None,
             software_version: None,
             software_statement: None,
+            tls_client_auth_subject_dn: None,
+            tls_client_auth_san_dns: None,
+            tls_client_auth_san_uri: None,
+            tls_client_auth_san_ip: None,
             application_type: ApplicationType::Native,
             authorization_signed_response_alg: ES256.into(),
             request_uris: None,
@@ -155,6 +159,7 @@ pub mod test_utils {
             authorization_encrypted_response_alg: None,
             authorization_encrypted_response_enc: None,
             software_id: None,
+            tls_client_auth_san_email: None,
         };
 
         let client = ClientInformation::new(

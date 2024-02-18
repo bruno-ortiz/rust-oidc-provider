@@ -79,7 +79,7 @@ impl UserInfoService {
     ) -> anyhow::Result<SignedJWT> {
         let keystore = self.keystore_service.server_keystore(client, alg);
         let signing_key = keystore
-            .select(KeyUse::Sig)
+            .select(Some(KeyUse::Sig))
             .alg(alg.name())
             .first()
             .ok_or_else(|| anyhow!("Missing signing key"))?;

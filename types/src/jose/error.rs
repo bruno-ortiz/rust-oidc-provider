@@ -20,7 +20,7 @@ pub enum JWTError {
     JoseCreationError(#[from] JoseError),
     #[error("Missing algorithm in JWT")]
     JWKAlgorithmNotFound,
-    #[error("Invalid algorithm '{}' when trying to create JWT", .0)]
+    #[error("Invalid algorithm '{}',", .0)]
     InvalidJWKAlgorithm(String),
     #[error("Error parsing JWK to signer")]
     SignerCreationError(JoseError),

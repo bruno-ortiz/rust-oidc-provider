@@ -32,6 +32,7 @@ itertools = "0.12.1"
 quick_cache = { workspace = true }
 dashmap = { workspace = true }
 derive-new = "0.6.0"
+x509-parser = "0.15.1"
 
 [dev-dependencies]
 tracing-subscriber = "0.3.18"

@@ -11,12 +11,15 @@ use josekit::jws::{
 };
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
 use josekit::JoseError;
+use serde_json::Value;
 
 pub trait JwkExt {
     fn get_signer(&self) -> Result<Box<dyn JwsSigner>, JoseError>;
     fn get_verifier(&self) -> Result<Box<dyn JwsVerifier>, JoseError>;
     fn get_decrypter(&self) -> Result<Box<dyn JweDecrypter>, JoseError>;
     fn get_encrypter(&self) -> Result<Box<dyn JweEncrypter>, JoseError>;
+
+    fn x509_certificate_sha256_thumbprint_b64(&self) -> Option<&String>;
 }
 
 impl JwkExt for Jwk {
@@ -124,5 +127,12 @@ impl JwkExt for Jwk {
             _ => unreachable!("should be unreachable"),
         };
         Ok(encrypter)
+    }
+
+    fn x509_certificate_sha256_thumbprint_b64(&self) -> Option<&String> {
+        match self.as_ref().get("x5t#S256") {
+            Some(Value::String(val)) => Some(val),
+            _ => None,
+        }
     }
 }

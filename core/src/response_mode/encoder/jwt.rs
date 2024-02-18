@@ -33,7 +33,7 @@ impl ResponseModeEncoder for JwtEncoder {
             .keystore_service
             .server_keystore(context.client, alg);
         let signing_key = keystore
-            .select(KeyUse::Sig)
+            .select(Some(KeyUse::Sig))
             .alg(alg.name())
             .first()
             .ok_or(EncodingError::MissingSigningKey)?;

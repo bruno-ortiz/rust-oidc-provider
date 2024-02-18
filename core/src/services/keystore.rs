@@ -73,7 +73,7 @@ impl KeystoreService {
         }
     }
 
-    async fn asymmetric_keystore(
+    pub async fn asymmetric_keystore(
         &self,
         client: &ClientInformation,
     ) -> anyhow::Result<Arc<KeyStore>> {

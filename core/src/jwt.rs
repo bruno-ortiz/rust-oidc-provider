@@ -44,7 +44,7 @@ impl GenericJWT {
                 .and_then(|it| SigningAlgorithm::from_str(it).ok())
                 .ok_or(JWTError::JWKAlgorithmNotFound)?;
             let jwk = keystore
-                .select(KeyUse::Enc)
+                .select(Some(KeyUse::Enc))
                 .alg(alg.name())
                 .kid(header.key_id().map(String::from))
                 .first()
@@ -206,7 +206,7 @@ fn validate_signature(keystore: &KeyStore, jwt: &SignedJWT) -> Result<(), JWTErr
     let alg = jwt.alg().ok_or(JWTError::JWKAlgorithmNotFound)?;
     if alg.name() != UnsecuredJwsAlgorithm::None.name() {
         let jwk = keystore
-            .select(KeyUse::Sig)
+            .select(Some(KeyUse::Sig))
             .alg(alg.name())
             .kid(jwt.kid().map(ToOwned::to_owned))
             .first()

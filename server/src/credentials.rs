@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::Cursor;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 
@@ -11,14 +12,16 @@ use serde::de::value::Error as SerdeError;
 use serde_urlencoded::from_bytes;
 use thiserror::Error;
 use tracing::error;
+use x509_parser::error::PEMError;
+use x509_parser::pem::Pem;
 
 use oidc_core::client_credentials::ClientCredential::{
     ClientSecretBasic, ClientSecretJwt, ClientSecretPost, PrivateKeyJwt, SelfSignedTlsClientAuth,
     TlsClientAuth,
 };
 use oidc_core::client_credentials::{
-    ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, CredentialError,
-    JWTCredential, PrivateKeyJWTCredential, SelfSignedTLSClientAuthCredential,
+    BodyParams, ClientCredential, ClientSecretCredential, ClientSecretJWTCredential,
+    CredentialError, JWTCredential, PrivateKeyJWTCredential, SelfSignedTLSClientAuthCredential,
     TLSClientAuthCredential,
 };
 use oidc_core::configuration::OpenIDProviderConfiguration;
@@ -42,6 +45,10 @@ pub enum CredentialsError {
     UTF8Err(#[from] FromUtf8Error),
     #[error("Error parsing body params, {:?}", .0)]
     ParseBody(#[from] SerdeError),
+    #[error("Missing certificate in request. Looked at header: {}", .0)]
+    MissingCertificate(&'static str),
+    #[error("Error parsing pem certificate: {}", .0)]
+    ParsePem(#[from] PEMError),
 }
 
 #[derive(Debug, Clone)]
@@ -54,19 +61,23 @@ impl Credentials {
     pub async fn parse_credentials(
         headers: &HeaderMap,
         body_bytes: &Bytes,
-        _config: &OpenIDProviderConfiguration, //TODO: config is here to allow access to future mTLS config
+        provider: &OpenIDProviderConfiguration,
     ) -> Result<Credentials, CredentialsError> {
         let mut credentials = HashMap::new();
-        let params: HashMap<String, String> = from_bytes(body_bytes)?;
-        let mut client_id = params
-            .get("client_id")
-            .ok_or(CredentialsError::MissingClientId)
-            .and_then(|id| parse_client_id(id));
-
+        let mut params: BodyParams = from_bytes(body_bytes)?;
+        let mut client_id = params.client_id.ok_or(CredentialsError::MissingClientId);
         if let Ok(id) = client_id {
-            let credential = TlsClientAuth(TLSClientAuthCredential::new(id));
+            client_id = Ok(id);
+            let cert_header = provider.mtls().certificate_header();
+            let cert = headers
+                .get(cert_header)
+                .map(|header| Cursor::new(header.as_bytes()))
+                .ok_or(CredentialsError::MissingCertificate(cert_header))?;
+            let (pem, _) = Pem::read(cert)?;
+
+            let credential = TlsClientAuth(TLSClientAuthCredential::new(pem.clone()));
             credentials.insert(AuthMethod::TlsClientAuth, credential);
-            let credential = SelfSignedTlsClientAuth(SelfSignedTLSClientAuthCredential::new(id));
+            let credential = SelfSignedTlsClientAuth(SelfSignedTLSClientAuthCredential::new(pem));
             credentials.insert(AuthMethod::SelfSignedTlsClientAuth, credential);
         }
 
@@ -79,20 +90,27 @@ impl Credentials {
             client_id = Ok(id);
             credentials.insert(AuthMethod::ClientSecretBasic, ClientSecretBasic(credential));
         }
-        if let Ok(credential) = ClientSecretCredential::try_from(&params) {
+        if let Ok(credential) = ClientSecretCredential::try_from(&mut params) {
             credentials.insert(AuthMethod::ClientSecretPost, ClientSecretPost(credential));
         }
-        if let Ok(credential) = JWTCredential::try_from(&params) {
-            let id = credential.client_id()?;
-            validate_client_id("client_assertion", &client_id, id)?;
-            client_id = Ok(id);
-            let parsed_credential = ClientSecretJWTCredential::from(credential.clone());
-            credentials.insert(
-                AuthMethod::ClientSecretJwt,
-                ClientSecretJwt(parsed_credential),
-            );
-            let parsed_credential = PrivateKeyJWTCredential::from(credential);
-            credentials.insert(AuthMethod::PrivateKeyJwt, PrivateKeyJwt(parsed_credential));
+        match JWTCredential::try_from(&mut params) {
+            Ok(credential) => {
+                let id = credential.client_id()?;
+                validate_client_id("client_assertion", &client_id, id)?;
+                client_id = Ok(id);
+                let parsed_credential = ClientSecretJWTCredential::from(credential.clone());
+                credentials.insert(
+                    AuthMethod::ClientSecretJwt,
+                    ClientSecretJwt(parsed_credential),
+                );
+                let parsed_credential = PrivateKeyJWTCredential::from(credential);
+                credentials.insert(AuthMethod::PrivateKeyJwt, PrivateKeyJwt(parsed_credential));
+            }
+            Err(err) => match err {
+                CredentialError::InvalidClientAssertion(_)
+                | CredentialError::InvalidClientAssertionType(_) => return Err(err.into()),
+                _ => { /* Ok */ }
+            },
         }
 
         if credentials.is_empty() {
@@ -172,6 +190,8 @@ impl From<CredentialsError> for OpenIdError {
             | CredentialsError::MismatchedClientId(_)
             | CredentialsError::ParseBody(_)
             | CredentialsError::UTF8Err(_)
+            | CredentialsError::MissingCertificate(_)
+            | CredentialsError::ParsePem(_)
             | CredentialsError::CredentialError(_) => OpenIdError::invalid_request(err.to_string()),
         }
     }

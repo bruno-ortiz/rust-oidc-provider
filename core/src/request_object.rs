@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use derive_new::new;
 use josekit::jwt::alg::unsecured::UnsecuredJwsAlgorithm;
-use oidc_types::jose::Algorithm;
 use url::Url;
 
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt2::JWT;
+use oidc_types::jose::Algorithm;
 
 use crate::authorisation_request::AuthorisationRequest;
 use crate::configuration::request_object::RequestObjectConfiguration;
@@ -35,6 +35,16 @@ impl RequestObjectProcessor {
             let alg = request_obj.alg().ok_or(OpenIdError::invalid_request(
                 "Missing alg in request_object Header",
             ))?;
+
+            if let Some(ro_alg) = client.metadata().request_object_signing_alg.as_ref() {
+                if alg != *ro_alg {
+                    return Err(OpenIdError::invalid_request(format!(
+                        "request object alg header {} differs from the algorithm registered for the client: {}",
+                        alg.name(),
+                        client.id()
+                    )));
+                }
+            }
             if alg.name() == UnsecuredJwsAlgorithm::None.name()
                 && ro_config.require_signed_request_object
             {

@@ -40,7 +40,7 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let alg = &client_metadata.id_token_signed_response_alg;
         let keystore = context.keystore_service.server_keystore(&client, alg);
         let signing_key = keystore
-            .select(KeyUse::Sig)
+            .select(Some(KeyUse::Sig))
             .alg(alg.name())
             .first()
             .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;
@@ -123,7 +123,7 @@ mod tests {
         )
         .await;
         let keystore = context.provider.keystore();
-        let signing_key = keystore.select(KeyUse::Sig).first().unwrap();
+        let signing_key = keystore.select(Some(KeyUse::Sig)).first().unwrap();
         let resolver = IDTokenResolver::new(None, None);
 
         let id_token = resolver

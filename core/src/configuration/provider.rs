@@ -30,6 +30,7 @@ use crate::configuration::adapter_container::{AdapterContainer, DefaultAdapterCo
 use crate::configuration::claims::ClaimsSupported;
 use crate::configuration::clock::ClockProvider;
 use crate::configuration::credentials::ClientCredentialConfiguration;
+use crate::configuration::mtls::MTLSConfiguration;
 use crate::configuration::pkce::PKCE;
 use crate::configuration::request_object::RequestObjectConfiguration;
 use crate::configuration::routes::Routes;
@@ -133,6 +134,7 @@ pub struct OpenIDProviderConfiguration {
     prompts: Vec<PromptSelector>,
     #[builder(setter(skip))]
     pairwise_resolver: PairwiseResolver,
+    mtls: MTLSConfiguration,
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -369,6 +371,7 @@ impl Default for OpenIDProviderConfiguration {
                 PromptSelector::default(),
             ],
             pairwise_resolver: PairwiseResolver::default(),
+            mtls: MTLSConfiguration::default(),
         }
     }
 }

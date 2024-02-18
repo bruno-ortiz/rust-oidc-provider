@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
-use axum::extract::{FromRequest, FromRequestParts};
+use axum::extract::{FromRef, FromRequest, FromRequestParts};
 use axum::http::{HeaderMap, Request};
 use axum::response::{IntoResponse, Response};
 use serde::de::value::Error as SerdeError;
@@ -17,11 +17,13 @@ use oidc_core::client_auth::{ClientAuthenticationError, ClientAuthenticator};
 use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::models::client::AuthenticatedClient;
+use oidc_core::services::keystore::KeystoreService;
 use oidc_types::auth_method::AuthMethod;
 use oidc_types::client::ClientID;
 
 use crate::credentials::{Credentials, CredentialsError};
 use crate::routes::error::OpenIdErrorResponse;
+use crate::state::AppState;
 
 #[derive(Debug, Error)]
 pub enum AuthenticatedRequestError {
@@ -37,6 +39,8 @@ pub enum AuthenticatedRequestError {
     InvalidClient(ClientID),
     #[error("Auth method not allowed for client. Auth Method: {}", .0)]
     AuthMethodNotAllowed(AuthMethod),
+    #[error("Credential not found in request for auth Method: {}", .0)]
+    CredentialsNotFound(AuthMethod),
     #[error(transparent)]
     AuthenticationFailed(#[from] ClientAuthenticationError),
 }
@@ -62,6 +66,9 @@ impl IntoResponse for AuthenticatedRequestError {
             AuthenticatedRequestError::AuthenticationFailed(_) => {
                 OpenIdError::invalid_client("Authentication failed")
             }
+            AuthenticatedRequestError::CredentialsNotFound(_) => {
+                OpenIdError::invalid_request("Credential not found in request")
+            }
         };
         OpenIdErrorResponse::from(openid_error).into_response()
     }
@@ -74,16 +81,15 @@ pub struct AuthenticatedRequest<B> {
 }
 
 #[async_trait]
-impl<S, B> FromRequest<S, axum::body::Body> for AuthenticatedRequest<B>
+impl<B> FromRequest<AppState, axum::body::Body> for AuthenticatedRequest<B>
 where
-    S: Send + Sync,
     B: DeserializeOwned,
 {
     type Rejection = AuthenticatedRequestError;
 
     async fn from_request(
         req: Request<axum::body::Body>,
-        state: &S,
+        state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let (mut parts, body) = req.into_parts();
 
@@ -103,10 +109,21 @@ where
             .await?
             .ok_or_else(|| AuthenticatedRequestError::InvalidClient(credentials.client_id))?;
         let auth_method = client.metadata().token_endpoint_auth_method;
+        if !provider
+            .token_endpoint_auth_methods_supported()
+            .contains(&auth_method)
+        {
+            return Err(AuthenticatedRequestError::AuthMethodNotAllowed(auth_method));
+        }
+
         let credential = credentials
             .take(&auth_method)
-            .ok_or_else(|| AuthenticatedRequestError::AuthMethodNotAllowed(auth_method))?;
-        let client = credential.authenticate(&provider, client).await?;
+            .ok_or_else(|| AuthenticatedRequestError::CredentialsNotFound(auth_method))?;
+
+        let keystore_service: Arc<KeystoreService> = FromRef::from_ref(state);
+        let client = credential
+            .authenticate(&provider, &keystore_service, client)
+            .await?;
 
         let token_request = from_bytes::<B>(&body_bytes)?;
         Ok(AuthenticatedRequest {

@@ -45,7 +45,7 @@ impl IdToken<SignedJWT> {
                 .await
                 .map_err(|err| EncryptingErr(KeystoreCreation(err)))?;
             let key = keystore
-                .select(KeyUse::Enc)
+                .select(Some(KeyUse::Enc))
                 .alg(alg.name())
                 .first()
                 .ok_or_else(|| EncryptingErr(KeyNotFound("id_token_encryption".to_owned())))?;

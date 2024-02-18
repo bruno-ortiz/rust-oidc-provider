@@ -1,5 +1,6 @@
 use derive_builder::Builder;
 use josekit::jwk::Jwk;
+use oidc_types::jose::jwk_ext::JwkExt;
 use thiserror::Error;
 
 use oidc_types::jose::jwk_set::{JwkSet, PublicJwkSet};
@@ -28,6 +29,8 @@ pub struct SelectOption<'a> {
     #[builder(default)]
     crv: Option<String>,
     #[builder(default)]
+    thumbprint: Option<String>,
+    #[builder(default)]
     operation: Option<String>,
 }
 
@@ -46,6 +49,12 @@ impl<'a> SelectOptionBuilder<'a> {
         builder
     }
 
+    fn new(keystore: &'a KeyStore) -> Self {
+        let mut builder = SelectOptionBuilder::create_empty();
+        builder.keystore = Some(keystore);
+        builder
+    }
+
     pub fn find(&self) -> Vec<&'a Jwk> {
         let opts = self.build().expect("Should always be constructed");
         opts.keystore
@@ -57,8 +66,7 @@ impl<'a> SelectOptionBuilder<'a> {
 
     pub fn first(&self) -> Option<&'a Jwk> {
         let opts = self.build().expect("Should always be constructed");
-        self.keystore
-            .expect("Should always be set")
+        opts.keystore
             .jwks
             .iter()
             .find(move |&key| select_predicate(key, &opts))
@@ -91,10 +99,11 @@ impl KeyStore {
         }
     }
 
-    pub fn select(&self, key_use: KeyUse) -> SelectOptionBuilder {
+    pub fn select(&self, key_use: Option<KeyUse>) -> SelectOptionBuilder {
         match key_use {
-            KeyUse::Sig => SelectOptionBuilder::use_sig(self),
-            KeyUse::Enc => SelectOptionBuilder::use_enc(self),
+            Some(KeyUse::Sig) => SelectOptionBuilder::use_sig(self),
+            Some(KeyUse::Enc) => SelectOptionBuilder::use_enc(self),
+            None => SelectOptionBuilder::new(self),
         }
     }
 
@@ -121,9 +130,58 @@ fn select_predicate(key: &Jwk, option: &SelectOption) -> bool {
     }
     if let Some(operation) = &option.operation {
         true_or_return!(
-            candidate = key.key_operations().is_some()
-                && key.key_operations().unwrap().contains(&&**operation)
+            candidate = if let Some(key_op) = key.key_operations() {
+                key_op.contains(&&**operation)
+            } else {
+                false
+            }
+        );
+    }
+    if let Some(thumbprint) = &option.thumbprint {
+        true_or_return!(
+            candidate = if let Some(key_thumbprint) = key.x509_certificate_sha256_thumbprint_b64() {
+                thumbprint == key_thumbprint
+            } else {
+                false
+            }
         );
     }
     candidate
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use josekit::jwk::alg::ec::EcCurve;
+
+    #[test]
+    fn test_keystore_select_by_key_use_works() {
+        let keystore = get_keystore();
+        let keys = keystore.select(Some(KeyUse::Enc)).find();
+        assert_eq!(keys.len(), 2)
+    }
+
+    #[test]
+    fn test_keystore_select_works() {
+        let keystore = get_keystore();
+        let keys = keystore
+            .select(Some(KeyUse::Enc))
+            .kid(Some("ec-key".to_string()))
+            .find();
+        assert_eq!(keys.len(), 0)
+    }
+
+    fn get_keystore() -> KeyStore {
+        let mut ec_key = Jwk::generate_ec_key(EcCurve::P256).unwrap();
+        ec_key.set_key_id("ec-key");
+        ec_key.set_key_use("sig");
+        let mut ec_key_enc = Jwk::generate_ec_key(EcCurve::P256).unwrap();
+        ec_key_enc.set_key_id("ec-key-enc");
+        ec_key_enc.set_key_use("enc");
+        let mut rsa_key = Jwk::generate_rsa_key(512).unwrap();
+        rsa_key.set_key_id("rsa-key");
+        rsa_key.set_key_use("enc");
+        let jwk_set = JwkSet::new(vec![ec_key, ec_key_enc, rsa_key]);
+        KeyStore::new(jwk_set)
+    }
 }

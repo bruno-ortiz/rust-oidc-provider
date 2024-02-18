@@ -116,6 +116,11 @@ pub struct ClientMetadata {
     pub software_id: Option<Uuid>,
     pub software_version: Option<String>,
     pub software_statement: Option<SignedJWT>,
+    pub tls_client_auth_subject_dn: Option<String>,
+    pub tls_client_auth_san_dns: Option<String>,
+    pub tls_client_auth_san_uri: Option<String>,
+    pub tls_client_auth_san_ip: Option<String>,
+    pub tls_client_auth_san_email: Option<String>,
 }
 
 impl ClientMetadata {
@@ -196,6 +201,11 @@ impl Default for ClientMetadata {
             software_id: None,
             software_version: None,
             software_statement: None,
+            tls_client_auth_subject_dn: None,
+            tls_client_auth_san_dns: None,
+            tls_client_auth_san_uri: None,
+            tls_client_auth_san_ip: None,
+            tls_client_auth_san_email: None,
         }
     }
 }

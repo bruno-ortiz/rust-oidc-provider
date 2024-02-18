@@ -115,7 +115,7 @@ impl RefreshTokenGrantResolver {
             let alg = client.id_token_signing_alg();
             let keystore = self.keystore_service.server_keystore(client.as_ref(), alg);
             let signing_key = keystore
-                .select(KeyUse::Sig)
+                .select(Some(KeyUse::Sig))
                 .alg(alg.name())
                 .first()
                 .ok_or_else(|| OpenIdError::server_error(anyhow!("Missing signing key")))?;

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
+use derive_new::new;
 use serde::Deserialize;
 use thiserror::Error;
+use x509_parser::pem::Pem;
 
 use oidc_types::client::{ClientID, ParseError};
 use oidc_types::jose::error::JWTError;
@@ -52,32 +52,25 @@ impl ClientSecretCredential {
     }
 }
 
-impl TryFrom<&HashMap<String, String>> for ClientSecretCredential {
+impl TryFrom<&mut BodyParams> for ClientSecretCredential {
     type Error = CredentialError;
 
-    fn try_from(value: &HashMap<String, String>) -> Result<Self, Self::Error> {
-        let client_secret = value
-            .get(SECRET_KEY)
-            .ok_or(MissingParam(SECRET_KEY))
-            .cloned()?;
+    fn try_from(value: &mut BodyParams) -> Result<Self, Self::Error> {
+        let client_secret = value.client_secret.take().ok_or(MissingParam(SECRET_KEY))?;
         Ok(ClientSecretCredential::new(client_secret))
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ClientAssertion(SignedJWT);
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct JWTCredential {
     client_assertion_type: String,
-    client_assertion: ClientAssertion,
+    client_assertion: SignedJWT,
 }
 
 impl JWTCredential {
     pub fn client_id(&self) -> Result<ClientID, CredentialError> {
         let client_id = self
             .client_assertion
-            .0
             .payload()
             .subject()
             .ok_or(CredentialError::MissingSub)?
@@ -88,28 +81,33 @@ impl JWTCredential {
     pub fn assertion_type(&self) -> &str {
         self.client_assertion_type.as_str()
     }
+
+    pub fn assertion(self) -> SignedJWT {
+        self.client_assertion
+    }
 }
 
-impl TryFrom<&HashMap<String, String>> for JWTCredential {
+impl TryFrom<&mut BodyParams> for JWTCredential {
     type Error = CredentialError;
 
-    fn try_from(value: &HashMap<String, String>) -> Result<Self, Self::Error> {
+    fn try_from(value: &mut BodyParams) -> Result<Self, Self::Error> {
         let client_assertion = value
-            .get(ASSERTION_KEY)
+            .client_assertion
+            .take()
             .ok_or(MissingParam(ASSERTION_KEY))?;
         let client_assertion_type = value
-            .get(ASSERTION_TYPE_KEY)
-            .ok_or(MissingParam(ASSERTION_TYPE_KEY))
-            .cloned()?;
+            .client_assertion_type
+            .take()
+            .ok_or(MissingParam(ASSERTION_TYPE_KEY))?;
 
-        if client_assertion != EXPECTED_ASSERTION_TYPE {
+        if client_assertion_type != EXPECTED_ASSERTION_TYPE {
             return Err(CredentialError::InvalidClientAssertionType(
                 client_assertion_type,
             ));
         }
         let client_assertion = SignedJWT::decode_no_verify(client_assertion)?;
         Ok(Self {
-            client_assertion: ClientAssertion(client_assertion),
+            client_assertion,
             client_assertion_type,
         })
     }
@@ -117,6 +115,12 @@ impl TryFrom<&HashMap<String, String>> for JWTCredential {
 
 #[derive(Debug, Clone)]
 pub struct ClientSecretJWTCredential(JWTCredential);
+
+impl ClientSecretJWTCredential {
+    pub(crate) fn credential(self) -> JWTCredential {
+        self.0
+    }
+}
 
 impl From<JWTCredential> for ClientSecretJWTCredential {
     fn from(value: JWTCredential) -> Self {
@@ -127,26 +131,40 @@ impl From<JWTCredential> for ClientSecretJWTCredential {
 #[derive(Debug, Clone)]
 pub struct PrivateKeyJWTCredential(JWTCredential);
 
+impl PrivateKeyJWTCredential {
+    pub(crate) fn credential(self) -> JWTCredential {
+        self.0
+    }
+}
+
 impl From<JWTCredential> for PrivateKeyJWTCredential {
     fn from(value: JWTCredential) -> Self {
         Self(value)
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct TLSClientAuthCredential(ClientID);
+#[derive(Debug, Clone, new)]
+pub struct TLSClientAuthCredential(Pem);
 
 impl TLSClientAuthCredential {
-    pub fn new(client_id: ClientID) -> Self {
-        Self(client_id)
+    pub fn pem(self) -> Pem {
+        self.0
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SelfSignedTLSClientAuthCredential(ClientID);
+#[derive(Debug, Clone, new)]
+pub struct SelfSignedTLSClientAuthCredential(Pem);
 
 impl SelfSignedTLSClientAuthCredential {
-    pub fn new(client_id: ClientID) -> Self {
-        Self(client_id)
+    pub fn pem(self) -> Pem {
+        self.0
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BodyParams {
+    pub client_id: Option<ClientID>,
+    pub client_secret: Option<String>,
+    pub client_assertion: Option<String>,
+    pub client_assertion_type: Option<String>,
 }
