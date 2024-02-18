@@ -606,6 +606,7 @@ mod tests {
             authorization_encrypted_response_alg: None,
             authorization_encrypted_response_enc: None,
             tls_client_auth_san_email: None,
+            tls_client_certificate_bound_access_tokens: false,
         };
 
         Arc::new(ClientInformation::new(

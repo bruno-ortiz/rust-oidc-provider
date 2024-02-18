@@ -40,6 +40,7 @@ impl RefreshTokenRepository {
             state: Set(item.state.map(|it| it.to_string())),
             nonce: Set(item.nonce.map(|it| it.to_string())),
             t_type: NotSet,
+            certificate_thumbprint: NotSet,
             token_type: Set(TokenType::Refresh),
         };
         model

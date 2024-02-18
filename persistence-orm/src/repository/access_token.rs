@@ -10,6 +10,7 @@ use oidc_core::models::grant::GrantID;
 use oidc_core::models::Status;
 use oidc_core::persistence::TransactionId;
 use oidc_migration::async_trait::async_trait;
+use oidc_types::certificate::CertificateThumbprint;
 use oidc_types::scopes::Scopes;
 
 use crate::entities::prelude::Token as AccessTokenEntity;
@@ -40,6 +41,7 @@ impl AccessTokenRepository {
             nonce: NotSet,
             t_type: Set(Some(item.t_type)),
             token_type: Set(TokenType::Access),
+            certificate_thumbprint: Set(item.certificate_thumbprint.map(|t| t.into())),
         };
         model
     }
@@ -90,7 +92,7 @@ impl TryFrom<Model> for AccessToken {
     fn try_from(value: Model) -> Result<Self, Self::Error> {
         let scopes: Scopes = value.scopes.as_str().into();
         let expires_in = value.expires_in - value.created;
-        let token = AccessToken::new_with_value(
+        let mut token = AccessToken::new_with_value(
             Uuid::from_slice(&value.token)?,
             value.t_type.unwrap_or("Bearer".to_string()),
             value.created,
@@ -98,6 +100,9 @@ impl TryFrom<Model> for AccessToken {
             Some(scopes),
             GrantID::try_from(value.grant_id)?,
         );
+        if let Some(ct) = value.certificate_thumbprint {
+            token = token.with_thumbprint(CertificateThumbprint::new(ct))
+        }
         Ok(token)
     }
 }

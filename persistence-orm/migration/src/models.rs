@@ -48,6 +48,7 @@ pub(crate) enum Token {
     Scopes,
     State,
     Nonce,
+    CertificateThumbprint,
 }
 #[derive(DeriveIden)]
 pub(crate) enum AuthenticatedUser {

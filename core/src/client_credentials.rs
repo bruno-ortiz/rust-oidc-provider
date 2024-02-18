@@ -28,27 +28,17 @@ pub enum CredentialError {
     InvalidClientAssertionType(String),
 }
 
-#[derive(Debug, Clone)]
-pub enum ClientCredential {
-    ClientSecretBasic(ClientSecretCredential),
-    ClientSecretPost(ClientSecretCredential),
-    ClientSecretJwt(ClientSecretJWTCredential),
-    PrivateKeyJwt(PrivateKeyJWTCredential),
-    TlsClientAuth(TLSClientAuthCredential),
-    SelfSignedTlsClientAuth(SelfSignedTLSClientAuthCredential),
-    None,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ClientSecretCredential(String);
+#[derive(Debug, Clone, new)]
+pub struct ClientSecretCredential(String, Option<Pem>);
 
 impl ClientSecretCredential {
-    pub fn new<T: Into<String>>(secret: T) -> Self {
-        Self(secret.into())
+    pub fn consume(self) -> (String, Option<Pem>) {
+        (self.0, self.1)
     }
 
-    pub fn secret(self) -> String {
-        self.0
+    pub fn with_cert(mut self, cert: Option<Pem>) -> Self {
+        self.1 = cert;
+        self
     }
 }
 
@@ -57,7 +47,7 @@ impl TryFrom<&mut BodyParams> for ClientSecretCredential {
 
     fn try_from(value: &mut BodyParams) -> Result<Self, Self::Error> {
         let client_secret = value.client_secret.take().ok_or(MissingParam(SECRET_KEY))?;
-        Ok(ClientSecretCredential::new(client_secret))
+        Ok(ClientSecretCredential::new(client_secret, None))
     }
 }
 
@@ -113,50 +103,38 @@ impl TryFrom<&mut BodyParams> for JWTCredential {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ClientSecretJWTCredential(JWTCredential);
+#[derive(Debug, Clone, new)]
+pub struct ClientSecretJWTCredential(JWTCredential, Option<Pem>);
 
 impl ClientSecretJWTCredential {
-    pub(crate) fn credential(self) -> JWTCredential {
-        self.0
+    pub(crate) fn credential(self) -> (JWTCredential, Option<Pem>) {
+        (self.0, self.1)
     }
 }
 
-impl From<JWTCredential> for ClientSecretJWTCredential {
-    fn from(value: JWTCredential) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PrivateKeyJWTCredential(JWTCredential);
+#[derive(Debug, Clone, new)]
+pub struct PrivateKeyJWTCredential(JWTCredential, Option<Pem>);
 
 impl PrivateKeyJWTCredential {
-    pub(crate) fn credential(self) -> JWTCredential {
-        self.0
-    }
-}
-
-impl From<JWTCredential> for PrivateKeyJWTCredential {
-    fn from(value: JWTCredential) -> Self {
-        Self(value)
+    pub(crate) fn credential(self) -> (JWTCredential, Option<Pem>) {
+        (self.0, self.1)
     }
 }
 
 #[derive(Debug, Clone, new)]
-pub struct TLSClientAuthCredential(Pem);
+pub struct TLSClientAuthCredential(Option<Pem>);
 
 impl TLSClientAuthCredential {
-    pub fn pem(self) -> Pem {
+    pub fn certificate(self) -> Option<Pem> {
         self.0
     }
 }
 
 #[derive(Debug, Clone, new)]
-pub struct SelfSignedTLSClientAuthCredential(Pem);
+pub struct SelfSignedTLSClientAuthCredential(Option<Pem>);
 
 impl SelfSignedTLSClientAuthCredential {
-    pub fn pem(self) -> Pem {
+    pub fn certificate(self) -> Option<Pem> {
         self.0
     }
 }

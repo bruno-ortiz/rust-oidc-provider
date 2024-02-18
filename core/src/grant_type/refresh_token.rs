@@ -93,12 +93,17 @@ impl RefreshTokenGrantResolver {
         }
 
         let at_duration = ttl.access_token_ttl(client.as_ref());
-        let access_token = AccessToken::bearer(
+        let mut access_token = AccessToken::bearer(
             clock.now(),
             grant.id(),
             at_duration,
             Some(refresh_token.scopes.clone()),
         );
+
+        if let Some(thumbprint) = client.thumbprint() {
+            access_token = access_token.with_thumbprint(thumbprint.clone())
+        }
+
         let access_token = self
             .access_token_manager
             .save(access_token, txn.clone_some())

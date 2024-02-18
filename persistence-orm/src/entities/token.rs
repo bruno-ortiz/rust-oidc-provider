@@ -21,6 +21,7 @@ pub struct Model {
     pub created: TimeDateTimeWithTimeZone,
     pub scopes: String,
     pub t_type: Option<String>,
+    pub certificate_thumbprint: Option<String>,
     pub state: Option<String>,
     pub nonce: Option<String>,
 }

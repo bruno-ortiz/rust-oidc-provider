@@ -1,9 +1,11 @@
+use derive_new::new;
 use std::ops::Deref;
 
 use getset::{CopyGetters, Getters};
 use time::OffsetDateTime;
 
 use oidc_types::auth_method::AuthMethod;
+use oidc_types::certificate::CertificateThumbprint;
 use oidc_types::client::{ClientID, ClientMetadata};
 use oidc_types::grant_type::GrantType;
 use oidc_types::identifiable::Identifiable;
@@ -57,14 +59,10 @@ impl Identifiable<ClientID> for ClientInformation {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AuthenticatedClient(ClientInformation);
+#[derive(Debug, Clone, new)]
+pub struct AuthenticatedClient(ClientInformation, Option<CertificateThumbprint>);
 
 impl AuthenticatedClient {
-    pub fn new(client: ClientInformation) -> Self {
-        Self(client)
-    }
-
     pub fn id(&self) -> ClientID {
         self.0.id
     }
@@ -77,6 +75,10 @@ impl AuthenticatedClient {
     }
     pub fn id_token_signing_alg(&self) -> &SigningAlgorithm {
         &self.0.metadata.id_token_signed_response_alg
+    }
+
+    pub fn thumbprint(&self) -> Option<&CertificateThumbprint> {
+        self.1.as_ref()
     }
 }
 

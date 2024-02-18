@@ -2,17 +2,21 @@ use crate::models::client::ClientInformation;
 use derive_builder::Builder;
 use x509_parser::certificate::X509Certificate;
 
-type CertValidator = fn(X509Certificate, &ClientInformation) -> bool;
+type CertValidator = fn(&X509Certificate, &ClientInformation) -> bool;
 
 #[derive(Debug, Builder)]
 #[builder(default)]
 pub struct MTLSConfiguration {
+    enabled: bool,
     certificate_bound_access_token: bool,
     certificate_header: &'static str,
     validate_cert: CertValidator,
 }
 
 impl MTLSConfiguration {
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
     pub fn certificate_bound_access_token(&self) -> bool {
         self.certificate_bound_access_token
     }
@@ -28,6 +32,7 @@ impl MTLSConfiguration {
 impl Default for MTLSConfiguration {
     fn default() -> Self {
         MTLSConfiguration {
+            enabled: false,
             certificate_bound_access_token: false,
             certificate_header: "X-MTLS-CERTIFICATE",
             validate_cert: unimplemented,
@@ -35,6 +40,6 @@ impl Default for MTLSConfiguration {
     }
 }
 
-fn unimplemented(_cert: X509Certificate, _client: &ClientInformation) -> bool {
+fn unimplemented(_cert: &X509Certificate, _client: &ClientInformation) -> bool {
     panic!("User should implement this function")
 }

@@ -3,7 +3,9 @@ use std::future::Future;
 use thiserror::Error;
 use x509_parser::error::X509Error;
 use x509_parser::nom;
+use x509_parser::pem::Pem;
 
+use oidc_types::certificate::CertificateThumbprint;
 use oidc_types::client::ClientID;
 use oidc_types::jose::error::JWTError;
 use oidc_types::jose::jwt2::{SignedJWT, JWT};
@@ -12,14 +14,13 @@ use oidc_types::secret::{PlainTextSecret, MIN_SECRET_LEN};
 use ClientCredential::*;
 
 use crate::client_credentials::{
-    ClientCredential, ClientSecretCredential, ClientSecretJWTCredential, JWTCredential,
-    PrivateKeyJWTCredential, SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
+    ClientSecretCredential, ClientSecretJWTCredential, JWTCredential, PrivateKeyJWTCredential,
+    SelfSignedTLSClientAuthCredential, TLSClientAuthCredential,
 };
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::keystore::KeyUse;
 use crate::models::client::{AuthenticatedClient, ClientInformation};
 use crate::services::keystore::KeystoreService;
-use crate::utils::cert_thumbprint;
 use crate::validate_required_claim;
 
 #[derive(Debug, Error)]
@@ -30,6 +31,8 @@ pub enum ClientAuthenticationError {
     InvalidCertificateAuth,
     #[error("Cannot parse provided certificate to x509 format")]
     InvalidCertificate(#[from] nom::Err<X509Error>),
+    #[error("Missing certificate in request. Looked at header: {}", .0)]
+    MissingCertificate(&'static str),
     #[error("Invalid authentication method")]
     InvalidAuthMethod,
     #[error("Invalid jwt credential: {:?}, err: {}", .0, .1)]
@@ -51,6 +54,17 @@ pub trait ClientAuthenticator {
     ) -> impl Future<Output = Result<AuthenticatedClient, ClientAuthenticationError>> + Send;
 }
 
+#[derive(Debug, Clone)]
+pub enum ClientCredential {
+    ClientSecretBasic(ClientSecretCredential),
+    ClientSecretPost(ClientSecretCredential),
+    ClientSecretJwt(ClientSecretJWTCredential),
+    PrivateKeyJwt(PrivateKeyJWTCredential),
+    TlsClientAuth(TLSClientAuthCredential),
+    SelfSignedTlsClientAuth(SelfSignedTLSClientAuthCredential),
+    None,
+}
+
 impl ClientAuthenticator for ClientCredential {
     async fn authenticate(
         self,
@@ -69,7 +83,7 @@ impl ClientAuthenticator for ClientCredential {
             SelfSignedTlsClientAuth(inner) => {
                 inner.authenticate(provider, keystore_service, client).await
             }
-            None => Ok(AuthenticatedClient::new(client)),
+            None => Ok(AuthenticatedClient::new(client, Option::None)),
         }
     }
 }
@@ -77,20 +91,17 @@ impl ClientAuthenticator for ClientCredential {
 impl ClientAuthenticator for ClientSecretCredential {
     async fn authenticate(
         self,
-        _provider: &OpenIDProviderConfiguration,
+        provider: &OpenIDProviderConfiguration,
         _keystore_service: &KeystoreService,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let secret = self.secret();
-        if secret.len() < MIN_SECRET_LEN {
-            return Err(ClientAuthenticationError::InvalidSecret(secret.into()));
-        }
+        let (secret, certificate) = self.consume();
+
         if let Some(client_secret) = client.secret() {
-            if client_secret == secret.as_str() {
-                Ok(AuthenticatedClient::new(client))
-            } else {
-                Err(ClientAuthenticationError::InvalidSecret(secret.into()))
+            if secret.len() < MIN_SECRET_LEN || client_secret != secret.as_str() {
+                return Err(ClientAuthenticationError::InvalidSecret(secret.into()));
             }
+            authenticated_client(provider, client, certificate.as_ref())
         } else {
             Err(ClientAuthenticationError::InvalidAuthMethod)
         }
@@ -105,8 +116,15 @@ impl ClientAuthenticator for ClientSecretJWTCredential {
         keystore_service: &KeystoreService,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let jwt_credential = self.credential();
-        authenticate_client_jwt(provider, keystore_service, client, jwt_credential).await
+        let (jwt_credential, certificate) = self.credential();
+        authenticate_client_jwt(
+            provider,
+            keystore_service,
+            client,
+            jwt_credential,
+            certificate,
+        )
+        .await
     }
 }
 
@@ -118,8 +136,15 @@ impl ClientAuthenticator for PrivateKeyJWTCredential {
         keystore_service: &KeystoreService,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let jwt_credential = self.credential();
-        authenticate_client_jwt(provider, keystore_service, client, jwt_credential).await
+        let (jwt_credential, certificate) = self.credential();
+        authenticate_client_jwt(
+            provider,
+            keystore_service,
+            client,
+            jwt_credential,
+            certificate,
+        )
+        .await
     }
 }
 
@@ -130,33 +155,48 @@ impl ClientAuthenticator for TLSClientAuthCredential {
         _keystore_service: &KeystoreService,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let pem = self.pem();
+        let mtls_config = provider.mtls();
+        let pem = self
+            .certificate()
+            .ok_or(ClientAuthenticationError::MissingCertificate(
+                mtls_config.certificate_header(),
+            ))?;
         let cert = pem.parse_x509()?;
-        let certificate_validator = provider.mtls().certificate_validator();
-        if !certificate_validator(cert, &client) {
+        let certificate_validator = mtls_config.certificate_validator();
+        if !certificate_validator(&cert, &client) {
             return Err(ClientAuthenticationError::InvalidCertificateAuth);
         }
-        Ok(AuthenticatedClient::new(client))
+        Ok(AuthenticatedClient::new(
+            client,
+            Some(CertificateThumbprint::from(cert)),
+        ))
     }
 }
 
 impl ClientAuthenticator for SelfSignedTLSClientAuthCredential {
     async fn authenticate(
         self,
-        _provider: &OpenIDProviderConfiguration,
+        provider: &OpenIDProviderConfiguration,
         keystore_service: &KeystoreService,
         client: ClientInformation,
     ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
-        let pem = self.pem();
+        let pem = self
+            .certificate()
+            .ok_or(ClientAuthenticationError::MissingCertificate(
+                provider.mtls().certificate_header(),
+            ))?;
         let cert = pem.parse_x509()?;
         let keystore = keystore_service
             .asymmetric_keystore(&client)
             .await
             .map_err(ClientAuthenticationError::Internal)?;
-        let thumbprint = cert_thumbprint(&cert);
-        let key = keystore.select(Option::None).thumbprint(thumbprint).first();
+        let thumbprint = CertificateThumbprint::from(cert);
+        let key = keystore
+            .select(Option::None)
+            .thumbprint(&thumbprint)
+            .first();
         if key.is_some() {
-            Ok(AuthenticatedClient::new(client))
+            Ok(AuthenticatedClient::new(client, Some(thumbprint)))
         } else {
             Err(ClientAuthenticationError::InvalidCertificateAuth)
         }
@@ -168,6 +208,7 @@ async fn authenticate_client_jwt(
     keystore_service: &KeystoreService,
     client: ClientInformation,
     jwt_credential: JWTCredential,
+    certificate: Option<Pem>,
 ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
     let jwt = jwt_credential.assertion();
     let alg = jwt.alg().ok_or_else(|| {
@@ -200,7 +241,26 @@ async fn authenticate_client_jwt(
         .map_err(|err| ClientAuthenticationError::InvalidAssertion(jwt.clone(), err))?;
 
     validate_jwt(provider, jwt, client.id())?;
-    Ok(AuthenticatedClient::new(client))
+    authenticated_client(provider, client, certificate.as_ref())
+}
+
+fn authenticated_client(
+    provider: &OpenIDProviderConfiguration,
+    client: ClientInformation,
+    certificate: Option<&Pem>,
+) -> Result<AuthenticatedClient, ClientAuthenticationError> {
+    if client.metadata().tls_client_certificate_bound_access_tokens {
+        let pem = certificate.ok_or(ClientAuthenticationError::MissingCertificate(
+            provider.mtls().certificate_header(),
+        ))?;
+        let cert = pem.parse_x509()?;
+        Ok(AuthenticatedClient::new(
+            client,
+            Some(CertificateThumbprint::from(cert)),
+        ))
+    } else {
+        Ok(AuthenticatedClient::new(client, Option::None))
+    }
 }
 
 fn validate_jwt(

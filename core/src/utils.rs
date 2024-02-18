@@ -1,8 +1,4 @@
 use anyhow::anyhow;
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
-use base64::Engine;
-use sha2::Digest;
-use x509_parser::certificate::X509Certificate;
 
 use oidc_types::client::encryption::EncryptionData;
 use oidc_types::jose::error::JWTError;
@@ -54,9 +50,4 @@ pub(crate) async fn encrypt(
 pub(crate) fn get_jose_algorithm(jwt: &str) -> Result<Option<SigningAlgorithm>, JWTError> {
     let alg = GenericJWT::parse_alg(jwt)?;
     Ok(alg)
-}
-
-pub(crate) fn cert_thumbprint(cert: &X509Certificate) -> String {
-    let cert_digest = sha2::Sha256::digest(cert.as_ref());
-    BASE64_URL_SAFE_NO_PAD.encode(cert_digest)
 }

@@ -37,6 +37,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Token::Scopes).string().not_null())
                     .col(ColumnDef::new(Token::TType).string())
+                    .col(ColumnDef::new(Token::CertificateThumbprint).string())
                     .col(ColumnDef::new(Token::State).string())
                     .col(ColumnDef::new(Token::Nonce).string())
                     .to_owned(),

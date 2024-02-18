@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use oidc_types::certificate::CertificateThumbprint;
 use serde::Serialize;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
@@ -39,6 +40,7 @@ pub struct AccessToken {
     pub expires_in: Duration,
     pub created: OffsetDateTime,
     pub scopes: Option<Scopes>,
+    pub certificate_thumbprint: Option<CertificateThumbprint>,
 }
 
 impl AccessToken {
@@ -76,6 +78,7 @@ impl AccessToken {
             expires_in,
             scopes,
             grant_id,
+            certificate_thumbprint: None,
         }
     }
 
@@ -92,6 +95,11 @@ impl AccessToken {
             scopes,
             grant_id,
         )
+    }
+
+    pub fn with_thumbprint(mut self, certificate_thumbprint: CertificateThumbprint) -> Self {
+        self.certificate_thumbprint = Some(certificate_thumbprint);
+        self
     }
 }
 

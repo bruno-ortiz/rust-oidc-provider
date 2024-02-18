@@ -160,6 +160,7 @@ pub mod test_utils {
             authorization_encrypted_response_enc: None,
             software_id: None,
             tls_client_auth_san_email: None,
+            tls_client_certificate_bound_access_tokens: false,
         };
 
         let client = ClientInformation::new(

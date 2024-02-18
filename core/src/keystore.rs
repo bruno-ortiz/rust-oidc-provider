@@ -1,5 +1,6 @@
 use derive_builder::Builder;
 use josekit::jwk::Jwk;
+use oidc_types::certificate::CertificateThumbprint;
 use oidc_types::jose::jwk_ext::JwkExt;
 use thiserror::Error;
 
@@ -29,7 +30,7 @@ pub struct SelectOption<'a> {
     #[builder(default)]
     crv: Option<String>,
     #[builder(default)]
-    thumbprint: Option<String>,
+    thumbprint: Option<&'a CertificateThumbprint>,
     #[builder(default)]
     operation: Option<String>,
 }
@@ -140,7 +141,7 @@ fn select_predicate(key: &Jwk, option: &SelectOption) -> bool {
     if let Some(thumbprint) = &option.thumbprint {
         true_or_return!(
             candidate = if let Some(key_thumbprint) = key.x509_certificate_sha256_thumbprint_b64() {
-                thumbprint == key_thumbprint
+                *thumbprint == key_thumbprint
             } else {
                 false
             }

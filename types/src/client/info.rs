@@ -121,6 +121,7 @@ pub struct ClientMetadata {
     pub tls_client_auth_san_uri: Option<String>,
     pub tls_client_auth_san_ip: Option<String>,
     pub tls_client_auth_san_email: Option<String>,
+    pub tls_client_certificate_bound_access_tokens: bool,
 }
 
 impl ClientMetadata {
@@ -206,6 +207,7 @@ impl Default for ClientMetadata {
             tls_client_auth_san_uri: None,
             tls_client_auth_san_ip: None,
             tls_client_auth_san_email: None,
+            tls_client_certificate_bound_access_tokens: false,
         }
     }
 }
