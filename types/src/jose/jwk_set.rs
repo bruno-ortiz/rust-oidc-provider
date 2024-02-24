@@ -33,7 +33,7 @@ impl Default for JwkSet {
         let mut jwk_enc =
             Jwk::generate_ec_key(EcCurve::P256).expect("Error computing default encryption key");
         jwk_enc.set_algorithm(AeskwJweAlgorithm::A128kw.name());
-        jwk_enc.set_key_id("default-key");
+        jwk_enc.set_key_id("default-enc-key");
         jwk_enc.set_key_use("enc");
         JwkSet::new(vec![jwk, jwk_enc])
     }

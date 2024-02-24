@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://e927-189-110-116-171.ngrok-free.app")
+        .issuer("https://ad39-2804-431-c7c7-d8c4-5441-adee-bd5-b7e1.ngrok-free.app")
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .request_object_signing_alg_values_supported(vec![

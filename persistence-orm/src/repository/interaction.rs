@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD as b64engine;
 use base64::Engine;
 use sea_orm::ActiveValue::{Set, Unchanged};
-use sea_orm::{ActiveModelTrait, EntityTrait, NotSet};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, NotSet};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -49,6 +49,23 @@ impl InteractionRepository {
             interaction_type: Set(typ),
         })
     }
+
+    async fn select_conn_and_convert(
+        &self,
+        model: Model,
+        active_txn: Option<TransactionId>,
+    ) -> Result<Interaction, PersistenceError> {
+        if let Some(txn) = active_txn {
+            let Some(txn_ref) = self.db.get_txn(&txn) else {
+                return Err(PersistenceError::Internal(anyhow!(
+                    "Invalid state, trying to use committed/cancelled transaction"
+                )));
+            };
+            convert_from_model(txn_ref.value(), model).await
+        } else {
+            convert_from_model(&self.db.conn, model).await
+        }
+    }
 }
 
 #[async_trait]
@@ -62,7 +79,7 @@ impl Adapter for InteractionRepository {
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;
         if let Some(model) = model {
-            convert_from_model(&self.db, model).await.map(Some)
+            convert_from_model(&self.db.conn, model).await.map(Some)
         } else {
             Ok(None)
         }
@@ -126,7 +143,7 @@ impl Adapter for InteractionRepository {
         };
 
         let saved_model = insert_model!(self, model, active_txn);
-        convert_from_model(&self.db, saved_model).await
+        self.select_conn_and_convert(saved_model, active_txn).await
     }
 
     async fn update(
@@ -154,12 +171,12 @@ impl Adapter for InteractionRepository {
             }
         };
         let updated = update_model!(self, model, active_txn);
-        convert_from_model(&self.db, updated).await
+        self.select_conn_and_convert(updated, active_txn).await
     }
 }
 
 async fn convert_from_model(
-    conn: &ConnWrapper,
+    conn: &impl ConnectionTrait,
     value: Model,
 ) -> Result<Interaction, PersistenceError> {
     let request =
@@ -185,12 +202,12 @@ async fn convert_from_model(
 }
 
 async fn get_user(
-    conn: &ConnWrapper,
+    conn: &impl ConnectionTrait,
     interaction_id: &[u8],
     session_id: &[u8],
 ) -> Result<AuthenticatedUser, PersistenceError> {
     let user: AuthenticatedUser = UserEntity::find_by_id(session_id)
-        .one(&conn.conn)
+        .one(conn)
         .await
         .map_err(db_err)?
         .map(|model| model.try_into())

@@ -190,7 +190,7 @@ impl InteractionService {
                     .finalize_interaction(request, user, txn.clone())
                     .await?;
                 let res = auth_service
-                    .do_authorise(user, Arc::new(client), request, txn.clone())
+                    .do_authorise(user, grant, Arc::new(client), request, txn.clone())
                     .await
                     .map_err(|err| InteractionError::Authorization(err.into()))?;
                 if let AuthorisationResponse::Redirect(url) = res {

@@ -106,7 +106,13 @@ where
                 AuthorisationResponse::Redirect(interaction.uri(&self.provider))
             }
             Interaction::None { request, user, .. } => {
-                self.do_authorise(user, client, request, txn_id.clone())
+                let grant_id = user.grant_id().ok_or_else(|| {
+                    AuthorisationError::InternalError(anyhow!(
+                        "Trying to authorise user with no grant"
+                    ))
+                })?;
+                let grant = self.find_grant(grant_id).await?;
+                self.do_authorise(user, grant, client, request, txn_id.clone())
                     .await?
             }
         };
@@ -117,14 +123,11 @@ where
     pub async fn do_authorise(
         &self,
         user: AuthenticatedUser,
+        grant: Grant,
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
         txn_id: TransactionId,
     ) -> Result<AuthorisationResponse, AuthorisationError> {
-        let grant_id = user.grant_id().ok_or_else(|| {
-            AuthorisationError::InternalError(anyhow!("Trying to authorise user with no grant"))
-        })?;
-        let grant = self.find_grant(grant_id).await?;
         let context = OpenIDContext::new(
             client.clone(),
             user,
