@@ -2376,8 +2376,10 @@ dependencies = [
 name = "oidc-example"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum 0.7.4",
  "axum-macros",
+ "dotenvy",
  "hyper 1.1.0",
  "lazy_static",
  "oidc-admin",

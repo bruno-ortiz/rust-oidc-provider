@@ -1,11 +1,14 @@
 use std::collections::HashMap;
+use std::env;
 use std::error::Error;
 use std::str::FromStr;
 
+use anyhow::Context as ErrorContext;
 use axum::extract::Query;
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
+use dotenvy::dotenv;
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use tera::{Context, Tera};
@@ -56,12 +59,16 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    dotenv().ok();
     tracing_subscriber::fmt::init();
+    let db_url = env::var("DATABASE_URL").unwrap_or("sqlite::memory:".into());
+    let migration_action = env::var("MIGRATION_ACTION").unwrap_or("Up".into());
+    let issuer = env::var("ISSUER").context("ISSUER env var not found")?;
 
-    let adapter =
-        SeaOrmAdapterContainer::new("mysql://dev:dev@localhost:3306/oidc-provider").await?;
-
-    adapter.run_migrations(MigrationAction::Fresh).await?;
+    let adapter = SeaOrmAdapterContainer::new(db_url).await?;
+    adapter
+        .run_migrations(MigrationAction::from_str(migration_action.as_str())?)
+        .await?;
 
     let app = Router::new()
         .route("/interaction/login", get(login_page))
@@ -71,7 +78,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .nest_service("/assets", ServeDir::new("./example/static/assets"));
 
     let config = OpenIDProviderConfigurationBuilder::default()
-        .issuer("https://ad39-2804-431-c7c7-d8c4-5441-adee-bd5-b7e1.ngrok-free.app")
+        .issuer(issuer)
         .profile_resolver(MockProfileResolver)
         .claims_supported(ClaimsSupported::all())
         .request_object_signing_alg_values_supported(vec![
@@ -88,8 +95,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .claims_parameter_supported(true)
         .with_adapter(Box::new(adapter))
-        .build()
-        .expect("Expected valid configuration");
+        .build()?;
 
     create_client(
         &config,
@@ -98,7 +104,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "1fCW^$)*(I#tll2EH#!MfsHFQ$*6&gEx",
         AuthMethod::ClientSecretBasic,
     )
-    .await;
+    .await?;
     create_client(
         &config,
         "Test client 2",
@@ -106,7 +112,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "T*8XnO6JRqI8rrPh^5dUzE0BNQR0u5Hy",
         AuthMethod::ClientSecretBasic,
     )
-    .await;
+    .await?;
 
     create_client(
         &config,
@@ -115,7 +121,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "T*8XnO6JRqI8rrPh^5dUzE0BNQR0u5Hy",
         AuthMethod::ClientSecretPost,
     )
-    .await;
+    .await?;
 
     OidcServer::new(config).with_router(app).run().await?;
     Ok(())
@@ -127,10 +133,9 @@ async fn create_client(
     id: &str,
     secret: &str,
     auth_method: AuthMethod,
-) {
-    let callback_url = "https://www.certification.openid.net/test/a/rust-oidc-test/callback"
-        .try_into()
-        .expect("expect valid url");
+) -> anyhow::Result<()> {
+    let callback_url =
+        "https://www.certification.openid.net/test/a/rust-oidc-test/callback".try_into()?;
     let client_metadata = ClientMetadataBuilder::default()
         .redirect_uris(vec![callback_url])
         .jwks(JwkSet::default())
@@ -140,20 +145,17 @@ async fn create_client(
         .response_types(vec![Code, IdToken, Token])
         .grant_types(vec![GrantType::AuthorizationCode, GrantType::RefreshToken])
         .scope(scopes!("openid", "profile", "email", "phone", "address"))
-        .build()
-        .expect("Valid client metadata");
+        .build()?;
 
     let client = ClientInformation::new(
-        ClientID::from_str(id).unwrap(),
+        ClientID::from_str(id)?,
         OffsetDateTime::now_utc(),
         Some(PlainTextSecret::from(secret.to_owned())),
         None,
         client_metadata,
     );
-
-    register_client(config, client)
-        .await
-        .expect("Expected successful client registration");
+    register_client(config, client).await?;
+    Ok(())
 }
 
 async fn login_page(

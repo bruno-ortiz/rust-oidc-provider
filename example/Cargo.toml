@@ -24,6 +24,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 lazy_static = { workspace = true }
 urlencoding = { workspace = true }
+anyhow = { workspace = true }
+dotenvy = "0.15.7"
 
 [dev-dependencies]
 axum-macros = "0.4.1"

@@ -1,7 +1,8 @@
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
 pub use sea_orm::{ConnectOptions, Database, DatabaseConnection};
@@ -138,4 +139,19 @@ pub enum MigrationAction {
     Fresh,
     Refresh,
     Reset,
+}
+
+impl FromStr for MigrationAction {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Up" => Ok(MigrationAction::Up(None)),
+            "Down" => Ok(MigrationAction::Down(None)),
+            "Fresh" => Ok(MigrationAction::Fresh),
+            "Refresh" => Ok(MigrationAction::Refresh),
+            "Reset" => Ok(MigrationAction::Reset),
+            _ => bail!("Cannot parse {} as migration action", s),
+        }
+    }
 }

@@ -1,6 +1,19 @@
 name: rust-oidc-provider
 
 services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+      - "4000:4000"
+    environment:
+      RUST_LOG: info
+      MIGRATION_ACTION: Fresh
+      DATABASE_URL: "mysql://dev:dev@mysql:3306/oidc-provider"
+      ISSUER: http://localhost:3000
+    depends_on:
+      - mysql
   mysql:
     image: mysql:latest
     restart: always

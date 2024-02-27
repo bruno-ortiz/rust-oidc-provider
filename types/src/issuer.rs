@@ -42,6 +42,12 @@ impl From<&str> for Issuer {
     }
 }
 
+impl From<String> for Issuer {
+    fn from(iss: String) -> Self {
+        Issuer::new(iss.as_str())
+    }
+}
+
 impl From<Issuer> for String {
     fn from(iss: Issuer) -> Self {
         iss.0.to_string()
