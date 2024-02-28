@@ -44,13 +44,13 @@ impl OidcServer {
     pub async fn run(self) -> Result<(), ServerError> {
         let provider = Arc::new(self.provider);
         let (tx, rx) = tokio::sync::oneshot::channel::<()>();
-        let addr = SocketAddr::from(([127, 0, 0, 1], 4000));
+        let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
         let server_ready = AdminServer.run(addr, provider.clone(), async {
             rx.await.ok();
         });
         server_ready.await.expect("Admin server should be ready");
         let router = oidc_router(self.custom_routes, provider).await;
-        let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+        let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
         let tcp_listener = TcpListener::bind(addr).await?;
         info!("OpenId Server listening on {}", addr);
 
