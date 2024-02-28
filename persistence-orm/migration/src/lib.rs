@@ -6,6 +6,7 @@ mod m20240122_205439_create_authorization_code;
 mod m20240122_205712_create_token;
 mod m20240122_210013_create_authenticated_user;
 mod m20240123_010404_create_interaction;
+mod macros;
 mod models;
 
 pub struct Migrator;

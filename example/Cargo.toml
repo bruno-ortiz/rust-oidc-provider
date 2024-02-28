@@ -10,7 +10,7 @@ oidc-server = { path = "../server" }
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 oidc-admin = { path = "../admin" }
-oidc-persistence = { path = "../persistence-orm", features = ["mysql"] }
+oidc-persistence = { path = "../persistence-orm" }
 axum = { workspace = true }
 hyper = { workspace = true, features = ["full"] }
 tokio = { workspace = true, features = ["full"] }

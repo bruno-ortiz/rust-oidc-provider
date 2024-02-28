@@ -1,3 +1,4 @@
+use crate::exclude_sqlite;
 use sea_orm_migration::prelude::*;
 
 use crate::models::{AuthorisationCode, CodeChallengeMethod, Grant, Status};
@@ -62,29 +63,29 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name("fk-authorization_code-grant_id")
-                    .from_tbl(AuthorisationCode::Table)
-                    .from_col(AuthorisationCode::GrantId)
-                    .to_tbl(Grant::Table)
-                    .to_col(Grant::Id)
-                    .to_owned(),
-            )
-            .await?;
+        exclude_sqlite! {
+            manager;
+            create_foreign_key;
+            ForeignKey::create()
+                .name("fk-authorization_code-grant_id")
+                .from_tbl(AuthorisationCode::Table)
+                .from_col(AuthorisationCode::GrantId)
+                .to_tbl(Grant::Table)
+                .to_col(Grant::Id)
+                .to_owned()
+        }
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_foreign_key(
-                ForeignKey::drop()
-                    .name("fk-authorization_code-grant_id")
-                    .table(AuthorisationCode::Table)
-                    .to_owned(),
-            )
-            .await?;
+        exclude_sqlite! {
+            manager;
+            drop_foreign_key;
+            ForeignKey::drop()
+                .name("fk-authorization_code-grant_id")
+                .table(AuthorisationCode::Table)
+                .to_owned()
+        }
         manager
             .drop_index(
                 Index::drop()

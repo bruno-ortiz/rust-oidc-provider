@@ -22,7 +22,8 @@ tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [features]
-default = ["sqlite"]
+default = ["all"]
+all = ["sea-orm/sqlx-all"]
 sqlite = ["sea-orm/sqlx-sqlite"]
 mysql = ["sea-orm/sqlx-mysql"]
 postgresql = ["sea-orm/sqlx-postgres"]

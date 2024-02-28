@@ -1,3 +1,4 @@
+use crate::exclude_sqlite;
 use crate::models::Token;
 use crate::models::{Grant, Status, TokenType};
 use sea_orm_migration::prelude::*;
@@ -44,30 +45,29 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name("fk-token-grant_id")
-                    .from_tbl(Token::Table)
-                    .from_col(Token::GrantId)
-                    .to_tbl(Grant::Table)
-                    .to_col(Grant::Id)
-                    .to_owned(),
-            )
-            .await?;
-
+        exclude_sqlite! {
+            manager;
+            create_foreign_key;
+            ForeignKey::create()
+                .name("fk-token-grant_id")
+                .from_tbl(Token::Table)
+                .from_col(Token::GrantId)
+                .to_tbl(Grant::Table)
+                .to_col(Grant::Id)
+                .to_owned()
+        }
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_foreign_key(
-                ForeignKey::drop()
+        exclude_sqlite! {
+            manager;
+            drop_foreign_key;
+            ForeignKey::drop()
                     .name("fk-token-grant_id")
                     .table(Token::Table)
-                    .to_owned(),
-            )
-            .await?;
+                    .to_owned()
+        }
         manager
             .drop_table(Table::drop().table(Token::Table).to_owned())
             .await?;

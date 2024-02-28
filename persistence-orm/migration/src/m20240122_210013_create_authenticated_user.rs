@@ -1,5 +1,7 @@
-use crate::models::{AuthenticatedUser, Grant};
 use sea_orm_migration::prelude::*;
+
+use crate::exclude_sqlite;
+use crate::models::{AuthenticatedUser, Grant};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -40,30 +42,29 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name("fk-authenticated_user-grant_id")
-                    .from_tbl(AuthenticatedUser::Table)
-                    .from_col(AuthenticatedUser::GrantId)
-                    .to_tbl(Grant::Table)
-                    .to_col(Grant::Id)
-                    .to_owned(),
-            )
-            .await?;
+        exclude_sqlite! {
+            manager;
+            create_foreign_key;
+            ForeignKey::create()
+                .name("fk-authenticated_user-grant_id")
+                .from_tbl(AuthenticatedUser::Table)
+                .from_col(AuthenticatedUser::GrantId)
+                .to_tbl(Grant::Table)
+                .to_col(Grant::Id)
+                .to_owned()
+        }
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_foreign_key(
+        exclude_sqlite! {
+            manager;
+            drop_foreign_key;
                 ForeignKey::drop()
                     .name("fk-authenticated_user-grant_id")
                     .table(AuthenticatedUser::Table)
-                    .to_owned(),
-            )
-            .await?;
-
+                    .to_owned()
+        }
         manager
             .drop_table(Table::drop().table(AuthenticatedUser::Table).to_owned())
             .await?;

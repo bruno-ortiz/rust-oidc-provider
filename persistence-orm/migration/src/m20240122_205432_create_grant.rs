@@ -1,3 +1,4 @@
+use crate::exclude_sqlite;
 use sea_orm_migration::prelude::*;
 
 use crate::models::{ClientInformation, Grant, Status};
@@ -37,29 +38,30 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name("fk-grant-client_id")
-                    .from_tbl(Grant::Table)
-                    .from_col(Grant::ClientId)
-                    .to_tbl(ClientInformation::Table)
-                    .to_col(ClientInformation::Id)
-                    .to_owned(),
-            )
-            .await?;
+        exclude_sqlite! {
+            manager;
+            create_foreign_key;
+            ForeignKey::create()
+                .name("fk-grant-client_id")
+                .from_tbl(Grant::Table)
+                .from_col(Grant::ClientId)
+                .to_tbl(ClientInformation::Table)
+                .to_col(ClientInformation::Id)
+                .to_owned()
+        }
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_foreign_key(
-                ForeignKey::drop()
+        exclude_sqlite! {
+            manager;
+            drop_foreign_key;
+            ForeignKey::drop()
                     .name("fk-grant-client_id")
                     .table(Grant::Table)
-                    .to_owned(),
-            )
-            .await?;
+                    .to_owned()
+        }
+
         manager
             .drop_table(Table::drop().table(Grant::Table).to_owned())
             .await?;
