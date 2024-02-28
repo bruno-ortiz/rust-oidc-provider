@@ -19,7 +19,7 @@ pub struct AuthorisationErrorWrapper(#[from] AuthorisationError);
 
 impl IntoResponse for AuthorisationErrorWrapper {
     fn into_response(self) -> Response {
-        error!("Request error, {:?}", self.0);
+        error!("Request error, {}", self.0);
         match self.0 {
             AuthorisationError::InvalidRedirectUri
             | AuthorisationError::MissingRedirectUri

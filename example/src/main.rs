@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::str::FromStr;
+use std::time::Duration;
 
 use anyhow::Context as ErrorContext;
 use axum::extract::Query;
@@ -22,7 +23,7 @@ use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
 use oidc_core::models::client::ClientInformation;
 use oidc_persistence::adapter::SeaOrmAdapterContainer;
-use oidc_persistence::MigrationAction;
+use oidc_persistence::{ConnectOptions, DatabaseConnection, MigrationAction};
 use oidc_server::claims::ClaimsSupported;
 use oidc_server::provider::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_server::request_object::RequestObjectConfigurationBuilder;
@@ -65,7 +66,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let migration_action = env::var("MIGRATION_ACTION").unwrap_or("Up".into());
     let issuer = env::var("ISSUER").context("ISSUER env var not found")?;
 
-    let adapter = SeaOrmAdapterContainer::new(db_url).await?;
+    let mut opts = ConnectOptions::new(db_url);
+    opts.max_connections(10)
+        .connect_timeout(Duration::from_secs(10));
+
+    let adapter = SeaOrmAdapterContainer::new(opts).await?;
     adapter
         .run_migrations(MigrationAction::from_str(migration_action.as_str())?)
         .await?;

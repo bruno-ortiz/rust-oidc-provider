@@ -43,13 +43,13 @@ pub enum InteractionError {
     NotFound(Uuid),
     #[error("Client not found for id {}", .0)]
     ClientNotFound(ClientID),
-    #[error("Unexpected error saving interaction: {}", .0)]
+    #[error("Persistence error resolving interaction: {}", .0)]
     Persistence(#[from] PersistenceError),
     #[error("Unexpected prompt error {}", .0)]
     PromptError(#[from] PromptError),
     #[error("Unexpected error authorizing user: {}", .0)]
     Authorization(anyhow::Error),
-    #[error("Unexpected error resolving user interaction")]
+    #[error("Unexpected error resolving user interaction: {}", .0)]
     Internal(#[from] anyhow::Error),
 }
 
