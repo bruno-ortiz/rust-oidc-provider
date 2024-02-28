@@ -15,6 +15,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libssl-dev libssl3 && apt-get clean
 
 COPY --from=build /app/target/release/oidc-example /app/
+COPY --from=build /app/example/static /app/static
+
+ENV STATIC_ASSETS=/app/static
 
 EXPOSE 3000 4000
 

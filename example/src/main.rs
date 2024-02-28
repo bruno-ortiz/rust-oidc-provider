@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::error::Error;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -23,7 +24,7 @@ use oidc_admin::{GrpcRequest, InteractionClient};
 use oidc_core::client::register_client;
 use oidc_core::models::client::ClientInformation;
 use oidc_persistence::adapter::SeaOrmAdapterContainer;
-use oidc_persistence::{ConnectOptions, DatabaseConnection, MigrationAction};
+use oidc_persistence::{ConnectOptions, MigrationAction};
 use oidc_server::claims::ClaimsSupported;
 use oidc_server::provider::{OpenIDProviderConfiguration, OpenIDProviderConfigurationBuilder};
 use oidc_server::request_object::RequestObjectConfigurationBuilder;
@@ -46,7 +47,8 @@ mod profile;
 
 lazy_static! {
     pub static ref TEMPLATES: Tera = {
-        let mut tera = match Tera::new("example/static/pages/**/*") {
+        let pages_path = static_assets_path().join("pages/**/*");
+        let mut tera = match Tera::new(pages_path.to_string_lossy().as_ref()) {
             Ok(t) => t,
             Err(e) => {
                 println!("Parsing error(s): {}", e);
@@ -80,7 +82,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .route("/interaction/consent", get(consent_page))
         .route("/login", post(login))
         .route("/consent", post(consent))
-        .nest_service("/assets", ServeDir::new("./example/static/assets"));
+        .nest_service(
+            "/assets",
+            ServeDir::new(static_assets_path().join("assets")),
+        );
 
     let config = OpenIDProviderConfigurationBuilder::default()
         .issuer(issuer)
@@ -288,4 +293,10 @@ async fn consent(
         .into_inner();
 
     Redirect::to(res.redirect_uri.as_str()).into_response()
+}
+
+fn static_assets_path() -> PathBuf {
+    env::var("STATIC_ASSETS")
+        .unwrap_or("example/static".to_string())
+        .into()
 }
