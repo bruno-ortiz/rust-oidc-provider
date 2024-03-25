@@ -11,6 +11,7 @@ use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
 use dotenvy::dotenv;
+use hyper::StatusCode;
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use tera::{Context, Tera};
@@ -235,9 +236,9 @@ async fn login(
     Extension(mut interaction_client): Extension<InteractionClient>,
     Form(req): Form<LoginRequest>,
 ) -> Response {
-    // if req.username != "xoze" || req.password != "1234" {
-    //     return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
-    // }
+    if req.username != "xoze" || req.password != "1234" {
+        return (StatusCode::UNAUTHORIZED, "Invalid user or password").into_response();
+    }
 
     let interaction_info = interaction_client
         .get_interaction_info(GrpcRequest::new(InteractionInfoRequest {

@@ -30,8 +30,9 @@ impl AccessTokenRepository {
 
     fn build_active_model(item: AccessToken) -> ActiveModel {
         let expires_in = item.created + item.expires_in;
+        let id: &[u8] = item.token.as_ref();
         let model = ActiveModel {
-            token: Set(Vec::from(item.token.as_ref())),
+            token: Set(Vec::from(id)),
             grant_id: Set(Vec::from(item.grant_id.as_ref())),
             status: Set(Status::Awaiting.into()),
             created: Set(item.created),
@@ -53,7 +54,8 @@ impl Adapter for AccessTokenRepository {
     type Item = AccessToken;
 
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError> {
-        let model = AccessTokenEntity::find_by_id(id.as_ref())
+        let id: &[u8] = id.as_ref();
+        let model = AccessTokenEntity::find_by_id(id)
             .one(&self.db.conn)
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;

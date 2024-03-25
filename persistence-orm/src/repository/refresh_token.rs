@@ -30,8 +30,9 @@ impl RefreshTokenRepository {
     }
 
     fn build_active_model(item: RefreshToken) -> ActiveModel {
+        let id: &[u8] = item.token.as_ref();
         let model = ActiveModel {
-            token: Set(Vec::from(item.token.as_ref())),
+            token: Set(Vec::from(id)),
             grant_id: Set(Vec::from(item.grant_id.as_ref())),
             status: Set(item.status.into()),
             created: Set(item.created),
@@ -53,7 +54,8 @@ impl Adapter for RefreshTokenRepository {
     type Item = RefreshToken;
 
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError> {
-        let model = RefreshTokenEntity::find_by_id(id.as_ref())
+        let id: &[u8] = id.as_ref();
+        let model = RefreshTokenEntity::find_by_id(id)
             .one(&self.db.conn)
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;

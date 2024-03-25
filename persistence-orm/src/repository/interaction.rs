@@ -41,8 +41,9 @@ impl InteractionRepository {
     ) -> Result<ActiveModel, PersistenceError> {
         let req = serde_json::to_string(&request)?;
         let encoded_req = b64engine.encode(req);
+        let id: &[u8] = id.as_ref();
         Ok(ActiveModel {
-            id: Unchanged(Vec::from(id.as_ref())),
+            id: Unchanged(Vec::from(id)),
             created: NotSet,
             session: Unchanged(Vec::from(session.as_ref())),
             request: Unchanged(encoded_req),
@@ -74,7 +75,8 @@ impl Adapter for InteractionRepository {
     type Item = Interaction;
 
     async fn find(&self, id: &Self::Id) -> Result<Option<Self::Item>, PersistenceError> {
-        let model = InteractionEntity::find_by_id(id.as_ref())
+        let id: &[u8] = id.as_ref();
+        let model = InteractionEntity::find_by_id(id)
             .one(&self.db.conn)
             .await
             .map_err(|err| PersistenceError::DB(err.into()))?;
@@ -99,8 +101,9 @@ impl Adapter for InteractionRepository {
             } => {
                 let req = serde_json::to_string(&request)?;
                 let encoded_req = b64engine.encode(req);
+                let id: &[u8] = id.as_ref();
                 ActiveModel {
-                    id: Set(Vec::from(id.as_ref())),
+                    id: Set(Vec::from(id)),
                     created: Set(created),
                     session: Set(Vec::from(session.as_ref())),
                     request: Set(encoded_req),
@@ -116,8 +119,9 @@ impl Adapter for InteractionRepository {
             } => {
                 let req = serde_json::to_string(&request)?;
                 let encoded_req = b64engine.encode(req);
+                let id: &[u8] = id.as_ref();
                 ActiveModel {
-                    id: Set(Vec::from(id.as_ref())),
+                    id: Set(Vec::from(id)),
                     created: Set(OffsetDateTime::now_utc()),
                     session: Set(Vec::from(session.as_ref())),
                     request: Set(encoded_req),
@@ -132,8 +136,9 @@ impl Adapter for InteractionRepository {
             } => {
                 let req = serde_json::to_string(&request)?;
                 let encoded_req = b64engine.encode(req);
+                let id: &[u8] = id.as_ref();
                 ActiveModel {
-                    id: Set(Vec::from(id.as_ref())),
+                    id: Set(Vec::from(id)),
                     created: Set(OffsetDateTime::now_utc()),
                     session: Set(Vec::from(session.as_ref())),
                     request: Set(encoded_req),
