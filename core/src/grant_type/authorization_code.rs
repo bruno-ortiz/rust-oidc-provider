@@ -57,7 +57,7 @@ impl AuthorisationCodeGrantResolver {
         self.auth_code_manager.validate(&grant_type, &code)?;
         let grant = self
             .grant_manager
-            .find(code.grant_id)
+            .find_active(code.grant_id)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 
@@ -159,7 +159,7 @@ impl AuthorisationCodeGrantResolver {
                 .nonce(code.nonce)
                 .state(code.state)
                 .scopes(code.scopes)
-                .expires_in(now + rt_ttl)
+                .expires_in(rt_ttl)
                 .created(now)
                 .build()
                 .map_err(OpenIdError::server_error)?;

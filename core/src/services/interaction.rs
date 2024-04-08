@@ -150,7 +150,7 @@ impl InteractionService {
         match self.interaction_manager.find(interaction_id).await {
             Ok(Some(Interaction::Consent { request, user, .. })) => {
                 if let Some(old_grant_id) = user.grant_id() {
-                    if let Some(old_grant) = self.grant_manager.find(old_grant_id).await? {
+                    if let Some(old_grant) = self.grant_manager.find_active(old_grant_id).await? {
                         self.grant_manager
                             .consume(old_grant, txn.clone_some())
                             .await

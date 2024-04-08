@@ -14,6 +14,8 @@ use crate::error::OpenIdError;
 use crate::models::grant::GrantID;
 use crate::models::Status;
 
+use super::token::Token;
+
 #[derive(Debug, Clone, Eq, PartialEq, Builder)]
 #[builder(setter(into))]
 pub struct RefreshToken {
@@ -21,7 +23,7 @@ pub struct RefreshToken {
     pub grant_id: GrantID,
     #[builder(default)]
     pub status: Status,
-    pub expires_in: OffsetDateTime,
+    pub expires_in: Duration,
     pub created: OffsetDateTime,
     pub state: Option<State>,
     pub nonce: Option<Nonce>,
@@ -45,7 +47,7 @@ impl RefreshToken {
 
     pub fn is_expired(&self, clock: &ClockProvider) -> bool {
         let now = clock.now();
-        self.expires_in <= now
+        (self.created + self.expires_in) <= now
     }
 
     pub fn total_lifetime(&self, clock: &ClockProvider) -> Duration {
@@ -55,10 +57,29 @@ impl RefreshToken {
 
     pub fn ttl_elapsed(&self, clock: &ClockProvider) -> f64 {
         let created = self.created;
-        let due_date = self.expires_in;
+        let due_date = self.created + self.expires_in;
         let partial = (clock.now() - created).as_seconds_f64();
         let total_duration = (due_date - created).as_seconds_f64();
         total_duration * 100.0 / partial
+    }
+}
+
+impl Token for RefreshToken {
+    fn created(&self) -> OffsetDateTime {
+        self.created
+    }
+    fn expires_in(&self) -> Duration {
+        self.expires_in
+    }
+    fn grant_id(&self) -> GrantID {
+        self.grant_id
+    }
+    fn scopes(&self) -> Option<&Scopes> {
+        Some(&self.scopes)
+    }
+
+    fn token_type(&self) -> Option<&str> {
+        None
     }
 }
 

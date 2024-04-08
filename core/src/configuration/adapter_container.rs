@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use derive_builder::Builder;
 use uuid::Uuid;
 
 use oidc_types::client::ClientID;
@@ -28,7 +29,9 @@ pub trait AdapterContainer {
     fn interaction(&self) -> Arc<dyn Adapter<Item = Interaction, Id = Uuid> + Send + Sync>;
 }
 
-pub(crate) struct DefaultAdapterContainer {
+#[derive(Clone, Builder)]
+#[builder(default)]
+pub struct DefaultAdapterContainer {
     txn_manager: Arc<dyn TransactionManager + Send + Sync>,
     code: Arc<dyn Adapter<Item = AuthorisationCode, Id = Code> + Send + Sync>,
     grant: Arc<dyn Adapter<Item = Grant, Id = GrantID> + Send + Sync>,

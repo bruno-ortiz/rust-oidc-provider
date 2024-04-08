@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use oidc_core::models::token::Token;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, EntityTrait, NotSet};
 use uuid::Uuid;
@@ -31,12 +32,13 @@ impl RefreshTokenRepository {
 
     fn build_active_model(item: RefreshToken) -> ActiveModel {
         let id: &[u8] = item.token.as_ref();
+        let expires_in = item.created() + item.expires_in();
         let model = ActiveModel {
             token: Set(Vec::from(id)),
             grant_id: Set(Vec::from(item.grant_id.as_ref())),
             status: Set(item.status.into()),
             created: Set(item.created),
-            expires_in: Set(item.expires_in),
+            expires_in: Set(expires_in),
             scopes: Set(item.scopes.to_string()),
             state: Set(item.state.map(|it| it.to_string())),
             nonce: Set(item.nonce.map(|it| it.to_string())),
@@ -93,6 +95,7 @@ impl TryFrom<Model> for RefreshToken {
     type Error = PersistenceError;
     fn try_from(value: Model) -> Result<Self, Self::Error> {
         let scopes: Scopes = value.scopes.as_str().into();
+        let expires_in = value.expires_in - value.created;
         let token = RefreshTokenBuilder::default()
             .token(Uuid::from_slice(&value.token)?)
             .scopes(scopes)
@@ -101,7 +104,7 @@ impl TryFrom<Model> for RefreshToken {
             .nonce(value.nonce.map(Nonce::new))
             .state(value.state.map(State::new))
             .created(value.created)
-            .expires_in(value.expires_in)
+            .expires_in(expires_in)
             .build()
             .map_err(|err| PersistenceError::Internal(err.into()))?;
         Ok(token)

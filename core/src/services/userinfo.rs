@@ -17,8 +17,9 @@ use crate::client::retrieve_client_info;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::error::OpenIdError;
 use crate::keystore::KeyUse;
-use crate::models::access_token::ActiveAccessToken;
+use crate::models::access_token::AccessToken;
 use crate::models::client::ClientInformation;
+use crate::models::token::{ActiveToken, Token};
 use crate::profile::ProfileData;
 use crate::services::keystore::KeystoreService;
 use crate::utils::encrypt;
@@ -30,7 +31,10 @@ pub struct UserInfoService {
 }
 
 impl UserInfoService {
-    pub async fn get_user_info(&self, at: ActiveAccessToken) -> Result<UserInfo, OpenIdError> {
+    pub async fn get_user_info(
+        &self,
+        at: ActiveToken<AccessToken>,
+    ) -> Result<UserInfo, OpenIdError> {
         let grant = at.grant();
         let client = retrieve_client_info(&self.provider, grant.client_id())
             .await?

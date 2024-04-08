@@ -12,21 +12,21 @@ use oidc_core::services::token::TokenService;
 use oidc_core::services::userinfo::UserInfoService;
 use oidc_types::userinfo::UserInfo;
 
-use crate::routes::error::OpenIdErrorResponse;
+use super::error::WwwAuthenticateErrorResponse;
 
 // #[axum_macros::debug_handler]
 pub async fn userinfo(
     bearer_token: TypedHeader<Authorization<Bearer>>,
     State(service): State<Arc<UserInfoService>>,
     State(token_service): State<Arc<TokenService>>,
-) -> Result<Json<UserInfo>, OpenIdErrorResponse> {
-    //TODO: review error to respond wwwAuthenticate Header
+) -> Result<Json<UserInfo>, WwwAuthenticateErrorResponse> {
     let token = token_service
-        .find(bearer_token.token())
+        .find_access_token(bearer_token.token())
         .await
-        .map_err(OpenIdError::from)?;
+        .map_err(OpenIdError::from)?
+        .ok_or(OpenIdError::invalid_token("invalid access token"))?;
     let active_token = token_service
-        .as_active(token)
+        .get_active_token(token)
         .await
         .map_err(OpenIdError::from)?;
     let user_info = service.get_user_info(active_token).await?;

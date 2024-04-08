@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 use indexmap::IndexMap;
@@ -24,6 +25,8 @@ pub enum OpenIdErrorType {
     InvalidScope,
     ServerError,
     TemporarilyUnavailable,
+    InvalidToken,
+    InsufficientScope,
 }
 
 impl Display for OpenIdErrorType {
@@ -40,6 +43,8 @@ impl Display for OpenIdErrorType {
             OpenIdErrorType::InvalidGrant => write!(f, "invalid_grant"),
             OpenIdErrorType::LoginRequired => write!(f, "login_required"),
             OpenIdErrorType::ConsentRequired => write!(f, "consent_required"),
+            OpenIdErrorType::InvalidToken => write!(f, "invalid_token"),
+            OpenIdErrorType::InsufficientScope => write!(f, "insufficient_scope"),
         }
     }
 }
@@ -52,6 +57,7 @@ pub struct OpenIdError {
     #[serde(rename = "error_description")]
     description: String,
     #[serde(skip)]
+    #[source]
     source: Option<anyhow::Error>,
 }
 
@@ -87,8 +93,30 @@ impl OpenIdError {
         Self::new(OpenIdErrorType::InvalidGrant, description, None)
     }
 
+    pub fn invalid_grant_with_source<D: Into<String>, T: Into<anyhow::Error>>(
+        description: D,
+        source: T,
+    ) -> Self {
+        Self::new(
+            OpenIdErrorType::InvalidGrant,
+            description,
+            Some(source.into()),
+        )
+    }
+
     pub fn invalid_client<D: Into<String>>(description: D) -> Self {
-        Self::new(OpenIdErrorType::InvalidRequest, description, None)
+        Self::new(OpenIdErrorType::InvalidClient, description, None)
+    }
+
+    pub fn invalid_client_with_source<D: Into<String>, T: Into<anyhow::Error>>(
+        description: D,
+        source: T,
+    ) -> Self {
+        Self::new(
+            OpenIdErrorType::InvalidClient,
+            description,
+            Some(source.into()),
+        )
     }
 
     pub fn invalid_scope<D: Into<String>>(description: D) -> Self {
@@ -123,6 +151,25 @@ impl OpenIdError {
         Self::new(OpenIdErrorType::ConsentRequired, description, None)
     }
 
+    pub fn invalid_token<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::InvalidToken, description, None)
+    }
+
+    pub fn invalid_token_with_source<D: Into<String>, T: Into<anyhow::Error>>(
+        description: D,
+        source: T,
+    ) -> Self {
+        Self::new(
+            OpenIdErrorType::InvalidToken,
+            description,
+            Some(source.into()),
+        )
+    }
+
+    pub fn insufficient_scope<D: Into<String>>(description: D) -> Self {
+        Self::new(OpenIdErrorType::InsufficientScope, description, None)
+    }
+
     pub fn server_error<T>(source: T) -> Self
     where
         T: Into<anyhow::Error>,
@@ -155,4 +202,29 @@ impl From<ClientError> for OpenIdError {
     fn from(err: ClientError) -> Self {
         OpenIdError::server_error(err)
     }
+}
+
+impl From<anyhow::Error> for OpenIdError {
+    fn from(err: anyhow::Error) -> Self {
+        OpenIdError::server_error(err)
+    }
+}
+
+pub fn build_report<E>(err: &E) -> String
+where
+    E: std::error::Error,
+    E: Send + Sync,
+{
+    let mut count = 0;
+    let mut current_err: &dyn Error = err;
+    let mut report = format!("[ERROR] - {}", current_err);
+    if current_err.source().is_some() {
+        report.push_str("\nCaused by:");
+    }
+    while let Some(cause) = current_err.source() {
+        count += 1;
+        report.push_str(&format!("\n    {}: {}", count, cause));
+        current_err = cause;
+    }
+    report
 }

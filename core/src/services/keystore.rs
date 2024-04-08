@@ -3,8 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use josekit::jwk::Jwk;
-use quick_cache::sync::Cache;
-use quick_cache::GuardResult;
+use quick_cache::sync::{Cache, GuardResult};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 
 use oidc_types::auth_method::AuthMethod;

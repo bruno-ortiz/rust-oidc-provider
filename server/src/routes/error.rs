@@ -1,11 +1,12 @@
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::response::{AppendHeaders, IntoResponse, Response};
 use axum::Json;
+use hyper::header::WWW_AUTHENTICATE;
 use thiserror::Error;
 use tracing::error;
 
 use oidc_core::client::ClientError;
-use oidc_core::error::{OpenIdError, OpenIdErrorType};
+use oidc_core::error::{build_report, OpenIdError, OpenIdErrorType};
 use oidc_core::response_mode::encoder::{
     encode_response, DynamicResponseModeEncoder, EncodingContext,
 };
@@ -19,7 +20,7 @@ pub struct AuthorisationErrorWrapper(#[from] AuthorisationError);
 
 impl IntoResponse for AuthorisationErrorWrapper {
     fn into_response(self) -> Response {
-        error!("Request error, {}", self.0);
+        error!("Request error: {}", build_report(&self.0));
         match self.0 {
             AuthorisationError::InvalidRedirectUri
             | AuthorisationError::MissingRedirectUri
@@ -65,7 +66,7 @@ pub struct OpenIdErrorResponse(#[from] OpenIdError);
 impl IntoResponse for OpenIdErrorResponse {
     fn into_response(self) -> Response {
         let err = self.0;
-        error!("Request error, {:?}", err);
+        error!("Request error: {}", build_report(&err));
         let status_code = if err.error_type() == OpenIdErrorType::InvalidClient {
             StatusCode::UNAUTHORIZED
         } else {
@@ -78,5 +79,25 @@ impl IntoResponse for OpenIdErrorResponse {
 impl From<ClientError> for OpenIdErrorResponse {
     fn from(err: ClientError) -> Self {
         OpenIdError::server_error(err).into()
+    }
+}
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub struct WwwAuthenticateErrorResponse(#[from] OpenIdError);
+
+impl IntoResponse for WwwAuthenticateErrorResponse {
+    fn into_response(self) -> Response {
+        let err = self.0;
+        error!("Request error: {}", build_report(&err));
+        let status_code = match err.error_type() {
+            OpenIdErrorType::InvalidToken => StatusCode::UNAUTHORIZED,
+            OpenIdErrorType::InsufficientScope => StatusCode::FORBIDDEN,
+            _ => StatusCode::BAD_REQUEST,
+        };
+
+        let error = serde_urlencoded::to_string(err).unwrap();
+        let headers = AppendHeaders([(WWW_AUTHENTICATE, error)]);
+        (status_code, headers).into_response()
     }
 }

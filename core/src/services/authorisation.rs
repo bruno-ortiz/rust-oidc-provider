@@ -160,7 +160,7 @@ where
     async fn find_grant(&self, grant_id: GrantID) -> Result<Grant, AuthorisationError> {
         let grant = self
             .grant_manager
-            .find(grant_id)
+            .find_active(grant_id)
             .await
             .map_err(|err| AuthorisationError::InternalError(err.into()))?
             .ok_or_else(|| {

@@ -4,6 +4,7 @@ pub struct Routes {
     pub token: &'static str,
     pub jwks: &'static str,
     pub userinfo: &'static str,
+    pub introspect: &'static str,
 }
 
 impl Default for Routes {
@@ -13,6 +14,7 @@ impl Default for Routes {
             token: "/token",
             jwks: "/jwks.json",
             userinfo: "/userinfo",
+            introspect: "/introspect",
         }
     }
 }

@@ -9,6 +9,10 @@ impl Subject {
     pub fn new<ID: Into<String>>(id: ID) -> Self {
         Subject(id.into())
     }
+
+    pub fn into_inner(self) -> String {
+        self.0
+    }
 }
 
 impl From<&Subject> for String {

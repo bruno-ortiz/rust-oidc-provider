@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use oidc_types::token::TokenResponse;
 use oidc_types::token_request::TokenRequestBody;
+use uuid::Uuid;
 
 use crate::configuration::clock::Clock;
 use crate::configuration::OpenIDProviderConfiguration;
@@ -13,14 +15,17 @@ use crate::manager::access_token_manager::AccessTokenManager;
 use crate::manager::auth_code_manager::AuthorisationCodeManager;
 use crate::manager::grant_manager::GrantManager;
 use crate::manager::refresh_token_manager::RefreshTokenManager;
-use crate::models::access_token::{AccessToken, ActiveAccessToken, TokenError};
+use crate::models::access_token::{AccessToken, TokenError};
 use crate::models::client::AuthenticatedClient;
+use crate::models::refresh_token::RefreshToken;
+use crate::models::token::{ActiveToken, Token, TokenByType, ACCESS_TOKEN, REFRESH_TOKEN};
 use crate::services::keystore::KeystoreService;
 
 pub struct TokenService {
     provider: Arc<OpenIDProviderConfiguration>,
     grant_manager: Arc<GrantManager>,
     access_token_manager: Arc<AccessTokenManager>,
+    refresh_token_manager: Arc<RefreshTokenManager>,
     rt_grant_resolver: RefreshTokenGrantResolver,
     auth_code_grant_resolver: AuthorisationCodeGrantResolver,
     cc_grant_resolver: ClientCredentialsGrantResolver,
@@ -39,6 +44,7 @@ impl TokenService {
             provider: provider.clone(),
             grant_manager: grant_manager.clone(),
             access_token_manager: access_token_manager.clone(),
+            refresh_token_manager: refresh_token_manager.clone(),
             rt_grant_resolver: RefreshTokenGrantResolver::new(
                 provider.clone(),
                 grant_manager.clone(),
@@ -101,24 +107,60 @@ impl TokenService {
         Ok(token_response)
     }
 
-    pub async fn find(&self, bearer_token: &str) -> Result<AccessToken, TokenError> {
+    pub async fn find_active_token_by_type(
+        &self,
+        token: &str,
+        token_type: &str,
+    ) -> Result<ActiveToken<TokenByType>, TokenError> {
+        let token = match token_type {
+            ACCESS_TOKEN => self
+                .find_access_token(token)
+                .await?
+                .map(TokenByType::Access),
+            REFRESH_TOKEN => self
+                .find_refresh_token(token)
+                .await?
+                .map(TokenByType::Refresh),
+            _ => return Err(TokenError::InvalidTokenType(token_type.to_string())),
+        };
+        if let Some(token) = token {
+            self.get_active_token(token).await
+        } else {
+            Err(TokenError::NotFound)
+        }
+    }
+
+    pub async fn find_access_token(&self, token: &str) -> Result<Option<AccessToken>, TokenError> {
         let token = self
             .access_token_manager
-            .find(bearer_token)
-            .await?
-            .ok_or_else(|| TokenError::InvalidAccessToken)?;
+            .find(token)
+            .await
+            .context("Failed to fetch access token")?;
         Ok(token)
     }
 
-    pub async fn as_active(&self, at: AccessToken) -> Result<ActiveAccessToken, TokenError> {
+    pub async fn find_refresh_token(
+        &self,
+        token: &str,
+    ) -> Result<Option<RefreshToken>, TokenError> {
+        let rt = Uuid::parse_str(token).context("Failed to parse UUID")?;
+        let token = self
+            .refresh_token_manager
+            .find(rt)
+            .await
+            .context("Failed to fetch refresh token")?;
+        Ok(token)
+    }
+    pub async fn get_active_token<T: Token>(&self, token: T) -> Result<ActiveToken<T>, TokenError> {
         let now = self.provider.clock_provider().now();
-        if now <= (at.created + at.expires_in) {
+        if now <= (token.created() + token.expires_in()) {
             let grant = self
                 .grant_manager
-                .find(at.grant_id)
-                .await?
+                .find_active(token.grant_id())
+                .await
+                .context("Failed to fetch grant")?
                 .ok_or(TokenError::InvalidGrant)?;
-            Ok(ActiveAccessToken::new(at, grant))
+            Ok(ActiveToken::new(token, grant))
         } else {
             Err(TokenError::Expired)
         }

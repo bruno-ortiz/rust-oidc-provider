@@ -25,7 +25,7 @@ use crate::validate_required_claim;
 
 #[derive(Debug, Error)]
 pub enum ClientAuthenticationError {
-    #[error("Invalid secret {}", .0)]
+    #[error("Invalid secret '{}'", .0)]
     InvalidSecret(PlainTextSecret),
     #[error("Cannot authenticate client with the provided certificate")]
     InvalidCertificateAuth,
@@ -42,7 +42,7 @@ pub enum ClientAuthenticationError {
     #[error("Unable to fetch jwk from keystore")]
     Jwk,
     #[error(transparent)]
-    Internal(anyhow::Error),
+    Internal(#[from] anyhow::Error),
 }
 
 pub trait ClientAuthenticator {
@@ -276,7 +276,7 @@ fn validate_jwt(
         .join(provider.routes().token)
         .map_err(|err| ClientAuthenticationError::Internal(err.into()))?;
     validate_required_claim!(audience, signed_jwt, contains, expected_audience);
-    //TODO add checks for jti (uniqueness)
+    //TODO: add checks for jti (uniqueness)
     Ok(())
 }
 

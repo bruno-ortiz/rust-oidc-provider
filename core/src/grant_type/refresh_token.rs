@@ -52,7 +52,7 @@ impl RefreshTokenGrantResolver {
 
         let grant = self
             .grant_manager
-            .find(refresh_token.grant_id)
+            .find_active(refresh_token.grant_id)
             .await?
             .ok_or_else(|| OpenIdError::invalid_grant("Invalid refresh Token"))?;
 

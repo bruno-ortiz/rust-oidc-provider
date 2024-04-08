@@ -19,7 +19,7 @@ tower-http = { workspace = true, features = ["fs"] }
 tera = "1.19.1"
 time = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = "0.3.18"
+tracing-subscriber = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 lazy_static = { workspace = true }

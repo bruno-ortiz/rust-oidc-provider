@@ -2,12 +2,11 @@ use crate::persistence::TransactionId;
 use async_trait::async_trait;
 use base64::DecodeError;
 use thiserror::Error;
-
 pub(crate) mod generic_adapter;
 
 #[derive(Error, Debug)]
 pub enum PersistenceError {
-    #[error("Internal error: {}", .0)]
+    #[error(transparent)]
     Internal(#[from] anyhow::Error),
     #[error("Error converting column of type json, {}", .0)]
     Json(#[from] serde_json::Error),

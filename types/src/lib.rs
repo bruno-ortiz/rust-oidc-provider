@@ -13,6 +13,7 @@ pub mod discovery;
 pub mod grant_type;
 pub mod hash;
 pub mod identifiable;
+pub mod introspection;
 pub mod issuer;
 pub mod jose;
 pub mod nonce;

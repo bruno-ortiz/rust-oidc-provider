@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use axum::body::Bytes;
-use axum::extract::rejection::BytesRejection;
 use axum::extract::{FromRef, FromRequest, FromRequestParts};
 use axum::http::{HeaderMap, Request};
 use axum::response::{IntoResponse, Response};
@@ -27,8 +27,6 @@ use crate::state::AppState;
 
 #[derive(Debug, Error)]
 pub enum AuthenticatedRequestError {
-    #[error("Error reading request body, {}", .0)]
-    ReadRequest(#[from] BytesRejection),
     #[error(transparent)]
     Credentials(#[from] CredentialsError),
     #[error("Error parsing body params, {:?}", .0)]
@@ -43,19 +41,20 @@ pub enum AuthenticatedRequestError {
     CredentialsNotFound(AuthMethod),
     #[error(transparent)]
     AuthenticationFailed(#[from] ClientAuthenticationError),
+    #[error(transparent)]
+    Internal(#[from] anyhow::Error),
 }
 
 impl IntoResponse for AuthenticatedRequestError {
     fn into_response(self) -> Response {
-        error!("{:?}", self);
         let openid_error = match self {
             AuthenticatedRequestError::Credentials(err) => err.into(),
-            AuthenticatedRequestError::ReadRequest(err) => OpenIdError::server_error(err),
-            AuthenticatedRequestError::ParseBody(_) => {
-                OpenIdError::invalid_request("Error parsing body params")
+            AuthenticatedRequestError::Internal(err) => OpenIdError::server_error(err),
+            AuthenticatedRequestError::ParseBody(err) => {
+                OpenIdError::invalid_request_with_source("Error parsing body params", err)
             }
-            AuthenticatedRequestError::FindClient(_) => {
-                OpenIdError::invalid_client("Error looking for openid client")
+            AuthenticatedRequestError::FindClient(err) => {
+                OpenIdError::invalid_client_with_source("Error looking for openid client", err)
             }
             AuthenticatedRequestError::InvalidClient(_) => {
                 OpenIdError::invalid_client("Unknown openid client")
@@ -63,8 +62,8 @@ impl IntoResponse for AuthenticatedRequestError {
             AuthenticatedRequestError::AuthMethodNotAllowed(_) => {
                 OpenIdError::invalid_client("Auth method not allowed for client")
             }
-            AuthenticatedRequestError::AuthenticationFailed(_) => {
-                OpenIdError::invalid_client("Authentication failed")
+            AuthenticatedRequestError::AuthenticationFailed(err) => {
+                OpenIdError::invalid_client_with_source("Authentication failed", err)
             }
             AuthenticatedRequestError::CredentialsNotFound(_) => {
                 OpenIdError::invalid_request("Credential not found in request")
@@ -92,7 +91,6 @@ where
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let (mut parts, body) = req.into_parts();
-
         let headers = HeaderMap::from_request_parts(&mut parts, state)
             .await
             .expect("Expected to be infallible");
@@ -100,9 +98,11 @@ where
             .extensions
             .get::<Arc<OpenIDProviderConfiguration>>()
             .cloned()
-            .expect("Error getting provider from extensions");
+            .ok_or(anyhow!("Error getting provider from extensions"))?;
         let req = Request::from_parts(parts, body);
-        let body_bytes = Bytes::from_request(req, state).await?;
+        let body_bytes = Bytes::from_request(req, state)
+            .await
+            .context("Error getting body")?;
         let mut credentials =
             Credentials::parse_credentials(&headers, &body_bytes, &provider).await?;
         let client = retrieve_client_info(&provider, credentials.client_id)

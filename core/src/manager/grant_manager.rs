@@ -16,7 +16,7 @@ impl GrantManager {
         Self { provider }
     }
 
-    pub async fn find(&self, id: GrantID) -> Result<Option<Grant>, PersistenceError> {
+    pub async fn find_active(&self, id: GrantID) -> Result<Option<Grant>, PersistenceError> {
         Ok(self
             .provider
             .adapter()

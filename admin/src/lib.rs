@@ -49,6 +49,3 @@ impl AdminServer {
         server_ready
     }
 }
-
-#[cfg(test)]
-mod tests {}

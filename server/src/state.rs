@@ -12,6 +12,7 @@ use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
 use oidc_core::services::interaction::InteractionService;
+use oidc_core::services::introspect_service::IntrospectionService;
 use oidc_core::services::keystore::KeystoreService;
 use oidc_core::services::prompt::PromptService;
 use oidc_core::services::token::TokenService;
@@ -27,6 +28,7 @@ pub(crate) struct AppState {
     userinfo_service: Arc<UserInfoService>,
     request_object_processor: Arc<RequestObjectProcessor>,
     keystore_service: Arc<KeystoreService>,
+    introspection_service: Arc<IntrospectionService>,
 }
 
 impl AppState {
@@ -68,6 +70,10 @@ impl AppState {
             provider.clone(),
             keystore_service.clone(),
         ));
+        let introspection_service = Arc::new(IntrospectionService::new(
+            provider.clone(),
+            token_service.clone(),
+        ));
         Self {
             provider,
             authorisation_service,
@@ -75,6 +81,7 @@ impl AppState {
             token_service,
             userinfo_service,
             request_object_processor,
+            introspection_service,
             keystore_service,
         }
     }

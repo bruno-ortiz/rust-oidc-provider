@@ -10,27 +10,10 @@ use oidc_types::identifiable::Identifiable;
 use oidc_types::scopes::Scopes;
 use oidc_types::url_encodable::UrlEncodable;
 
-use crate::adapter::PersistenceError;
 use crate::error::OpenIdError;
-use crate::models::grant::{Grant, GrantID};
+use crate::models::grant::GrantID;
 
-pub struct ActiveAccessToken {
-    inner: AccessToken,
-    grant: Grant,
-}
-
-impl ActiveAccessToken {
-    pub fn new(at: AccessToken, grant: Grant) -> Self {
-        Self { inner: at, grant }
-    }
-
-    pub fn grant(&self) -> &Grant {
-        &self.grant
-    }
-    pub fn scopes(&self) -> Option<&Scopes> {
-        self.inner.scopes.as_ref()
-    }
-}
+use super::token::Token;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub struct AccessToken {
@@ -103,6 +86,28 @@ impl AccessToken {
     }
 }
 
+impl Token for AccessToken {
+    fn created(&self) -> OffsetDateTime {
+        self.created
+    }
+
+    fn expires_in(&self) -> Duration {
+        self.expires_in
+    }
+
+    fn grant_id(&self) -> GrantID {
+        self.grant_id
+    }
+
+    fn scopes(&self) -> Option<&Scopes> {
+        self.scopes.as_ref()
+    }
+
+    fn token_type(&self) -> Option<&str> {
+        Some(&self.t_type)
+    }
+}
+
 impl Identifiable<Uuid> for AccessToken {
     fn id(&self) -> &Uuid {
         &self.token
@@ -130,23 +135,30 @@ impl Hashable for AccessToken {
 
 #[derive(Debug, Error)]
 pub enum TokenError {
+    #[error("Token not found")]
+    NotFound,
     #[error("Token expired")]
     Expired,
     #[error("Invalid grant")]
     InvalidGrant,
-    #[error("Invalid access token")]
-    InvalidAccessToken,
+    #[error("Invalid token type: {0}")]
+    InvalidTokenType(String),
     #[error(transparent)]
-    PersistenceError(#[from] PersistenceError),
+    Internal(#[from] anyhow::Error),
 }
 
 impl From<TokenError> for OpenIdError {
     fn from(err: TokenError) -> Self {
         match err {
-            TokenError::Expired => OpenIdError::invalid_grant(err.to_string()),
-            TokenError::InvalidGrant => OpenIdError::invalid_grant(err.to_string()),
-            TokenError::PersistenceError(e) => OpenIdError::server_error(e),
-            TokenError::InvalidAccessToken => OpenIdError::invalid_grant(err.to_string()),
+            TokenError::Expired => OpenIdError::invalid_token_with_source("Token expired", err),
+            TokenError::InvalidGrant => {
+                OpenIdError::invalid_grant_with_source("Invalid grant", err)
+            }
+            TokenError::InvalidTokenType(_) => {
+                OpenIdError::invalid_request_with_source("Invalid type", err)
+            }
+            TokenError::Internal(_) => OpenIdError::server_error(err),
+            TokenError::NotFound => OpenIdError::invalid_token_with_source("Token not found", err),
         }
     }
 }

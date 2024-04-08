@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use uuid::Uuid;
 
 use crate::adapter::PersistenceError;
@@ -17,7 +18,7 @@ impl AccessTokenManager {
     }
 
     pub async fn find(&self, id: &str) -> Result<Option<AccessToken>, PersistenceError> {
-        let id = Uuid::parse_str(id).map_err(|err| PersistenceError::Internal(err.into()))?;
+        let id = Uuid::parse_str(id).context("Failed to parse UUID")?;
         self.provider.adapter().token().find(&id).await
     }
 
