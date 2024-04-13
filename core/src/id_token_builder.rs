@@ -210,7 +210,7 @@ impl JwtPayloadExt for JwtPayload {
             let time = SystemTime::from(time);
             let val = Number::from(
                 time.duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("Time is before epoch")
                     .as_secs(),
             );
             self.set_claim("auth_time", Some(Value::Number(val)))

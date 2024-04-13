@@ -14,6 +14,7 @@ use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_core::services::keystore::KeystoreService;
 use oidc_types::response_mode::ResponseMode;
+use time::Duration;
 
 use crate::extractors::SessionHolder;
 use crate::routes::error::AuthorisationErrorWrapper;
@@ -58,6 +59,9 @@ pub async fn authorise(
                 client.clone(),
             )
         })?;
+    if let Some(max_age) = validated_request.max_age {
+        session.set_duration(Duration::seconds(max_age as i64));
+    }
     let res = auth_service
         .authorise(session.session_id(), client.clone(), validated_request)
         .await?;

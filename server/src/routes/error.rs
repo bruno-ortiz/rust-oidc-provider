@@ -96,7 +96,9 @@ impl IntoResponse for WwwAuthenticateErrorResponse {
             _ => StatusCode::BAD_REQUEST,
         };
 
-        let error = serde_urlencoded::to_string(err).unwrap();
+        let Ok(error) = serde_urlencoded::to_string(err) else {
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to encode error").into_response();
+        };
         let headers = AppendHeaders([(WWW_AUTHENTICATE, error)]);
         (status_code, headers).into_response()
     }

@@ -2,8 +2,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use axum::extract::Request;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use futures::future::BoxFuture;
+use futures::FutureExt;
 use tower::{Layer, Service};
 use tower_cookies::{Cookie, Cookies, Key};
 
@@ -45,7 +46,7 @@ where
         let mut service = std::mem::replace(&mut self.inner, clone);
 
         let cloned_key = self.key.clone();
-        Box::pin(async move {
+        async move {
             match SessionInner::load(req, cloned_key.as_ref().as_ref()).await {
                 Ok((mut req, session_inner)) => {
                     req.extensions_mut().insert(session_inner.clone());
@@ -63,9 +64,10 @@ where
                     }
                     Ok(res)
                 }
-                Err(err) => Ok(err.into_response()),
+                Err(err_response) => Ok(err_response),
             }
-        })
+        }
+        .boxed()
     }
 }
 #[derive(Clone, Default)]

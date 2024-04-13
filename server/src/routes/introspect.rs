@@ -34,7 +34,6 @@ mod tests {
     use hyper::Method;
     use mockall::mock;
     use oidc_core::configuration::adapter_container::DefaultAdapterContainerBuilder;
-    use oidc_core::configuration::clock::Clock;
     use oidc_core::models::access_token::AccessToken;
     use oidc_core::models::grant::{Grant, GrantBuilder, GrantID};
     use oidc_core::models::refresh_token::{RefreshToken, RefreshTokenBuilder};
