@@ -11,7 +11,6 @@ use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::manager::grant_manager::GrantManager;
 use oidc_core::manager::interaction_manager::InteractionManager;
 use oidc_core::models::client::ClientInformation;
-use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
 use oidc_core::services::interaction::InteractionError;
@@ -35,8 +34,7 @@ use crate::oidc_admin::{
 };
 
 pub struct InteractionServiceImpl {
-    authorisation_service:
-        AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>,
+    authorisation_service: AuthorisationService<DynamicResponseTypeResolver>,
     provider: Arc<OpenIDProviderConfiguration>,
     interaction_service: Arc<CoreInteractionService>,
     interaction_manager: Arc<InteractionManager>,
@@ -57,7 +55,6 @@ impl InteractionServiceImpl {
         ));
         let authorisation_service = AuthorisationService::new(
             DynamicResponseTypeResolver::from(provider.as_ref()),
-            DynamicResponseModeEncoder,
             provider.clone(),
             interaction_service.clone(),
             grant_manager.clone(),

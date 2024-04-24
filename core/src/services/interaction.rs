@@ -27,7 +27,7 @@ use crate::models::client::ClientInformation;
 use crate::models::grant::GrantBuilder;
 use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
-use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
+use crate::response_mode::AuthorisationResponse;
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::AuthorisationService;
 use crate::services::prompt::PromptService;
@@ -136,16 +136,15 @@ impl InteractionService {
         }
     }
 
-    pub async fn confirm_consent<R, E>(
+    pub async fn confirm_consent<R>(
         &self,
-        auth_service: &AuthorisationService<R, E>,
+        auth_service: &AuthorisationService<R>,
         interaction_id: Uuid,
         scopes: Scopes,
         txn: TransactionId,
     ) -> Result<Url, InteractionError>
     where
         R: ResponseTypeResolver,
-        E: ResponseModeEncoder,
     {
         match self.interaction_manager.find(interaction_id).await {
             Ok(Some(Interaction::Consent { request, user, .. })) => {

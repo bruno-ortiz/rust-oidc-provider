@@ -8,7 +8,6 @@ use oidc_core::manager::auth_code_manager::AuthorisationCodeManager;
 use oidc_core::manager::grant_manager::GrantManager;
 use oidc_core::manager::refresh_token_manager::RefreshTokenManager;
 use oidc_core::request_object::RequestObjectProcessor;
-use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::AuthorisationService;
 use oidc_core::services::interaction::InteractionService;
@@ -21,8 +20,7 @@ use oidc_core::services::userinfo::UserInfoService;
 #[derive(Clone, FromRef)]
 pub(crate) struct AppState {
     provider: Arc<OpenIDProviderConfiguration>,
-    authorisation_service:
-        Arc<AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>>,
+    authorisation_service: Arc<AuthorisationService<DynamicResponseTypeResolver>>,
     interaction_service: Arc<InteractionService>,
     token_service: Arc<TokenService>,
     userinfo_service: Arc<UserInfoService>,
@@ -48,7 +46,6 @@ impl AppState {
         ));
         let authorisation_service = Arc::new(AuthorisationService::new(
             DynamicResponseTypeResolver::from(provider.as_ref()),
-            DynamicResponseModeEncoder,
             provider.clone(),
             interaction_service.clone(),
             grant_manager.clone(),

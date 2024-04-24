@@ -3,13 +3,13 @@ use std::sync::Arc;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::Router;
+use oidc_core::response_mode::AuthorisationResponse;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
 
 use oidc_core::configuration::OpenIDProviderConfiguration;
-use oidc_core::response_mode::encoder::AuthorisationResponse;
 
 use crate::middleware::SessionManagerLayer;
 use crate::routes::authorisation::authorise;

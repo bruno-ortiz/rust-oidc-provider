@@ -9,7 +9,6 @@ use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::models::client::ClientInformation;
 use oidc_core::request_object::RequestObjectProcessor;
-use oidc_core::response_mode::encoder::DynamicResponseModeEncoder;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_core::services::keystore::KeystoreService;
@@ -23,9 +22,7 @@ use crate::routes::respond;
 // #[axum_macros::debug_handler]
 pub async fn authorise(
     Query(mut request): Query<AuthorisationRequest>,
-    State(auth_service): State<
-        Arc<AuthorisationService<DynamicResponseTypeResolver, DynamicResponseModeEncoder>>,
-    >,
+    State(auth_service): State<Arc<AuthorisationService<DynamicResponseTypeResolver>>>,
     State(provider): State<Arc<OpenIDProviderConfiguration>>,
     State(req_obj_processor): State<Arc<RequestObjectProcessor>>,
     State(keystore_service): State<Arc<KeystoreService>>,

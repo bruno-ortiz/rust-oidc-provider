@@ -14,9 +14,9 @@ use crate::configuration::OpenIDProviderConfiguration;
 use crate::keystore::KeyUse;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
+use crate::response_mode::encoder::EncodingContext;
 use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
-use crate::response_mode::encoder::{EncodingContext, Result};
-use crate::response_mode::errors::EncodingError;
+use crate::response_mode::error::{Error, Result};
 
 const EXP_IN_MINUTES: i64 = 5i64;
 
@@ -36,11 +36,10 @@ impl ResponseModeEncoder for JwtEncoder {
             .select(Some(KeyUse::Sig))
             .alg(alg.name())
             .first()
-            .ok_or(EncodingError::MissingSigningKey)?;
+            .ok_or(Error::MissingSigningKey)?;
         let header = JwsHeader::from_key(signing_key);
         let payload = self.build_payload(context.provider, context, parameters);
-        let jwt = SignedJWT::new(header, payload, signing_key)
-            .map_err(EncodingError::JwtCreationError)?;
+        let jwt = SignedJWT::new(header, payload, signing_key).map_err(Error::JwtCreationError)?;
         if let Some(enc_data) = context.client.metadata().authorization_encryption_data() {
             todo!("how do I encrypt jwt here")
         }

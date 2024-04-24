@@ -1,15 +1,16 @@
+use anyhow::Context;
 use axum::http::StatusCode;
 use axum::response::{AppendHeaders, IntoResponse, Response};
 use axum::Json;
 use hyper::header::WWW_AUTHENTICATE;
+use oidc_core::response_mode::AuthorisationResponse;
+use oidc_core::response_type::UrlEncodable;
 use thiserror::Error;
 use tracing::error;
 
 use oidc_core::client::ClientError;
 use oidc_core::error::{build_report, OpenIdError, OpenIdErrorType};
-use oidc_core::response_mode::encoder::{
-    encode_response, DynamicResponseModeEncoder, EncodingContext,
-};
+use oidc_core::response_mode::encoder::EncodingContext;
 use oidc_core::services::authorisation::AuthorisationError;
 
 use crate::routes::respond;
@@ -47,9 +48,15 @@ impl IntoResponse for AuthorisationErrorWrapper {
                     provider: &provider,
                     keystore_service: &keystore_service,
                 };
-                match encode_response(encoding_context, &DynamicResponseModeEncoder, err, state) {
+                let mut parameters = err.params();
+                if let Some(state) = state {
+                    parameters = (parameters, state).params();
+                }
+                match AuthorisationResponse::create_response(encoding_context, parameters)
+                    .context("Error encoding response")
+                {
                     Ok(response) => respond(response),
-                    Err(auth_err) => AuthorisationErrorWrapper(auth_err).into_response(),
+                    Err(auth_err) => AuthorisationErrorWrapper(auth_err.into()).into_response(),
                 }
             }
             AuthorisationError::Persistence(_) => {

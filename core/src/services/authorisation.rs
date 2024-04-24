@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use derive_new::new;
 use thiserror::Error;
 use url::Url;
@@ -21,9 +21,8 @@ use crate::models::client::ClientInformation;
 use crate::models::grant::{Grant, GrantID};
 use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
-use crate::response_mode::encoder::{
-    encode_response, AuthorisationResponse, EncodingContext, ResponseModeEncoder,
-};
+use crate::response_mode::encoder::EncodingContext;
+use crate::response_mode::AuthorisationResponse;
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::interaction::{InteractionError, InteractionService};
 use crate::services::keystore::KeystoreService;
@@ -65,19 +64,17 @@ impl Debug for AuthorisationError {
 }
 
 #[derive(new)]
-pub struct AuthorisationService<R, E> {
+pub struct AuthorisationService<R> {
     resolver: R,
-    encoder: E,
     provider: Arc<OpenIDProviderConfiguration>,
     interaction_service: Arc<InteractionService>,
     grant_manager: Arc<GrantManager>,
     keystore_service: Arc<KeystoreService>,
 }
 
-impl<R, E> AuthorisationService<R, E>
+impl<R> AuthorisationService<R>
 where
     R: ResponseTypeResolver,
-    E: ResponseModeEncoder,
 {
     pub async fn authorise(
         &self,
@@ -148,12 +145,13 @@ where
             provider: self.provider.as_ref(),
             keystore_service: &self.keystore_service,
         };
-        let parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
-        encode_response(
-            encoding_context,
-            &self.encoder,
-            parameters,
-            context.request.state,
+        let mut parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
+        if let Some(state) = context.request.state {
+            parameters = (parameters, state).params();
+        }
+        Ok(
+            AuthorisationResponse::create_response(encoding_context, parameters)
+                .context("Error creating authorisation response")?,
         )
     }
 
