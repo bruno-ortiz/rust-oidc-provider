@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::Router;
-use oidc_core::response_mode::AuthorisationResponse;
 use tower::ServiceBuilder;
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
@@ -51,11 +49,4 @@ pub(crate) fn oidc_router(
             .layer(CookieManagerLayer::new())
             .layer(SessionManagerLayer::signed(&[0; 32])), //TODO: key configuration
     )
-}
-
-pub(crate) fn respond(response: AuthorisationResponse) -> Response {
-    match response {
-        AuthorisationResponse::Redirect(url) => Redirect::to(url.as_str()).into_response(),
-        AuthorisationResponse::FormPost(_, _) => todo!(),
-    }
 }

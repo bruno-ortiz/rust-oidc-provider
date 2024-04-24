@@ -22,7 +22,7 @@ use crate::models::grant::{Grant, GrantID};
 use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
 use crate::response_mode::encoder::EncodingContext;
-use crate::response_mode::AuthorisationResponse;
+use crate::response_mode::Authorisation;
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::interaction::{InteractionError, InteractionService};
 use crate::services::keystore::KeystoreService;
@@ -81,7 +81,7 @@ where
         session: SessionID,
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
-    ) -> Result<AuthorisationResponse, AuthorisationError> {
+    ) -> Result<Authorisation, AuthorisationError> {
         let txn_manager = self.provider.adapter().transaction_manager();
         let txn_id = txn_manager.begin_txn().await?;
 
@@ -100,7 +100,7 @@ where
 
         let response = match interaction {
             Interaction::Login { .. } | Interaction::Consent { .. } => {
-                AuthorisationResponse::Redirect(interaction.uri(&self.provider))
+                Authorisation::Redirect(interaction.uri(&self.provider))
             }
             Interaction::None { request, user, .. } => {
                 let grant_id = user.grant_id().ok_or_else(|| {
@@ -124,7 +124,7 @@ where
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
         txn_id: TransactionId,
-    ) -> Result<AuthorisationResponse, AuthorisationError> {
+    ) -> Result<Authorisation, AuthorisationError> {
         let context = OpenIDContext::new(
             client.clone(),
             user,
@@ -149,10 +149,8 @@ where
         if let Some(state) = context.request.state {
             parameters = (parameters, state).params();
         }
-        Ok(
-            AuthorisationResponse::create_response(encoding_context, parameters)
-                .context("Error creating authorisation response")?,
-        )
+        Ok(Authorisation::new(encoding_context, parameters)
+            .context("Error creating authorisation response")?)
     }
 
     async fn find_grant(&self, grant_id: GrantID) -> Result<Grant, AuthorisationError> {

@@ -27,7 +27,7 @@ use crate::models::client::ClientInformation;
 use crate::models::grant::GrantBuilder;
 use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
-use crate::response_mode::AuthorisationResponse;
+use crate::response_mode::Authorisation;
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::authorisation::AuthorisationService;
 use crate::services::prompt::PromptService;
@@ -192,7 +192,7 @@ impl InteractionService {
                     .do_authorise(user, grant, Arc::new(client), request, txn.clone())
                     .await
                     .map_err(|err| InteractionError::Authorization(err.into()))?;
-                if let AuthorisationResponse::Redirect(url) = res {
+                if let Authorisation::Redirect(url) = res {
                     Ok(url)
                 } else {
                     Err(Internal(anyhow!("Not supported")))

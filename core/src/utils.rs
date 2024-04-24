@@ -48,6 +48,5 @@ pub(crate) async fn encrypt(
 }
 
 pub(crate) fn get_jose_algorithm(jwt: &str) -> Result<Option<SigningAlgorithm>, JWTError> {
-    let alg = GenericJWT::parse_alg(jwt)?;
-    Ok(alg)
+    GenericJWT::parse_alg(jwt)
 }

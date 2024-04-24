@@ -11,16 +11,13 @@ use oidc_types::{response_mode::ResponseMode, url_encodable::UrlEncodable};
 use std::collections::HashMap;
 use url::Url;
 
-pub enum AuthorisationResponse {
+pub enum Authorisation {
     Redirect(Url),
     FormPost(Url, HashMap<String, String>),
 }
 
-impl AuthorisationResponse {
-    pub fn create_response<P: UrlEncodable>(
-        context: EncodingContext,
-        parameters: P,
-    ) -> Result<AuthorisationResponse> {
+impl Authorisation {
+    pub fn new<P: UrlEncodable>(context: EncodingContext, parameters: P) -> Result<Authorisation> {
         let parameters = parameters.params();
         let result = DynamicResponseModeEncoder
             .encode(&context, parameters)
@@ -32,7 +29,7 @@ impl AuthorisationResponse {
     }
 }
 
-fn encode_err(context: &EncodingContext, err: OpenIdError) -> Result<AuthorisationResponse> {
+fn encode_err(context: &EncodingContext, err: OpenIdError) -> Result<Authorisation> {
     match context.response_mode {
         ResponseMode::Fragment => FragmentEncoder.encode(context, err.params()),
         ResponseMode::Query => QueryEncoder.encode(context, err.params()),

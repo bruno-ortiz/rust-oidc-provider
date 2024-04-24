@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::extract::{Query, State};
-use axum::response::{Response, Result};
+use axum::response::{IntoResponse, Redirect, Response, Result};
 
 use oidc_core::authorisation_request::AuthorisationRequest;
 use oidc_core::client::retrieve_client_info_by_unparsed;
@@ -9,6 +9,7 @@ use oidc_core::configuration::OpenIDProviderConfiguration;
 use oidc_core::error::OpenIdError;
 use oidc_core::models::client::ClientInformation;
 use oidc_core::request_object::RequestObjectProcessor;
+use oidc_core::response_mode::Authorisation;
 use oidc_core::response_type::resolver::DynamicResponseTypeResolver;
 use oidc_core::services::authorisation::{AuthorisationError, AuthorisationService};
 use oidc_core::services::keystore::KeystoreService;
@@ -17,7 +18,6 @@ use time::Duration;
 
 use crate::extractors::SessionHolder;
 use crate::routes::error::AuthorisationErrorWrapper;
-use crate::routes::respond;
 
 // #[axum_macros::debug_handler]
 pub async fn authorise(
@@ -27,14 +27,14 @@ pub async fn authorise(
     State(req_obj_processor): State<Arc<RequestObjectProcessor>>,
     State(keystore_service): State<Arc<KeystoreService>>,
     session: SessionHolder,
-) -> Result<Response, AuthorisationErrorWrapper> {
+) -> Result<AuthorisationResponse, AuthorisationErrorWrapper> {
     let client = Arc::new(get_client(&provider, &request).await?);
     let request_object = req_obj_processor
         .process(&request, &client)
         .await
         .map_err(|err| {
             convert_to_authorisation_error(
-                err,
+                err.into(),
                 &mut request,
                 provider.clone(),
                 keystore_service.clone(),
@@ -59,10 +59,10 @@ pub async fn authorise(
     if let Some(max_age) = validated_request.max_age {
         session.set_duration(Duration::seconds(max_age as i64));
     }
-    let res = auth_service
+    let authorisation = auth_service
         .authorise(session.session_id(), client.clone(), validated_request)
         .await?;
-    Ok(respond(res))
+    Ok(AuthorisationResponse(authorisation))
 }
 
 fn validate_redirect_uri(
@@ -115,5 +115,16 @@ fn convert_to_authorisation_error(
         redirect_uri,
         response_mode,
         client,
+    }
+}
+
+pub(crate) struct AuthorisationResponse(pub(crate) Authorisation);
+
+impl IntoResponse for AuthorisationResponse {
+    fn into_response(self) -> Response {
+        match self.0 {
+            Authorisation::Redirect(url) => Redirect::to(url.as_str()).into_response(),
+            Authorisation::FormPost(_, _) => todo!(),
+        }
     }
 }

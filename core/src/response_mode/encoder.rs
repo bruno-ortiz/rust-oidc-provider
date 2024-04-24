@@ -11,7 +11,7 @@ use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::error::Result;
 use crate::services::keystore::KeystoreService;
 
-use super::AuthorisationResponse;
+use super::Authorisation;
 
 pub(crate) mod fragment;
 pub(crate) mod jwt;
@@ -30,7 +30,7 @@ pub trait ResponseModeEncoder {
         &self,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
-    ) -> Result<AuthorisationResponse>;
+    ) -> Result<Authorisation>;
 }
 
 #[derive(Default, Copy, Clone)]
@@ -41,7 +41,7 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
         &self,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
-    ) -> Result<AuthorisationResponse> {
+    ) -> Result<Authorisation> {
         let response_mode = context.response_mode;
 
         if !context

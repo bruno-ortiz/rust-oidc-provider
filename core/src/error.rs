@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
+use crate::request_object::Error as RequestObjectError;
 use indexmap::IndexMap;
 use serde::Serialize;
 use thiserror::Error;
@@ -207,6 +208,30 @@ impl From<ClientError> for OpenIdError {
 impl From<anyhow::Error> for OpenIdError {
     fn from(err: anyhow::Error) -> Self {
         OpenIdError::server_error(err)
+    }
+}
+
+impl From<RequestObjectError> for OpenIdError {
+    fn from(err: RequestObjectError) -> Self {
+        match err {
+            RequestObjectError::InvalidRequestObject(_) => {
+                OpenIdError::invalid_request_with_source("Invalid request_object", err)
+            }
+            RequestObjectError::RequestObjAndUri => OpenIdError::invalid_request_with_source(
+                "Request object and request_uri are both present",
+                err,
+            ),
+            RequestObjectError::MissingAlg => {
+                OpenIdError::invalid_request_with_source("Request object is missing alg", err)
+            }
+            RequestObjectError::AlgMismatch(_, _) => {
+                OpenIdError::invalid_request_with_source("Request object alg mismatch", err)
+            }
+            RequestObjectError::UnsignedRequestObject => {
+                OpenIdError::invalid_request_with_source("Request object must be signed", err)
+            }
+            RequestObjectError::Internal(_) => OpenIdError::server_error(err),
+        }
     }
 }
 

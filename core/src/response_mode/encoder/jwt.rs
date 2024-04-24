@@ -15,7 +15,7 @@ use crate::keystore::KeyUse;
 use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::EncodingContext;
-use crate::response_mode::encoder::{AuthorisationResponse, ResponseModeEncoder};
+use crate::response_mode::encoder::{Authorisation, ResponseModeEncoder};
 use crate::response_mode::error::{Error, Result};
 
 const EXP_IN_MINUTES: i64 = 5i64;
@@ -27,7 +27,7 @@ impl ResponseModeEncoder for JwtEncoder {
         &self,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
-    ) -> Result<AuthorisationResponse> {
+    ) -> Result<Authorisation> {
         let alg = &context.client.metadata().authorization_signed_response_alg;
         let keystore = context
             .keystore_service
