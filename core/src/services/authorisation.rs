@@ -140,13 +140,14 @@ where
         );
         let auth_result = self.resolver.resolve(&context).await;
 
-        let (sig, enc) = self.prefetch_encoding_keys(&client).await?;
+        let response_mode = context
+            .request
+            .response_mode(self.provider.jwt_secure_response_mode());
+        let (sig, enc) = self.prefetch_encoding_keys(&client, &response_mode).await?;
         let encoding_context = EncodingContext {
             client: &client,
             redirect_uri: &context.request.redirect_uri,
-            response_mode: context
-                .request
-                .response_mode(self.provider.jwt_secure_response_mode()),
+            response_mode,
             provider: self.provider.as_ref(),
             signing_key: sig,
             encryption_key: enc,
@@ -162,10 +163,11 @@ where
     pub async fn prefetch_encoding_keys(
         &self,
         client: &Arc<ClientInformation>,
+        response_mode: &ResponseMode,
     ) -> Result<(Option<Jwk>, Option<Jwk>), AuthorisationError> {
         let mut signing_key = None;
         let mut encryption_key = None;
-        if self.should_prefetch_encoding_keys() {
+        if self.should_prefetch_encoding_keys(response_mode) {
             let alg = &client.metadata().authorization_signed_response_alg;
             let server_keystore = self.keystore_service.server_keystore(client, alg);
             signing_key = server_keystore
@@ -190,8 +192,8 @@ where
         Ok((signing_key, encryption_key))
     }
 
-    fn should_prefetch_encoding_keys(&self) -> bool {
-        self.provider.jwt_secure_response_mode()
+    fn should_prefetch_encoding_keys(&self, response_mode: &ResponseMode) -> bool {
+        self.provider.jwt_secure_response_mode() && response_mode.is_jwt()
     }
 
     async fn find_grant(&self, grant_id: GrantID) -> Result<Grant, AuthorisationError> {
@@ -205,6 +207,7 @@ where
             })?;
         Ok(grant)
     }
+
     async fn handle_err(
         &self,
         err: InteractionError,
@@ -218,7 +221,8 @@ where
                 response_mode,
                 state,
             }) => {
-                let Ok((sig, enc)) = self.prefetch_encoding_keys(&client).await else {
+                let Ok((sig, enc)) = self.prefetch_encoding_keys(&client, &response_mode).await
+                else {
                     return AuthorisationError::InternalError(anyhow!(
                         "Failed to fetch encoding keys"
                     ));
@@ -239,7 +243,8 @@ where
                 response_mode,
                 state,
             }) => {
-                let Ok((sig, enc)) = self.prefetch_encoding_keys(&client).await else {
+                let Ok((sig, enc)) = self.prefetch_encoding_keys(&client, &response_mode).await
+                else {
                     return AuthorisationError::InternalError(anyhow!(
                         "Failed to fetch encoding keys"
                     ));

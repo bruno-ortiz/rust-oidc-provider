@@ -115,7 +115,10 @@ async fn handle_err<R: ResponseTypeResolver>(
         .response_type
         .as_ref()
         .map_or(ResponseMode::Query, |rt| rt.default_response_mode());
-    let Ok((sig, enc)) = auth_service.prefetch_encoding_keys(&client).await else {
+    let Ok((sig, enc)) = auth_service
+        .prefetch_encoding_keys(&client, &response_mode)
+        .await
+    else {
         return AuthorisationError::InternalError(anyhow!("Error prefetching keys"));
     };
     AuthorisationError::RedirectableErr {

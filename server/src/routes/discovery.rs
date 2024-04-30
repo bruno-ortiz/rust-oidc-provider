@@ -40,6 +40,13 @@ pub async fn discovery<'a>(
         .token_endpoint_auth_signing_alg_values_supported(
             provider.token_endpoint_auth_signing_alg_values_supported(),
         )
+        .introspection_endpoint(url(issuer, routes.introspect))
+        .introspection_endpoint_auth_methods_supported(
+            provider.token_endpoint_auth_methods_supported(),
+        )
+        .introspection_endpoint_auth_signing_alg_values_supported(
+            provider.token_endpoint_auth_signing_alg_values_supported(),
+        )
         .userinfo_endpoint(url(issuer, routes.userinfo))
         .userinfo_signing_alg_values_supported(provider.userinfo_signing_alg_values_supported())
         .jwks_uri(url(issuer, routes.jwks))

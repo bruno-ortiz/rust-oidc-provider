@@ -24,6 +24,9 @@ pub struct OIDCProviderMetadata<'a> {
     token_endpoint: Url,
     token_endpoint_auth_signing_alg_values_supported: &'a Vec<SigningAlgorithm>,
     token_endpoint_auth_methods_supported: &'a Vec<AuthMethod>,
+    introspection_endpoint: Url,
+    introspection_endpoint_auth_signing_alg_values_supported: &'a Vec<SigningAlgorithm>,
+    introspection_endpoint_auth_methods_supported: &'a Vec<AuthMethod>,
     userinfo_endpoint: Url,
     userinfo_signing_alg_values_supported: &'a Vec<SigningAlgorithm>,
     response_types_supported: &'a Vec<ResponseType>,
@@ -63,7 +66,5 @@ TODO: enable this metadata when token endpoints is enabled
 revocation_endpoint: Option<Url>,
 revocation_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
 revocation_endpoint_auth_methods_supported: Vec<AuthMethod>,
-introspection_endpoint: Url,
-introspection_endpoint_auth_signing_alg_values_supported: Vec<Algorithm>,
-introspection_endpoint_auth_methods_supported: Vec<AuthMethod>,
+
 */

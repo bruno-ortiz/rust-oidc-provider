@@ -212,13 +212,25 @@ async fn authenticate_client_jwt(
 ) -> Result<AuthenticatedClient, ClientAuthenticationError> {
     let jwt = jwt_credential.assertion();
     let alg = jwt.alg().ok_or_else(|| {
-        ClientAuthenticationError::InvalidAssertion(jwt.clone(), JWTError::JWKAlgorithmNotFound)
+        ClientAuthenticationError::InvalidAssertion(jwt.clone(), JWTError::JWTAlgorithmNotFound)
     })?;
+    if !provider
+        .token_endpoint_auth_signing_alg_values_supported()
+        .contains(&alg)
+    {
+        return Err(ClientAuthenticationError::InvalidAssertion(
+            jwt.clone(),
+            JWTError::InvalidJWTAlgorithm(format!(
+                "alg header {} not supported by the provider",
+                alg.name()
+            )),
+        ));
+    }
     if let Some(auth_alg) = client.metadata().token_endpoint_auth_signing_alg.as_ref() {
         if alg != *auth_alg {
             return Err(ClientAuthenticationError::InvalidAssertion(
                 jwt,
-                JWTError::InvalidJWKAlgorithm(format!(
+                JWTError::InvalidJWTAlgorithm(format!(
                     "alg header {} differs from the algorithm registered for the client: {}",
                     alg.name(),
                     client.id()
