@@ -11,6 +11,7 @@ use oidc_types::{response_mode::ResponseMode, url_encodable::UrlEncodable};
 use std::collections::HashMap;
 use url::Url;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Authorisation {
     Redirect(Url),
     FormPost(Url, HashMap<String, String>),

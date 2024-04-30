@@ -226,6 +226,7 @@ pub mod test_utils {
         OpenIDProviderConfigurationBuilder::default()
             .issuer("https://oidc.rs.com")
             .keystore(KeyStore::new(JwkSet::new(vec![jwk])))
+            .enable_jarm()
             .response_types_supported(vec![
                 response_type![Code],
                 response_type![IdToken],

@@ -203,3 +203,93 @@ fn handle_prompt_err(
         _ => AuthorisationError::InternalError(err.into()),
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use oidc_types::{
+        client::ClientID,
+        pkce::{CodeChallenge, CodeChallengeMethod},
+        response_mode::ResponseMode,
+        response_type, scopes,
+    };
+    use url::Url;
+    use uuid::Uuid;
+
+    use crate::{
+        authorisation_request::ValidatedAuthorisationRequest,
+        context::test_utils::{setup_context, setup_provider},
+        manager::grant_manager::{self, GrantManager},
+        response_mode::Authorisation,
+        response_type::resolver::DynamicResponseTypeResolver,
+        services::{
+            authorisation::AuthorisationService, interaction::InteractionService,
+            keystore::KeystoreService, prompt::PromptService, types::Interaction,
+        },
+    };
+
+    #[tokio::test]
+    async fn test_can_authorize() {
+        let provider = Arc::new(setup_provider());
+        let keystore_service = Arc::new(KeystoreService::new(provider.clone()));
+        let context = setup_context(
+            &provider,
+            keystore_service.clone(),
+            response_type!(response_type::ResponseTypeValue::Code),
+            None,
+            None,
+        )
+        .await;
+        let request = setup_request(Some(ResponseMode::Jwt));
+        let prompt_service = Arc::new(PromptService::new(
+            provider.clone(),
+            keystore_service.clone(),
+        ));
+        let interaction_service = Arc::new(InteractionService::new(
+            provider.clone(),
+            prompt_service.clone(),
+        ));
+        let grant_manager = Arc::new(GrantManager::new(provider.clone()));
+        let service = AuthorisationService::new(
+            DynamicResponseTypeResolver::from(provider.as_ref()),
+            provider.clone(),
+            interaction_service,
+            grant_manager,
+            keystore_service,
+        );
+        let result = service
+            .do_authorise(
+                context.user.clone(),
+                context.grant.clone(),
+                context.client.clone(),
+                request,
+                context.txn_id.clone(),
+            )
+            .await;
+        assert!(result.is_ok());
+    }
+
+    pub fn setup_request(response_mode: Option<ResponseMode>) -> ValidatedAuthorisationRequest {
+        let client_id = ClientID::new(Uuid::new_v4());
+        ValidatedAuthorisationRequest {
+            client_id,
+            response_type: response_type!(response_type::ResponseTypeValue::Code),
+            redirect_uri: Url::parse("https://test.com/callback").unwrap(),
+            scope: scopes!("openid", "test"),
+            state: None,
+            nonce: None,
+            response_mode,
+            code_challenge: Some(CodeChallenge::new("some code here")),
+            code_challenge_method: Some(CodeChallengeMethod::Plain),
+            resource: None,
+            include_granted_scopes: None,
+            prompt: None,
+            acr_values: None,
+            claims: None,
+            max_age: None,
+            id_token_hint: None,
+            login_hint: None,
+        }
+    }
+}

@@ -10,7 +10,7 @@ oidc-migration = { path = "migration" }
 oidc-core = { path = "../core" }
 oidc-types = { path = "../types" }
 tokio = { workspace = true, features = ["full"] }
-sea-orm = { version = "0.12.12", features = ["runtime-tokio-rustls", "macros"] }
+sea-orm = { version = "0.12.15", features = ["runtime-tokio-rustls", "macros"] }
 anyhow = { workspace = true }
 futures = { workspace = true }
 serde_json = { workspace = true }
