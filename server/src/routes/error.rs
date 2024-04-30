@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{AppendHeaders, IntoResponse, Response};
 use axum::Json;
 use hyper::header::WWW_AUTHENTICATE;
-use oidc_core::response_mode::Authorisation;
+use oidc_core::response_mode::AuthorisationResult;
 use oidc_core::response_type::UrlEncodable;
 use thiserror::Error;
 use tracing::error;
@@ -38,7 +38,8 @@ impl IntoResponse for AuthorisationErrorWrapper {
                 redirect_uri,
                 state,
                 provider,
-                keystore_service,
+                signing_key,
+                encryption_key,
                 client,
             } => {
                 let encoding_context = EncodingContext {
@@ -46,13 +47,14 @@ impl IntoResponse for AuthorisationErrorWrapper {
                     redirect_uri: &redirect_uri,
                     response_mode,
                     provider: &provider,
-                    keystore_service: &keystore_service,
+                    signing_key,
+                    encryption_key,
                 };
                 let mut parameters = err.params();
                 if let Some(state) = state {
                     parameters = (parameters, state).params();
                 }
-                match Authorisation::new(encoding_context, parameters)
+                match AuthorisationResult::new(encoding_context, parameters)
                     .context("Error encoding response")
                 {
                     Ok(authorisation) => AuthorisationResponse(authorisation).into_response(),

@@ -12,13 +12,16 @@ use std::collections::HashMap;
 use url::Url;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Authorisation {
+pub enum AuthorisationResult {
     Redirect(Url),
     FormPost(Url, HashMap<String, String>),
 }
 
-impl Authorisation {
-    pub fn new<P: UrlEncodable>(context: EncodingContext, parameters: P) -> Result<Authorisation> {
+impl AuthorisationResult {
+    pub fn new<P: UrlEncodable>(
+        context: EncodingContext,
+        parameters: P,
+    ) -> Result<AuthorisationResult> {
         let parameters = parameters.params();
         let result = DynamicResponseModeEncoder
             .encode(&context, parameters)
@@ -30,7 +33,7 @@ impl Authorisation {
     }
 }
 
-fn encode_err(context: &EncodingContext, err: OpenIdError) -> Result<Authorisation> {
+fn encode_err(context: &EncodingContext, err: OpenIdError) -> Result<AuthorisationResult> {
     match context.response_mode {
         ResponseMode::Fragment => FragmentEncoder.encode(context, err.params()),
         ResponseMode::Query => QueryEncoder.encode(context, err.params()),

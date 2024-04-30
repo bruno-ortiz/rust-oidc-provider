@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use derive_new::new;
+use josekit::jwk::Jwk;
+use oidc_types::jose::Algorithm;
 use thiserror::Error;
 use url::Url;
 
@@ -16,13 +18,14 @@ use crate::client::ClientError;
 use crate::configuration::OpenIDProviderConfiguration;
 use crate::context::OpenIDContext;
 use crate::error::OpenIdError;
+use crate::keystore::KeyUse;
 use crate::manager::grant_manager::GrantManager;
 use crate::models::client::ClientInformation;
 use crate::models::grant::{Grant, GrantID};
 use crate::persistence::TransactionId;
 use crate::prompt::PromptError;
 use crate::response_mode::encoder::EncodingContext;
-use crate::response_mode::Authorisation;
+use crate::response_mode::AuthorisationResult;
 use crate::response_type::resolver::ResponseTypeResolver;
 use crate::services::interaction::{InteractionError, InteractionService};
 use crate::services::keystore::KeystoreService;
@@ -48,7 +51,8 @@ pub enum AuthorisationError {
         redirect_uri: Url,
         state: Option<State>,
         provider: Arc<OpenIDProviderConfiguration>,
-        keystore_service: Arc<KeystoreService>,
+        signing_key: Option<Jwk>,
+        encryption_key: Option<Jwk>,
         client: Arc<ClientInformation>,
     },
     #[error(transparent)]
@@ -81,26 +85,26 @@ where
         session: SessionID,
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
-    ) -> Result<Authorisation, AuthorisationError> {
+    ) -> Result<AuthorisationResult, AuthorisationError> {
         let txn_manager = self.provider.adapter().transaction_manager();
         let txn_id = txn_manager.begin_txn().await?;
 
-        let interaction = self
+        let interaction = match self
             .interaction_service
             .begin_interaction(session, request, client.clone(), txn_id.clone())
             .await
-            .map_err(|err| {
-                handle_prompt_err(
-                    err,
-                    self.provider.clone(),
-                    client.clone(),
-                    self.keystore_service.clone(),
-                )
-            })?;
+        {
+            Ok(interaction) => interaction,
+            Err(err) => {
+                return Err(self
+                    .handle_err(err, self.provider.clone(), client.clone())
+                    .await)
+            }
+        };
 
         let response = match interaction {
             Interaction::Login { .. } | Interaction::Consent { .. } => {
-                Authorisation::Redirect(interaction.uri(&self.provider))
+                AuthorisationResult::Redirect(interaction.uri(&self.provider))
             }
             Interaction::None { request, user, .. } => {
                 let grant_id = user.grant_id().ok_or_else(|| {
@@ -124,7 +128,7 @@ where
         client: Arc<ClientInformation>,
         request: ValidatedAuthorisationRequest,
         txn_id: TransactionId,
-    ) -> Result<Authorisation, AuthorisationError> {
+    ) -> Result<AuthorisationResult, AuthorisationError> {
         let context = OpenIDContext::new(
             client.clone(),
             user,
@@ -136,6 +140,7 @@ where
         );
         let auth_result = self.resolver.resolve(&context).await;
 
+        let (sig, enc) = self.prefetch_encoding_keys(&client).await?;
         let encoding_context = EncodingContext {
             client: &client,
             redirect_uri: &context.request.redirect_uri,
@@ -143,14 +148,50 @@ where
                 .request
                 .response_mode(self.provider.jwt_secure_response_mode()),
             provider: self.provider.as_ref(),
-            keystore_service: &self.keystore_service,
+            signing_key: sig,
+            encryption_key: enc,
         };
         let mut parameters = auth_result.map_or_else(UrlEncodable::params, UrlEncodable::params);
         if let Some(state) = context.request.state {
             parameters = (parameters, state).params();
         }
-        Ok(Authorisation::new(encoding_context, parameters)
+        Ok(AuthorisationResult::new(encoding_context, parameters)
             .context("Error creating authorisation response")?)
+    }
+
+    pub async fn prefetch_encoding_keys(
+        &self,
+        client: &Arc<ClientInformation>,
+    ) -> Result<(Option<Jwk>, Option<Jwk>), AuthorisationError> {
+        let mut signing_key = None;
+        let mut encryption_key = None;
+        if self.should_prefetch_encoding_keys() {
+            let alg = &client.metadata().authorization_signed_response_alg;
+            let server_keystore = self.keystore_service.server_keystore(client, alg);
+            signing_key = server_keystore
+                .select(Some(KeyUse::Sig))
+                .alg(alg.name())
+                .first()
+                .cloned();
+            if let Some(enc_data) = client.metadata().authorization_encryption_data() {
+                let enc_alg = enc_data.alg;
+                let client_keystore = self
+                    .keystore_service
+                    .keystore(client, enc_alg)
+                    .await
+                    .context("Failed to fetch client keystore")?;
+                encryption_key = client_keystore
+                    .select(Some(KeyUse::Enc))
+                    .alg(enc_alg.name())
+                    .first()
+                    .cloned();
+            }
+        }
+        Ok((signing_key, encryption_key))
+    }
+
+    fn should_prefetch_encoding_keys(&self) -> bool {
+        self.provider.jwt_secure_response_mode()
     }
 
     async fn find_grant(&self, grant_id: GrantID) -> Result<Grant, AuthorisationError> {
@@ -164,43 +205,58 @@ where
             })?;
         Ok(grant)
     }
-}
-
-fn handle_prompt_err(
-    err: InteractionError,
-    provider: Arc<OpenIDProviderConfiguration>,
-    client: Arc<ClientInformation>,
-    keystore_service: Arc<KeystoreService>,
-) -> AuthorisationError {
-    let description = err.to_string();
-    match err {
-        InteractionError::PromptError(PromptError::LoginRequired {
-            redirect_uri,
-            response_mode,
-            state,
-        }) => AuthorisationError::RedirectableErr {
-            err: OpenIdError::login_required(description),
-            redirect_uri,
-            response_mode,
-            state,
-            provider,
-            keystore_service,
-            client,
-        },
-        InteractionError::PromptError(PromptError::ConsentRequired {
-            redirect_uri,
-            response_mode,
-            state,
-        }) => AuthorisationError::RedirectableErr {
-            err: OpenIdError::consent_required(description),
-            redirect_uri,
-            response_mode,
-            state,
-            provider,
-            keystore_service,
-            client,
-        },
-        _ => AuthorisationError::InternalError(err.into()),
+    async fn handle_err(
+        &self,
+        err: InteractionError,
+        provider: Arc<OpenIDProviderConfiguration>,
+        client: Arc<ClientInformation>,
+    ) -> AuthorisationError {
+        let description = err.to_string();
+        match err {
+            InteractionError::PromptError(PromptError::LoginRequired {
+                redirect_uri,
+                response_mode,
+                state,
+            }) => {
+                let Ok((sig, enc)) = self.prefetch_encoding_keys(&client).await else {
+                    return AuthorisationError::InternalError(anyhow!(
+                        "Failed to fetch encoding keys"
+                    ));
+                };
+                AuthorisationError::RedirectableErr {
+                    err: OpenIdError::login_required(description),
+                    redirect_uri,
+                    response_mode,
+                    state,
+                    provider,
+                    signing_key: sig,
+                    encryption_key: enc,
+                    client,
+                }
+            }
+            InteractionError::PromptError(PromptError::ConsentRequired {
+                redirect_uri,
+                response_mode,
+                state,
+            }) => {
+                let Ok((sig, enc)) = self.prefetch_encoding_keys(&client).await else {
+                    return AuthorisationError::InternalError(anyhow!(
+                        "Failed to fetch encoding keys"
+                    ));
+                };
+                AuthorisationError::RedirectableErr {
+                    err: OpenIdError::consent_required(description),
+                    redirect_uri,
+                    response_mode,
+                    state,
+                    provider,
+                    signing_key: sig,
+                    encryption_key: enc,
+                    client,
+                }
+            }
+            _ => AuthorisationError::InternalError(err.into()),
+        }
     }
 }
 
@@ -220,12 +276,11 @@ mod test {
     use crate::{
         authorisation_request::ValidatedAuthorisationRequest,
         context::test_utils::{setup_context, setup_provider},
-        manager::grant_manager::{self, GrantManager},
-        response_mode::Authorisation,
+        manager::grant_manager::GrantManager,
         response_type::resolver::DynamicResponseTypeResolver,
         services::{
             authorisation::AuthorisationService, interaction::InteractionService,
-            keystore::KeystoreService, prompt::PromptService, types::Interaction,
+            keystore::KeystoreService, prompt::PromptService,
         },
     };
 

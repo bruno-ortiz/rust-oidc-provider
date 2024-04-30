@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use josekit::jwk::Jwk;
 use url::Url;
 
 use oidc_types::response_mode::ResponseMode;
@@ -9,9 +10,8 @@ use crate::response_mode::encoder::fragment::FragmentEncoder;
 use crate::response_mode::encoder::jwt::JwtEncoder;
 use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::error::Result;
-use crate::services::keystore::KeystoreService;
 
-use super::Authorisation;
+use super::{AuthorisationResult, Error};
 
 pub(crate) mod fragment;
 pub(crate) mod jwt;
@@ -22,7 +22,8 @@ pub struct EncodingContext<'a> {
     pub redirect_uri: &'a Url,
     pub response_mode: ResponseMode,
     pub provider: &'a OpenIDProviderConfiguration,
-    pub keystore_service: &'a KeystoreService,
+    pub signing_key: Option<Jwk>,
+    pub encryption_key: Option<Jwk>,
 }
 
 pub trait ResponseModeEncoder {
@@ -30,7 +31,7 @@ pub trait ResponseModeEncoder {
         &self,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
-    ) -> Result<Authorisation>;
+    ) -> Result<AuthorisationResult>;
 }
 
 #[derive(Default, Copy, Clone)]
@@ -41,7 +42,7 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
         &self,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
-    ) -> Result<Authorisation> {
+    ) -> Result<AuthorisationResult> {
         let response_mode = context.response_mode;
 
         if !context
@@ -49,7 +50,7 @@ impl ResponseModeEncoder for DynamicResponseModeEncoder {
             .response_modes_supported()
             .contains(&response_mode)
         {
-            todo!("Return error, unsupported responde mode")
+            return Err(Error::InvalidResponseMode(response_mode));
         }
 
         match response_mode {

@@ -29,6 +29,15 @@ impl ResponseMode {
             _ => self,
         }
     }
+    pub fn is_jwt(self) -> bool {
+        matches!(
+            self,
+            ResponseMode::Jwt
+                | ResponseMode::QueryJwt
+                | ResponseMode::FragmentJwt
+                | ResponseMode::FormPostJwt
+        )
+    }
 }
 
 impl Display for ResponseMode {

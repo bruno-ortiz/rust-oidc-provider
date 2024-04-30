@@ -1,7 +1,7 @@
 use form_urlencoded::Serializer;
 use indexmap::IndexMap;
 
-use crate::response_mode::encoder::{Authorisation, ResponseModeEncoder};
+use crate::response_mode::encoder::{AuthorisationResult, ResponseModeEncoder};
 use crate::response_mode::encoder::{EncodingContext, Result};
 
 pub(crate) struct FragmentEncoder;
@@ -11,11 +11,11 @@ impl ResponseModeEncoder for FragmentEncoder {
         &self,
         context: &EncodingContext,
         parameters: IndexMap<String, String>,
-    ) -> Result<Authorisation> {
+    ) -> Result<AuthorisationResult> {
         let mut callback_uri = context.redirect_uri.clone();
         let fragment = Self::encode_fragment(parameters);
         callback_uri.set_fragment(Some(&fragment));
-        Ok(Authorisation::Redirect(callback_uri))
+        Ok(AuthorisationResult::Redirect(callback_uri))
     }
 }
 
