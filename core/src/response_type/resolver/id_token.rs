@@ -55,7 +55,11 @@ impl ResponseTypeResolver for IDTokenResolver<'_> {
         let profile = ProfileData::get(context.provider, &context.grant, &context.client)
             .await
             .map_err(OpenIdError::server_error)?;
-        let claims = get_id_token_claims(&profile, context.grant.claims().as_ref())?;
+        let claims = get_id_token_claims(
+            &profile,
+            context.grant.claims().as_ref(),
+            context.grant.rejected_claims(),
+        )?;
 
         let ttl = context.provider.ttl();
 

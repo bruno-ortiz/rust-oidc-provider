@@ -86,6 +86,7 @@ message CompleteLoginReply {
 message ConfirmConsentRequest {
   string interactionId = 1;
   repeated string scopes = 2;
+  repeated string rejected_claims = 3;
 }
 
 message ConfirmConsentReply {

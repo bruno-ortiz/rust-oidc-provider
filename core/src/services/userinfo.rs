@@ -49,6 +49,7 @@ impl UserInfoService {
             &self.provider,
             &profile,
             grant.claims().as_ref(),
+            grant.rejected_claims(),
             at.scopes(),
         )?
         .into_iter()

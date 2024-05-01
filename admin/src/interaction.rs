@@ -151,6 +151,7 @@ impl InteractionService for InteractionServiceImpl {
                 &self.authorisation_service,
                 interaction_id,
                 scopes,
+                request.rejected_claims.into_iter().collect(),
                 txn.clone(),
             )
             .await

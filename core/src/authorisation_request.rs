@@ -58,7 +58,7 @@ impl ValidatedAuthorisationRequest {
             .cloned()
             .unwrap_or_else(|| response_type.default_response_mode());
         if is_jarm_enabled {
-            //todo:server or client should enable jarm??
+            //TODO: server or client should enable jarm??
             response_mode.upgrade(response_type)
         } else {
             response_mode

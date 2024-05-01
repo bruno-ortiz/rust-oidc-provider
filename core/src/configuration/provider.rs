@@ -78,6 +78,9 @@ pub struct OpenIDProviderConfiguration {
     #[getset(skip)]
     #[get_copy = "pub"]
     jwt_secure_response_mode: bool,
+    #[getset(skip)]
+    #[get_copy = "pub"]
+    jwt_response_mode_exp: Duration,
     issuer: Issuer,
     grant_types_supported: Vec<GrantType>,
     scopes_supported: Scopes,
@@ -135,6 +138,9 @@ pub struct OpenIDProviderConfiguration {
     #[builder(setter(skip))]
     pairwise_resolver: PairwiseResolver,
     mtls: MTLSConfiguration,
+    #[getset(skip)]
+    #[get_copy = "pub"]
+    session_signing_key: [u8; 32],
 }
 
 impl OpenIDProviderConfigurationBuilder {
@@ -213,6 +219,7 @@ impl Default for OpenIDProviderConfiguration {
             ],
             response_modes_supported: vec![ResponseMode::Query, ResponseMode::Fragment],
             jwt_secure_response_mode: false,
+            jwt_response_mode_exp: Duration::minutes(5),
             issuer: Issuer::new(DEFAULT_ISSUER),
             scopes_supported: scopes!("openid"),
             grant_types_supported: vec![
@@ -372,6 +379,7 @@ impl Default for OpenIDProviderConfiguration {
             ],
             pairwise_resolver: PairwiseResolver::default(),
             mtls: MTLSConfiguration::default(),
+            session_signing_key: [0; 32],
         }
     }
 }

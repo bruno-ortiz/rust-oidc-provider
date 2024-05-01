@@ -108,7 +108,8 @@ impl AuthorisationCodeGrantResolver {
             let profile = ProfileData::get(&self.provider, &grant, client.as_ref())
                 .await
                 .map_err(OpenIdError::server_error)?;
-            let claims = get_id_token_claims(&profile, grant.claims().as_ref())?;
+            let claims =
+                get_id_token_claims(&profile, grant.claims().as_ref(), grant.rejected_claims())?;
 
             let alg = client.id_token_signing_alg();
             let keystore = self.keystore_service.server_keystore(client.as_ref(), alg);

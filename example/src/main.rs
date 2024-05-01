@@ -286,6 +286,7 @@ async fn consent(
     let request = GrpcRequest::new(ConfirmConsentRequest {
         interaction_id,
         scopes: interaction_info.request.unwrap().scopes,
+        rejected_claims: vec![],
     });
     let res = interaction_client
         .confirm_consent(request)

@@ -2,7 +2,6 @@ use indexmap::IndexMap;
 use josekit::jws::JwsHeader;
 use josekit::jwt::JwtPayload;
 use josekit::Value;
-use time::Duration;
 
 use oidc_types::jose::jws::JwsHeaderExt;
 use oidc_types::jose::jwt2::{SignedJWT, JWT};
@@ -15,8 +14,6 @@ use crate::response_mode::encoder::query::QueryEncoder;
 use crate::response_mode::encoder::EncodingContext;
 use crate::response_mode::encoder::{AuthorisationResult, ResponseModeEncoder};
 use crate::response_mode::error::{Error, Result};
-
-const EXP_IN_MINUTES: i64 = 5i64;
 
 pub(crate) struct JwtEncoder;
 
@@ -65,7 +62,7 @@ impl JwtEncoder {
         let mut payload = JwtPayload::new();
         payload.set_issuer(provider.issuer());
         payload.set_audience(vec![context.client.id().to_string()]);
-        let exp = clock.now() + Duration::minutes(EXP_IN_MINUTES); //TODO: review this exp
+        let exp = clock.now() + provider.jwt_response_mode_exp();
         payload.set_expires_at(&exp.into());
         for (key, value) in parameters {
             payload

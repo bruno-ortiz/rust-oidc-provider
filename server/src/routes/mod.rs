@@ -47,6 +47,6 @@ pub(crate) fn oidc_router(
             .add_extension(provider.clone())
             .layer(TraceLayer::new_for_http())
             .layer(CookieManagerLayer::new())
-            .layer(SessionManagerLayer::signed(&[0; 32])), //TODO: key configuration
+            .layer(SessionManagerLayer::signed(&provider.session_signing_key())),
     )
 }

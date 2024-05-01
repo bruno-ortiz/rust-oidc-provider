@@ -141,6 +141,7 @@ impl InteractionService {
         auth_service: &AuthorisationService<R>,
         interaction_id: Uuid,
         scopes: Scopes,
+        rejected_claims: HashSet<String>,
         txn: TransactionId,
     ) -> Result<Url, InteractionError>
     where
@@ -172,7 +173,7 @@ impl InteractionService {
                     .auth_time(user.auth_time())
                     .max_age(request.max_age)
                     .redirect_uri(request.redirect_uri.clone())
-                    .rejected_claims(HashSet::new()) //todo: implement rejected claims
+                    .rejected_claims(rejected_claims)
                     .claims(claims)
                     .build()
                     .map_err(|err| Internal(err.into()))?;

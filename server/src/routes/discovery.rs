@@ -41,7 +41,7 @@ pub async fn discovery<'a>(
             provider.token_endpoint_auth_signing_alg_values_supported(),
         )
         .introspection_endpoint(url(issuer, routes.introspect))
-        .introspection_endpoint_auth_methods_supported(
+        .introspection_endpoint_auth_method_supported(
             provider.token_endpoint_auth_methods_supported(),
         )
         .introspection_endpoint_auth_signing_alg_values_supported(
@@ -64,7 +64,9 @@ pub async fn discovery<'a>(
         )
         .claim_types_supported(provider.claim_types_supported().as_ref())
         .claims_parameter_supported(provider.claims_parameter_supported())
-        .tls_client_certificate_bound_access_tokens(false) //todo: implement mtls
+        .tls_client_certificate_bound_access_tokens(
+            provider.mtls().certificate_bound_access_token(),
+        )
         .request_parameter_supported(provider.request_object().request)
         .request_uri_parameter_supported(provider.request_object().request_uri)
         .require_request_uri_registration(provider.request_object().require_uri_registration)
