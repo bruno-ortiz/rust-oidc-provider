@@ -50,7 +50,7 @@ pub struct ValidatedAuthorisationRequest {
 }
 
 impl ValidatedAuthorisationRequest {
-    pub fn response_mode(&self, is_jarm_enabled: bool) -> ResponseMode {
+    pub fn response_mode(&self, is_jarm_enabled: bool) -> Result<ResponseMode, OpenIdError> {
         let response_type = &self.response_type;
         let response_mode = self
             .response_mode
@@ -58,10 +58,14 @@ impl ValidatedAuthorisationRequest {
             .cloned()
             .unwrap_or_else(|| response_type.default_response_mode());
         if is_jarm_enabled {
-            //TODO: server or client should enable jarm??
-            response_mode.upgrade(response_type)
+            Ok(response_mode.upgrade(response_type))
         } else {
-            response_mode
+            if response_mode.is_jwt() {
+                return Err(OpenIdError::invalid_request(
+                    "JWT response mode is not supported",
+                ));
+            }
+            Ok(response_mode)
         }
     }
 

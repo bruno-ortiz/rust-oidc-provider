@@ -140,9 +140,7 @@ where
         );
         let auth_result = self.resolver.resolve(&context).await;
 
-        let response_mode = context
-            .request
-            .response_mode(self.provider.jwt_secure_response_mode());
+        let response_mode = self.get_response_mode(&context, &client)?;
         let (sig, enc) = self.prefetch_encoding_keys(&client, &response_mode).await?;
         let encoding_context = EncodingContext {
             client: &client,
@@ -206,6 +204,27 @@ where
                 AuthorisationError::InternalError(anyhow!("User has not granted access to data"))
             })?;
         Ok(grant)
+    }
+
+    fn get_response_mode(
+        &self,
+        context: &OpenIDContext<'_>,
+        client: &Arc<ClientInformation>,
+    ) -> Result<ResponseMode, AuthorisationError> {
+        let response_mode = context
+            .request
+            .response_mode(self.provider.jwt_secure_response_mode())
+            .map_err(|err| AuthorisationError::RedirectableErr {
+                err,
+                response_mode: context.request.response_type.default_response_mode(),
+                redirect_uri: context.request.redirect_uri.clone(),
+                state: context.request.state.clone(),
+                provider: self.provider.clone(),
+                signing_key: None,
+                encryption_key: None,
+                client: client.clone(),
+            })?;
+        Ok(response_mode)
     }
 
     async fn handle_err(

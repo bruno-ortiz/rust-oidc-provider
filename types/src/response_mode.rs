@@ -24,6 +24,7 @@ impl ResponseMode {
             ResponseMode::Jwt => match response_type.default_response_mode() {
                 ResponseMode::Fragment => ResponseMode::FragmentJwt,
                 ResponseMode::Query => ResponseMode::QueryJwt,
+                ResponseMode::FormPost => ResponseMode::FormPostJwt,
                 _ => unreachable!("Invalid default response mode"),
             },
             _ => self,
